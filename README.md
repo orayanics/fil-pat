@@ -1,13 +1,6 @@
-# WebSocket Counter App
+# Picture Articulation Test App
 
-This is a [Next.js](https://nextjs.org) project with a real-time WebSocket counter that synchronizes across all connected clients.
-
-## Features
-
-- Real-time counter synchronization across multiple browser tabs/clients
-- Increment, decrement, and reset functionality
-- WebSocket connection status indicator
-- Clean, modern UI with Tailwind CSS
+This is a [Next.js](https://nextjs.org) project with a real-time WebSocket implementation that synchronizes across all connected clients within assessment session.
 
 ## Getting Started
 
@@ -34,19 +27,6 @@ npm run dev:websocket
 ```
 
 3. Open [http://localhost:3000](http://localhost:3000) with your browser to see the counter.
-
-## Architecture
-
-- **Next.js Frontend**: Serves the React application with the counter interface
-- **WebSocket Server**: Runs on port 8080, handles real-time counter synchronization
-- **Custom Server**: Handles HTTP requests on port 3000
-
-## How it works
-
-1. The WebSocket server (`websocket.ts`) maintains a global counter state
-2. When clients connect, they receive the current counter value
-3. Clients can send increment, decrement, or reset messages
-4. The server broadcasts counter updates to all connected clients in real-time
 
 Open multiple browser tabs to see the real-time synchronization in action!
 
