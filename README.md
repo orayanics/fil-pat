@@ -1,22 +1,54 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# WebSocket Counter App
+
+This is a [Next.js](https://nextjs.org) project with a real-time WebSocket counter that synchronizes across all connected clients.
+
+## Features
+
+- Real-time counter synchronization across multiple browser tabs/clients
+- Increment, decrement, and reset functionality
+- WebSocket connection status indicator
+- Clean, modern UI with Tailwind CSS
 
 ## Getting Started
 
-First, run the development server:
+1. Install dependencies:
+
+```bash
+npm install
+```
+
+2. Run the development server (includes both Next.js and WebSocket server):
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Alternatively, you can run them separately:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+# Terminal 1 - Next.js server
+npm run dev
+
+# Terminal 2 - WebSocket server only
+npm run dev:websocket
+```
+
+3. Open [http://localhost:3000](http://localhost:3000) with your browser to see the counter.
+
+## Architecture
+
+- **Next.js Frontend**: Serves the React application with the counter interface
+- **WebSocket Server**: Runs on port 8080, handles real-time counter synchronization
+- **Custom Server**: Handles HTTP requests on port 3000
+
+## How it works
+
+1. The WebSocket server (`websocket.ts`) maintains a global counter state
+2. When clients connect, they receive the current counter value
+3. Clients can send increment, decrement, or reset messages
+4. The server broadcasts counter updates to all connected clients in real-time
+
+Open multiple browser tabs to see the real-time synchronization in action!
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
