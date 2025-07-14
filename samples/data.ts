@@ -23,6 +23,8 @@ export const sampleData = [
     sound: "SIWW /m/",
     ipa_key: "/ka.maj/",
     group: "m",
+    consonants: 2,
+    vowel: 2,
   },
   {
     item: 4,
@@ -30,6 +32,8 @@ export const sampleData = [
     sound: "SFWW /m/",
     ipa_key: "/ga.gam.ba/",
     group: "m",
+    consonants: 4,
+    vowel: 3,
   },
 
   {
@@ -38,6 +42,8 @@ export const sampleData = [
     sound: "SIWI /b/",
     ipa_key: "/bɔ.la/",
     group: "b",
+    consonants: 2,
+    vowel: 2,
   },
   {
     item: 6,
@@ -45,6 +51,8 @@ export const sampleData = [
     sound: "SIWW /b/ SIWI /s/",
     ipa_key: "/sa.bɔn/",
     group: "b",
+    consonants: 3,
+    vowel: 2,
   },
   {
     item: 7,
@@ -52,6 +60,8 @@ export const sampleData = [
     sound: "SFWW & SFWF /b/",
     ipa_key: "/dib.dib/",
     group: "b",
+    consonants: 4,
+    vowel: 2,
   },
   {
     item: 8,
@@ -59,6 +69,8 @@ export const sampleData = [
     sound: "SIWI /p/",
     ipa_key: "/pu.saʔ/",
     group: "p",
+    consonants: 3,
+    vowel: 2,
   },
   {
     item: 9,
@@ -66,6 +78,8 @@ export const sampleData = [
     sound: "SFWF /p/",
     ipa_key: "/ʔu.lap/",
     group: "p",
+    consonants: 3,
+    vowel: 2,
   },
   {
     item: 10,
@@ -73,6 +87,8 @@ export const sampleData = [
     sound: "SIWI /l/ SIWW /p/",
     ipa_key: "/la.pis/",
     group: "p",
+    consonants: 3,
+    vowel: 2,
   },
   {
     item: 11,
@@ -80,6 +96,8 @@ export const sampleData = [
     sound: "SFWW /p/",
     ipa_key: "/kʌp.kɛɪk/",
     group: "p",
+    consonants: 4,
+    vowel: 2,
   },
   {
     item: 12,
@@ -87,6 +105,8 @@ export const sampleData = [
     sound: "SIWI /n/",
     ipa_key: "/na.naj/",
     group: "n",
+    consonants: 2,
+    vowel: 2,
   },
   {
     item: 13,
@@ -94,6 +114,8 @@ export const sampleData = [
     sound: "SFWF /n/",
     ipa_key: "/ka.nin/",
     group: "n",
+    consonants: 3,
+    vowel: 2,
   },
   {
     item: 14,
@@ -101,6 +123,8 @@ export const sampleData = [
     sound: "SIWW /n/",
     ipa_key: "/pu.nɔʔ/",
     group: "n",
+    consonants: 3,
+    vowel: 2,
   },
   {
     item: 15,
@@ -108,6 +132,8 @@ export const sampleData = [
     sound: "SFWW /n/",
     ipa_key: "/pan.sit/",
     group: "n",
+    consonants: 4,
+    vowel: 2,
   },
   {
     item: 16,
@@ -115,6 +141,8 @@ export const sampleData = [
     sound: "SIWI /d/ & SFWF /r/",
     ipa_key: "/dɔk.tɔr/",
     group: "d",
+    consonants: 4,
+    vowel: 2,
   },
   {
     item: 17,
@@ -122,6 +150,8 @@ export const sampleData = [
     sound: "SFWF /d/ & SIWW /k/",
     ipa_key: "/lɪ.kɔd/",
     group: "d",
+    consonants: 3,
+    vowel: 2,
   },
   {
     item: 18,
@@ -129,6 +159,8 @@ export const sampleData = [
     sound: "SIWW /d/",
     ipa_key: "/is.daʔ/",
     group: "d",
+    consonants: 3,
+    vowel: 2,
   },
   {
     item: 19,
@@ -136,6 +168,8 @@ export const sampleData = [
     sound: "SIWI /w/",
     ipa_key: "/wa.lis/",
     group: "w",
+    consonants: 3,
+    vowel: 2,
   },
   {
     item: 20,
@@ -143,6 +177,8 @@ export const sampleData = [
     sound: "SIWW /w/",
     ipa_key: "/pa.wɪs/",
     group: "w",
+    consonants: 3,
+    vowel: 2,
   },
   {
     item: 21,
@@ -150,6 +186,8 @@ export const sampleData = [
     sound: "SIWI /j/",
     ipa_key: "/ju.tub/",
     group: "j",
+    consonants: 3,
+    vowel: 2,
   },
   {
     item: 22,
@@ -157,6 +195,8 @@ export const sampleData = [
     sound: "SIWW /j/",
     ipa_key: "/tu.wal.ja/",
     group: "j",
+    consonants: 4,
+    vowel: 3,
   },
   {
     item: 23,
@@ -164,6 +204,8 @@ export const sampleData = [
     sound: "SIWI /h/",
     ipa_key: "/hat.dɔg/",
     group: "h",
+    consonants: 4,
+    vowel: 2,
   },
   {
     item: 24,
@@ -171,6 +213,8 @@ export const sampleData = [
     sound: "SIWW /h/",
     ipa_key: "/bu.hɔk/",
     group: "h",
+    consonants: 3,
+    vowel: 2,
   },
   {
     item: 25,
@@ -178,6 +222,8 @@ export const sampleData = [
     sound: "SIWI /t/ & SIWW /ŋ/",
     ipa_key: "/tɛ.ŋa/",
     group: "t",
+    consonants: 2,
+    vowel: 2,
   },
   {
     item: 26,
@@ -185,6 +231,8 @@ export const sampleData = [
     sound: "SFWF /t/",
     ipa_key: "/hɛl.mɛt/",
     group: "t",
+    consonants: 4,
+    vowel: 2,
   },
   {
     item: 27,
@@ -192,6 +240,8 @@ export const sampleData = [
     sound: "SFWW /t/",
     ipa_key: "/ʔit.lɔg/",
     group: "t",
+    consonants: 4,
+    vowel: 2,
   },
   {
     item: 28,
@@ -199,6 +249,8 @@ export const sampleData = [
     sound: "SIWI /ŋ/",
     ipa_key: "/ŋi.pin/",
     group: "ŋ",
+    consonants: 3,
+    vowel: 2,
   },
   {
     item: 29,
@@ -206,6 +258,8 @@ export const sampleData = [
     sound: "SFWF /ŋ/",
     ipa_key: "/sa.giŋ/",
     group: "ŋ",
+    consonants: 3,
+    vowel: 2,
   },
   {
     item: 30,
@@ -213,6 +267,8 @@ export const sampleData = [
     sound: "SFWF /ŋ/",
     ipa_key: "/uŋ.gɔj/",
     group: "ŋ",
+    consonants: 3,
+    vowel: 2,
   },
   {
     item: 31,
@@ -220,6 +276,8 @@ export const sampleData = [
     sound: "SFWF /k/",
     ipa_key: "/keɪk/",
     group: "k",
+    consonants: 2,
+    vowel: 1,
   },
   {
     item: 32,
@@ -227,6 +285,8 @@ export const sampleData = [
     sound: "SFWW /k/",
     ipa_key: "/bu.lak.lak/",
     group: "k",
+    consonants: 5,
+    vowel: 3,
   },
   {
     item: 33,
@@ -234,6 +294,8 @@ export const sampleData = [
     sound: "SIWI /g/",
     ipa_key: "/ga.tas/",
     group: "g",
+    consonants: 3,
+    vowel: 2,
   },
   {
     item: 34,
@@ -241,6 +303,8 @@ export const sampleData = [
     sound: "SFWF /g/",
     ipa_key: "/bag/",
     group: "g",
+    consonants: 2,
+    vowel: 1,
   },
   {
     item: 35,
@@ -248,6 +312,8 @@ export const sampleData = [
     sound: "SIWW /g/",
     ipa_key: "/da.gaʔ/",
     group: "g",
+    consonants: 3,
+    vowel: 2,
   },
   {
     item: 36,
@@ -255,6 +321,8 @@ export const sampleData = [
     sound: "SFWW /g/",
     ipa_key: "/hag.dan/",
     group: "g",
+    consonants: 4,
+    vowel: 2,
   },
   {
     item: 37,
@@ -262,6 +330,8 @@ export const sampleData = [
     sound: "SIWI /ʔ/",
     ipa_key: "/ʔi.law/",
     group: "ʔ",
+    consonants: 2,
+    vowel: 2,
   },
   {
     item: 38,
@@ -269,6 +339,8 @@ export const sampleData = [
     sound: "SFWF /ʔ/",
     ipa_key: "/ba.taʔ/",
     group: "ʔ",
+    consonants: 3,
+    vowel: 2,
   },
   {
     item: 39,
@@ -276,6 +348,8 @@ export const sampleData = [
     sound: "SIWW /ʔ/",
     ipa_key: "/pa.ʔa/",
     group: "ʔ",
+    consonants: 2,
+    vowel: 2,
   },
   {
     item: 40,
@@ -283,6 +357,8 @@ export const sampleData = [
     sound: "SFWF /l/",
     ipa_key: "/pa.pɛl/",
     group: "l",
+    consonants: 3,
+    vowel: 2,
   },
   {
     item: 41,
@@ -290,6 +366,8 @@ export const sampleData = [
     sound: "SIWW /l/",
     ipa_key: "/i.lɔŋ/",
     group: "l",
+    consonants: 3,
+    vowel: 2,
   },
   {
     item: 42,
@@ -297,6 +375,8 @@ export const sampleData = [
     sound: "SFWW /l/",
     ipa_key: "/bul.sa/",
     group: "l",
+    consonants: 3,
+    vowel: 2,
   },
   {
     item: 43,
@@ -304,6 +384,8 @@ export const sampleData = [
     sound: "SFWF /s/",
     ipa_key: "/bus/",
     group: "s",
+    consonants: 2,
+    vowel: 1,
   },
   {
     item: 44,
@@ -311,6 +393,8 @@ export const sampleData = [
     sound: "SIWW /s/",
     ipa_key: "/Ɂa.sɔ/",
     group: "s",
+    consonants: 2,
+    vowel: 2,
   },
   {
     item: 45,
@@ -318,6 +402,8 @@ export const sampleData = [
     sound: "SFWW /s/",
     ipa_key: "/bas.kɛt/",
     group: "s",
+    consonants: 4,
+    vowel: 2,
   },
   {
     item: 46,
@@ -325,6 +411,8 @@ export const sampleData = [
     sound: "SIWI /r/",
     ipa_key: "/rɔ.bɔt/",
     group: "r",
+    consonants: 3,
+    vowel: 2,
   },
   {
     item: 47,
@@ -332,6 +420,8 @@ export const sampleData = [
     sound: "SFWF /r/",
     ipa_key: "/pa.tɛl/",
     group: "r",
+    consonants: 2,
+    vowel: 2,
   },
   {
     item: 48,
@@ -339,6 +429,8 @@ export const sampleData = [
     sound: "SFWW /r/",
     ipa_key: "/kwar.tɔ/",
     group: "r",
+    consonants: 4,
+    vowel: 2,
   },
   {
     item: 49,
@@ -346,6 +438,8 @@ export const sampleData = [
     sound: "SIWI /ʃ/",
     ipa_key: "/ʃam.pu/",
     group: "ʃ",
+    consonants: 3,
+    vowel: 2,
   },
   {
     item: 50,
@@ -353,6 +447,8 @@ export const sampleData = [
     sound: "SFWF /ʃ/",
     ipa_key: "/tut.brʌʃ/",
     group: "ʃ",
+    consonants: 5,
+    vowel: 2,
   },
   {
     item: 57,
@@ -360,6 +456,8 @@ export const sampleData = [
     sound: "SIWW /ʃ/",
     ipa_key: "/ti.ʃu/",
     group: "ʃ",
+    consonants: 2,
+    vowel: 2,
   },
   {
     item: 58,
@@ -367,6 +465,8 @@ export const sampleData = [
     sound: "SFWW /ʃ/",
     ipa_key: "/flaʃ.laɪt/",
     group: "ʃ",
+    consonants: 5,
+    vowel: 2,
   },
   {
     item: 59,
@@ -374,6 +474,8 @@ export const sampleData = [
     sound: "SIWI /ʧ/",
     ipa_key: "/tʃɪ.nɛ.las/",
     group: "ʧ",
+    consonants: 4,
+    vowel: 3,
   },
   {
     item: 60,
@@ -381,6 +483,8 @@ export const sampleData = [
     sound: "SFWF /ʧ/",
     ipa_key: "/bitʃ/",
     group: "ʧ",
+    consonants: 2,
+    vowel: 1,
   },
   {
     item: 61,
@@ -388,6 +492,8 @@ export const sampleData = [
     sound: "SIWW /tʃ/",
     ipa_key: "/ku.tʃa.ra/",
     group: "tʃ",
+    consonants: 3,
+    vowel: 3,
   },
   {
     item: 62,
@@ -395,6 +501,8 @@ export const sampleData = [
     sound: "SIWI /dʒ/",
     ipa_key: "/dʒa.lɪ.bi/",
     group: "dʒ",
+    consonants: 3,
+    vowel: 3,
   },
   {
     item: 63,
@@ -402,6 +510,8 @@ export const sampleData = [
     sound: "SIWW /dʒ/",
     ipa_key: "/mɛ.dʒas/",
     group: "dʒ",
+    consonants: 3,
+    vowel: 2,
   },
   {
     item: 64,
@@ -409,6 +519,8 @@ export const sampleData = [
     sound: "SIWI /f/",
     ipa_key: "/fan/",
     group: "f",
+    consonants: 2,
+    vowel: 1,
   },
   {
     item: 65,
@@ -416,6 +528,8 @@ export const sampleData = [
     sound: "SFWF /f/",
     ipa_key: "/dʒi.raf/",
     group: "f",
+    consonants: 3,
+    vowel: 2,
   },
   {
     item: 66,
@@ -423,6 +537,8 @@ export const sampleData = [
     sound: "SIWW /f/",
     ipa_key: "/dɔl.fɪn/",
     group: "f",
+    consonants: 4,
+    vowel: 2,
   },
   {
     item: 67,
@@ -430,6 +546,8 @@ export const sampleData = [
     sound: "SIWI /v/",
     ipa_key: "/va.jɔ.lɛt/",
     group: "v",
+    consonants: 4,
+    vowel: 3,
   },
   {
     item: 68,
@@ -437,6 +555,8 @@ export const sampleData = [
     sound: "SIWF /v/",
     ipa_key: "/faɪv/",
     group: "v",
+    consonants: 2,
+    vowel: 1,
   },
   {
     item: 69,
@@ -444,6 +564,8 @@ export const sampleData = [
     sound: "SIWW /v/",
     ipa_key: "/o.val/",
     group: "v",
+    consonants: 2,
+    vowel: 2,
   },
   {
     item: 70,
@@ -451,6 +573,8 @@ export const sampleData = [
     sound: "SIWI /z/",
     ipa_key: "/zi.bra/",
     group: "z",
+    consonants: 3,
+    vowel: 2,
   },
   {
     item: 71,
@@ -458,6 +582,8 @@ export const sampleData = [
     sound: "SIWW /z/",
     ipa_key: "/pa.zɛl/",
     group: "z",
+    consonants: 3,
+    vowel: 2,
   },
   {
     item: 72,
@@ -465,6 +591,8 @@ export const sampleData = [
     sound: "/aj/",
     ipa_key: "/ba.haj/",
     group: "aj",
+    consonants: 2,
+    vowel: 2,
   },
   {
     item: 73,
@@ -472,6 +600,8 @@ export const sampleData = [
     sound: "/ej/",
     ipa_key: "/bej.bi/",
     group: "ej",
+    consonants: 2,
+    vowel: 2,
   },
   {
     item: 74,
@@ -479,6 +609,8 @@ export const sampleData = [
     sound: "/ɔj/",
     ipa_key: "/ba.bɔj/",
     group: "ɔj",
+    consonants: 2,
+    vowel: 2,
   },
   {
     item: 75,
@@ -486,6 +618,8 @@ export const sampleData = [
     sound: "SFWF /aw/",
     ipa_key: "/sa.baw/",
     group: "aw",
+    consonants: 2,
+    vowel: 2,
   },
   {
     item: 76,
@@ -493,5 +627,7 @@ export const sampleData = [
     sound: "/iw/",
     ipa_key: "/si.siw/",
     group: "iw",
+    consonants: 2,
+    vowel: 2,
   },
 ];
