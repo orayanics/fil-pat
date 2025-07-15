@@ -8,6 +8,8 @@ import { createServer } from "http";
 import { parse } from "url";
 import next from "next";
 
+import "./websocket";
+
 const dev = process.env.NODE_ENV !== "production";
 const hostname = process.env.APP_HOSTNAME || "localhost";
 const port = process.env.APP_PORT ? parseInt(process.env.APP_PORT, 10) : 3000;

@@ -1,0 +1,5 @@
+{
+  "watch": ["websocket.ts"],
+  "exec": "tsc websocket.ts --outDir dist && node dist/websocket.js",
+  "ext": "ts"
+}

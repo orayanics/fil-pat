@@ -1,12 +1,18 @@
 {
-  "extends": "./tsconfig.json",
   "compilerOptions": {
-    "module": "commonjs",
-    "outDir": "dist",
-    "lib": ["es2019"],
     "target": "es2019",
+    "lib": ["es2019"],
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "outDir": "dist",
     "isolatedModules": false,
-    "noEmit": false
+    "noEmit": false,
+    "allowJs": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "esModuleInterop": true,
+    "resolveJsonModule": true
   },
-  "include": ["server.ts"]
+  "include": ["server.ts", "websocket.ts"],
+  "exclude": ["node_modules", "dist"]
 }
