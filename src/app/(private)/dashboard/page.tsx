@@ -1,10 +1,10 @@
-import React from "react";
-import GenerateQR from "../../../components/QR/GenerateQR";
+"use client";
+import Dashboard from "@/modules/dashboard";
 
-export default function Dashboard() {
+export default function DashboardPage() {
   return (
-    <div>
-      <GenerateQR />
-    </div>
+    <>
+      <Dashboard />
+    </>
   );
 }

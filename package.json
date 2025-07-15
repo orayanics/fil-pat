@@ -4,9 +4,11 @@
   "private": true,
   "scripts": {
     "dev": "nodemon",
-    "dev:websocket": "ts-node --project tsconfig.server.json websocket.ts",
+    "dev:next": "next dev --turbopack",
+    "dev:websocket": "nodemon --config nodemon.websocket.json",
+    "fullstack": "concurrently \"npm run dev:next\" \"npm run dev:websocket\"",
     "build": "next build && tsc --project tsconfig.server.json",
-    "start": "NODE_ENV=production node server/server.js",
+    "start": "next start",
     "lint": "next lint"
   },
   "dependencies": {
@@ -29,6 +31,7 @@
     "@types/qrcode": "^1.5.5",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "concurrently": "^9.2.0",
     "eslint": "^9",
     "eslint-config-next": "15.3.5",
     "tailwindcss": "^4",

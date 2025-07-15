@@ -1,63 +1,69 @@
 "use client";
-import { useState, useEffect } from "react";
-import { useSearchParams } from "next/navigation";
-import { useWebSocket } from "../../lib";
+
+import { useEffect, useState } from "react";
+import Image from "next/image";
+import { useSocketContext } from "@/context/SocketProvider";
+
+type WebSocketData = {
+  qrData: string;
+  sessionId: string;
+};
 
 export default function Patient() {
-  const room = useSearchParams().get("room") || "default";
-  const [count, setCount] = useState(0);
-  const { eventSource, isConnected } = useWebSocket(room);
+  const { socket, isConnected } = useSocketContext();
+  const [qrData, setQrData] = useState<WebSocketData | null>(null);
 
   useEffect(() => {
-    if (!eventSource) {
-      console.log("No eventSource available yet");
-      return;
-    }
+    if (!socket) return;
 
-    console.log("Setting up event listeners for EventSource");
-
-    const onMessage = (e: MessageEvent) => {
+    const handleMessage = (event: MessageEvent) => {
       try {
-        console.log("Patient received message:", e.data);
-        const data = JSON.parse(e.data);
-        if (data.count !== undefined) {
-          console.log("Updating count to:", data.count);
-          setCount(data.count);
+        const data = JSON.parse(event.data);
+        if (data.type === "sendQrData") {
+          setQrData({ qrData: data.qrData, sessionId: data.sessionId });
         }
       } catch (error) {
-        console.error("Error parsing message:", error);
+        console.error("Error parsing WebSocket message:", error);
       }
     };
 
-    const onError = (error: Event) => {
-      console.error("EventSource error on patient side:", error);
-    };
-
-    const onOpen = () => {
-      console.log("EventSource connected on patient side for room:", room);
-    };
-
-    eventSource.addEventListener("message", onMessage);
-    eventSource.addEventListener("error", onError);
-    eventSource.addEventListener("open", onOpen);
+    socket.addEventListener("message", handleMessage);
 
     return () => {
-      console.log("Removing event listeners");
-      eventSource.removeEventListener("message", onMessage);
-      eventSource.removeEventListener("error", onError);
-      eventSource.removeEventListener("open", onOpen);
+      socket.removeEventListener("message", handleMessage);
     };
-  }, [eventSource, room]);
+  }, [socket]);
 
   return (
-    <div style={{ fontSize: 32, padding: 40 }}>
-      this is patient
-      <br />
-      Room: {room}
-      <br />
-      Connection: {isConnected ? "Connected" : "Disconnected"}
-      <br />
-      Count: {count}
+    <div style={{ padding: "20px", textAlign: "center" }}>
+      <h1>Patient Page</h1>
+
+      <div style={{ marginTop: "20px" }}>
+        <p>WebSocket Status: {isConnected ? "Connected" : "Disconnected"}</p>
+      </div>
+
+      {qrData && qrData.qrData && (
+        <div style={{ marginTop: "30px" }}>
+          <h2>Session QR Code</h2>
+          <p>Session ID: {qrData.sessionId}</p>
+          <Image
+            src={qrData.qrData || ""}
+            alt="Session QR Code"
+            width={200}
+            height={200}
+            style={{ border: "1px solid #ddd", borderRadius: "8px" }}
+          />
+          <p style={{ marginTop: "10px", fontSize: "14px", color: "#666" }}>
+            Scan this QR code to join the session
+          </p>
+        </div>
+      )}
+
+      {!qrData && isConnected && (
+        <div style={{ marginTop: "30px" }}>
+          <p>Waiting for QR code to be generated...</p>
+        </div>
+      )}
     </div>
   );
 }
