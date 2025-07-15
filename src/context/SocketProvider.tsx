@@ -1,16 +1,9 @@
 "use client";
 import { createContext, useContext, useState, useEffect } from "react";
-import useWebSocket from "@/lib/useWebSocket";
-interface SocketContextType {
-  socket: WebSocket | null;
-  isConnected: boolean;
-  sessionId: string | null;
-  sendMessage: (message: string) => void;
-  currentItem: any | null;
-  joinRoom: () => void;
-}
-
 import { useParams } from "next/navigation";
+
+import useWebSocket from "@/lib/useWebSocket";
+import type { SocketContextType, AssessmentItem } from "@/models/context";
 
 const SocketContext = createContext<SocketContextType | undefined>(undefined);
 
@@ -21,8 +14,12 @@ export default function SocketProvider({
 }) {
   const { socket, isConnected } = useWebSocket();
   const [sessionId, setSessionId] = useState<string | null>(null);
-  const [currentItem, setCurrentItem] = useState<any | null>(null);
+  const [currentItem, setCurrentItem] = useState<AssessmentItem | null>(null);
   const [hasJoinedRoom, setHasJoinedRoom] = useState(false);
+  const [qrData, setQrData] = useState<{
+    qrData: string;
+    sessionId: string;
+  } | null>(null);
   const { id } = useParams();
 
   useEffect(() => {
@@ -38,11 +35,20 @@ export default function SocketProvider({
     const handleMessage = (event: MessageEvent) => {
       try {
         const data = JSON.parse(event.data);
-        if (data.type === "changeAssessmentItem") {
-          setCurrentItem(data.item);
-        } else if (data.type === "joinedRoom") {
-          // TODO: Pop up notification
-          setHasJoinedRoom(true);
+        switch (data.type) {
+          case "sendQrData":
+            setQrData({ qrData: data.qrData, sessionId: data.sessionId });
+            break;
+          case "changeAssessmentItem":
+            setCurrentItem(data.item);
+            break;
+          case "joinedRoom":
+            // TODO: Pop up notification
+            setHasJoinedRoom(true);
+            break;
+          default:
+            console.warn("Unhandled message type:", data.type);
+            break;
         }
       } catch (error) {
         console.error("Error parsing WebSocket message:", error);
@@ -75,6 +81,7 @@ export default function SocketProvider({
   // auto-join room
   useEffect(() => {
     joinRoom();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [socket, sessionId, isConnected]);
 
   return (
@@ -84,6 +91,7 @@ export default function SocketProvider({
         isConnected,
         sessionId,
         currentItem,
+        qrData,
         joinRoom,
         sendMessage: (message) => socket?.send(message),
       }}

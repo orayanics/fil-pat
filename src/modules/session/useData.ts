@@ -1,30 +1,26 @@
 import { useState, useEffect } from "react";
 import { sampleData } from "@/data/data";
 
-interface UseQrOptions {
-  socket: WebSocket | null;
-  sessionId: string | null;
-  currentItem?: unknown;
-}
+import type { UseDataOptions } from "@/models/utils";
 
 export default function useData({
   socket,
   sessionId,
   currentItem,
-}: UseQrOptions) {
+}: UseDataOptions) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const item = sampleData[currentIndex];
 
   useEffect(() => {
     if (currentItem) {
       const index = sampleData.findIndex(
-        (item) => item.item === currentItem.item
+        (item) => item.item === currentItem.item.item
       );
       if (index !== -1 && index !== currentIndex) {
-        console.log(`Syncing currentIndex from ${currentIndex} to ${index}`);
         setCurrentIndex(index);
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentItem]);
 
   const changeItem = (direction: number) => {

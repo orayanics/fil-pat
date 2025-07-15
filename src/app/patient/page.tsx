@@ -1,38 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Image from "next/image";
 import { useSocketContext } from "@/context/SocketProvider";
 
-type WebSocketData = {
-  qrData: string;
-  sessionId: string;
-};
-
 export default function Patient() {
-  const { socket, isConnected } = useSocketContext();
-  const [qrData, setQrData] = useState<WebSocketData | null>(null);
-
-  useEffect(() => {
-    if (!socket) return;
-
-    const handleMessage = (event: MessageEvent) => {
-      try {
-        const data = JSON.parse(event.data);
-        if (data.type === "sendQrData") {
-          setQrData({ qrData: data.qrData, sessionId: data.sessionId });
-        }
-      } catch (error) {
-        console.error("Error parsing WebSocket message:", error);
-      }
-    };
-
-    socket.addEventListener("message", handleMessage);
-
-    return () => {
-      socket.removeEventListener("message", handleMessage);
-    };
-  }, [socket]);
+  const { isConnected, qrData } = useSocketContext();
 
   return (
     <div style={{ padding: "20px", textAlign: "center" }}>

@@ -1,4 +1,5 @@
 import { WebSocketServer, WebSocket } from "ws";
+import { sampleData } from "./src/data/data";
 
 const port = process.env.WEBSOCKET_PORT
   ? parseInt(process.env.WEBSOCKET_PORT, 10)
@@ -16,7 +17,6 @@ const broadcastToRoom = (roomId: string, message: string) => {
   if (clients) {
     clients.forEach((client) => {
       if (client.readyState === WebSocket.OPEN) {
-        console.log(`Broadcasting to room ${roomId}:`, message);
         client.send(message);
       }
     });
@@ -31,15 +31,16 @@ const broadcastQrData = (qrData: string, sessionId: string) => {
     sessionId,
   });
 
-  broadcastToRoom(sessionId, message);
+  // broadcastToRoom(sessionId, message);
+  wss.clients.forEach((client) => {
+    if (client.readyState === WebSocket.OPEN) {
+      client.send(message);
+    }
+  });
 };
 
 // Broadcast assessment item changes to all connected clients in a room
 const broadcastAssessmentItemChange = (item: unknown, sessionId: string) => {
-  console.log("Broadcasting assessment item change:", {
-    item,
-    sessionId,
-  });
   roomCurrentItems[sessionId] = item;
 
   const message = JSON.stringify({
@@ -53,11 +54,13 @@ const broadcastAssessmentItemChange = (item: unknown, sessionId: string) => {
 
 // Room Management
 const joinRoom = (ws: WebSocket, roomId: string) => {
-  if (!rooms[roomId]) {
-    rooms[roomId] = new Set();
+  const isNewRoom = !rooms[roomId];
+
+  if (isNewRoom) {
+    rooms[roomId] = new Set<WebSocket>();
+    roomCurrentItems[roomId] = sampleData[0];
   }
   rooms[roomId].add(ws);
-  console.log(`Client joined room: ${roomId}`);
 };
 
 const leaveRoom = (ws: WebSocket, roomId: string) => {
@@ -85,10 +88,6 @@ wss.on("connection", (ws) => {
           joinRoom(ws, data.roomId);
           ws.send(JSON.stringify({ type: "joinedRoom", roomId: data.roomId }));
           if (roomCurrentItems[data.roomId]) {
-            console.log(
-              `Sending current item to new client in room ${data.roomId}:`,
-              roomCurrentItems[data.roomId]
-            );
             ws.send(
               JSON.stringify({
                 type: "changeAssessmentItem",

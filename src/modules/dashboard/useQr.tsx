@@ -3,11 +3,7 @@ import QRCode from "qrcode";
 
 const BASE_URL = process.env.NEXT_PUBLIC_ASSESSMENT_BASE_URL;
 
-type Role = "patient" | "clinician";
-
-interface UseQrOptions {
-  socket: WebSocket | null;
-}
+import type { Role, UseQrOptions } from "@/models/utils";
 
 export default function useQr({ socket }: UseQrOptions) {
   const [qrCode, setQrCode] = useState<string | null>(null);
