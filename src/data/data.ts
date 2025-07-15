@@ -7,6 +7,8 @@ export const sampleData = [
     group: "m",
     consonants: 2,
     vowel: 2,
+    image:
+      "https://i.pinimg.com/736x/00/0c/56/000c56b811f1dcd108c9280a80adbf97.jpg",
   },
   {
     item: 2,
@@ -16,6 +18,8 @@ export const sampleData = [
     group: "m",
     consonants: 3,
     vowel: 2,
+    image:
+      "https://i.pinimg.com/736x/e9/a1/4c/e9a14c4c6100e4c1aa467b74f67cb57e.jpg",
   },
   {
     item: 3,

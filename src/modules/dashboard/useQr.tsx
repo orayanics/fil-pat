@@ -24,32 +24,37 @@ export default function useQr({ socket }: UseQrOptions) {
     setSessionId(id);
     let dummy = "";
 
-    setQrCode(
-      await QRCode.toDataURL(url, {
+    try {
+      setQrCode(
+        await QRCode.toDataURL(url, {
+          width: 200,
+          margin: 1,
+          errorCorrectionLevel: "H",
+        }).catch((error) => {
+          console.error("Error generating QR code:", error);
+          return null;
+        })
+      );
+
+      dummy = await QRCode.toDataURL(url, {
         width: 200,
         margin: 1,
         errorCorrectionLevel: "H",
-      }).catch((error) => {
-        console.error("Error generating QR code:", error);
-        return null;
-      })
-    );
+      });
 
-    dummy = await QRCode.toDataURL(url, {
-      width: 200,
-      margin: 1,
-      errorCorrectionLevel: "H",
-    });
-
-    if (socket) {
-      socket.send(
-        JSON.stringify({
-          type: "sendQrData",
-          qrData: dummy,
-          sessionId: id,
-          qr: dummy,
-        })
-      );
+      if (socket) {
+        socket.send(
+          JSON.stringify({
+            type: "sendQrData",
+            qrData: dummy,
+            sessionId: id,
+            qr: dummy,
+          })
+        );
+      }
+    } catch (error) {
+      console.error("Error generating QR code:", error);
+      setQrCode(null);
     }
   }
   return { qrCode, sessionId, buildSessionUrl, generate };
