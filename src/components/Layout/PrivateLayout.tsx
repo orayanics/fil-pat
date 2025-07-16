@@ -6,6 +6,7 @@ import Box from "@mui/joy/Box";
 import Breadcrumbs from "./Breadcrumbs";
 import PrivateHeader from "./PrivateHeader";
 import PrivateSidebar from "./PrivateSidebar";
+import { PageStatus } from "@/components/Page";
 
 export default function PrivateLayout({ children }: { children: ReactNode }) {
   return (
@@ -34,7 +35,18 @@ export default function PrivateLayout({ children }: { children: ReactNode }) {
             gap: 1,
           }}
         >
-          <Breadcrumbs />
+          <Box
+            sx={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              gap: 2,
+            }}
+          >
+            <Breadcrumbs />
+            <PageStatus />
+          </Box>
+
           {children}
         </Box>
       </Box>
