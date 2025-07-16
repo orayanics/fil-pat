@@ -1,3 +1,3 @@
 import PageStatus from "./PageStatus";
-
-export { PageStatus };
+import PageHeader from "./PageHeader";
+export { PageStatus, PageHeader };

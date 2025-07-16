@@ -7,14 +7,9 @@ export default function PageStatus() {
   return (
     <Box
       sx={{
-        display: "flex",
-        alignItems: "center",
-        gap: "12px",
-        justifyContent: "center",
         zIndex: 1000,
         position: "sticky",
-        top: 0,
-        backgroundColor: "#fff",
+        backgroundColor: "background.body",
         padding: 1,
       }}
       borderColor="divider"

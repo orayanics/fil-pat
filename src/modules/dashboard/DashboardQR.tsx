@@ -22,11 +22,7 @@ export default function DashboardQR() {
       orientation="horizontal"
       sx={{ padding: 2, gap: 2, flexWrap: "wrap" }}
     >
-      {qrCode && (
-        <>
-          <Image src={qrCode} alt={qrCode} width={200} height={200} />
-        </>
-      )}
+      {qrCode && <Image src={qrCode} alt={qrCode} width={200} height={200} />}
 
       <Box
         sx={{

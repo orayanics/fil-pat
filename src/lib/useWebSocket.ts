@@ -4,6 +4,7 @@ export default function useWebSocket() {
   const [isConnected, setIsConnected] = useState(false);
   const socketRef = useRef<WebSocket | null>(null);
 
+  // TODO: Handle reconnection logic if connection fails or lost
   useEffect(() => {
     if (socketRef.current) return;
     const webSocket = new WebSocket("ws://localhost:8080");

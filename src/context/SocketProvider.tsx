@@ -1,6 +1,7 @@
 "use client";
-import { createContext, useContext, useState, useEffect } from "react";
+import React from "react";
 import { useParams } from "next/navigation";
+import { createContext, useContext, useState, useEffect } from "react";
 
 import useWebSocket from "@/lib/useWebSocket";
 import type { SocketContextType, AssessmentItem } from "@/models/context";
@@ -83,6 +84,8 @@ export default function SocketProvider({
     joinRoom();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [socket, sessionId, isConnected]);
+
+  // if !isConnected, show modal
 
   return (
     <SocketContext.Provider

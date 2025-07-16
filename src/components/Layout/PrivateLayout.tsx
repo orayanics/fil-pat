@@ -3,14 +3,21 @@ import { ReactNode } from "react";
 import { CssBaseline, CssVarsProvider } from "@mui/joy";
 import Box from "@mui/joy/Box";
 
-import Breadcrumbs from "./Breadcrumbs";
-import PrivateHeader from "./PrivateHeader";
-import PrivateSidebar from "./PrivateSidebar";
+import {
+  Breadcrumbs,
+  PrivateHeader,
+  PrivateSidebar,
+} from "@/components/Layout";
 import { PageStatus } from "@/components/Page";
 
+import { useSocketContext } from "@/context/SocketProvider";
+import { AlertFail } from "@/components/Alert";
+
 export default function PrivateLayout({ children }: { children: ReactNode }) {
+  const { isConnected } = useSocketContext();
   return (
     <CssVarsProvider disableTransitionOnChange>
+      {!isConnected && <AlertFail isConnected={isConnected} />}
       <CssBaseline />
       <Box sx={{ display: "flex", minHeight: "100dvh" }}>
         <PrivateHeader />

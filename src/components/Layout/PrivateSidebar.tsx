@@ -9,10 +9,11 @@ import {
   Sheet,
 } from "@mui/joy";
 import { listItemButtonClasses } from "@mui/joy/ListItemButton";
-import { LogoutRounded, BrightnessAutoRounded } from "@mui/icons-material";
+import { LogoutRounded } from "@mui/icons-material";
 
 import { closeSidebar } from "@/utils/sidebar";
-import NavList from "@/components/Navigation/NavList";
+import { NavList } from "@/components/Navigation";
+import Image from "next/image";
 
 export default function PrivateSidebar() {
   return (
@@ -68,8 +69,13 @@ export default function PrivateSidebar() {
         onClick={() => closeSidebar()}
       />
       <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
-        <IconButton variant="soft" color="primary" size="sm">
-          <BrightnessAutoRounded />
+        <IconButton variant="plain" size="sm">
+          <Image
+            src="/crs-logo.png"
+            alt="Fil-PAT Logo"
+            width={24}
+            height={24}
+          />
         </IconButton>
         <Typography level="title-lg">Fil-PAT</Typography>
       </Box>
