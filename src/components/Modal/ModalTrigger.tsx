@@ -40,7 +40,12 @@ export default function ModalTrigger(props: ModalTriggerProps) {
         }
       }}
     >
-      <ModalDialog size="sm" variant="outlined" role="alertdialog">
+      <ModalDialog
+        size="sm"
+        variant="outlined"
+        role="alertdialog"
+        maxWidth={"sm"}
+      >
         <Box sx={{ margin: "0 auto" }}>
           <HelpRounded
             sx={{

@@ -9,6 +9,7 @@ export default function useData({
   currentItem,
 }: UseDataOptions) {
   const [currentIndex, setCurrentIndex] = useState(0);
+  const length = sampleData.length;
   const item = sampleData[currentIndex];
 
   useEffect(() => {
@@ -44,5 +45,5 @@ export default function useData({
     }
   };
 
-  return { changeItem, item };
+  return { changeItem, item, length };
 }

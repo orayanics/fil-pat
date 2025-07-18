@@ -45,7 +45,7 @@ const MODAL_STYLES = {
   },
   modal_warning: {
     type: "modal_warning",
-    variant: "solid" as const,
+    variant: "soft" as const,
     color: "warning" as const,
     iconColor: "warning" as const,
     startDecorator: <WarningRounded />,

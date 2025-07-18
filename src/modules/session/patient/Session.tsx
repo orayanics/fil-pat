@@ -1,12 +1,11 @@
 import { Box, Container } from "@mui/joy";
-
-import SessionHeader from "./SessionHeader";
+import { PageHeader } from "@/components/Page";
 import SessionImage from "./SessionImage";
 
 export default function Session() {
   return (
     <Box>
-      <SessionHeader />
+      <PageHeader isLink={false} />
       <Container
         sx={[
           (theme) => ({

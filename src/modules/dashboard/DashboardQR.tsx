@@ -30,29 +30,58 @@ export default function DashboardQR() {
           flexDirection: "column",
           gap: 2,
           flexWrap: "wrap",
+          justifyContent: "space-between",
         }}
         flexGrow={1}
       >
         {qrCode && (
-          <>
+          <div>
             <Typography level="h2" fontSize="lg">
               Generated QR Code
             </Typography>
             <Typography level="body-md" sx={{ mb: 1 }}>
               This QR code is used to access the session by the patient.
             </Typography>
-          </>
+          </div>
         )}
 
-        <Button onClick={() => generate("patient")}>Generate QR Code</Button>
-        <Button
-          onClick={() =>
-            handleGoToSession(buildSessionUrl("clinician", sessionId || ""))
-          }
-          disabled={!sessionId || !qrCode}
+        <Box
+          sx={{
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "space-between",
+          }}
         >
-          Go to Session
-        </Button>
+          <Button
+            variant={qrCode ? "outlined" : "solid"}
+            onClick={() => generate("patient")}
+          >
+            Generate QR Code
+          </Button>
+
+          <Box
+            sx={{
+              display: "flex",
+              gap: 2,
+            }}
+          >
+            <Button
+              fullWidth
+              color="primary"
+              onClick={() =>
+                handleGoToSession(buildSessionUrl("clinician", sessionId || ""))
+              }
+              disabled={!sessionId || !qrCode}
+            >
+              Go to Session
+            </Button>
+
+            {/* TODO: Turn into component, use WS to send signal and update state */}
+            <Button variant="soft" fullWidth>
+              Redirect Patient
+            </Button>
+          </Box>
+        </Box>
       </Box>
     </Card>
   );

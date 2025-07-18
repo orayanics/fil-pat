@@ -1,6 +1,5 @@
 "use client";
 import { ReactNode } from "react";
-import { CssBaseline, CssVarsProvider } from "@mui/joy";
 import Box from "@mui/joy/Box";
 
 import {
@@ -16,9 +15,8 @@ import { AlertFail } from "@/components/Alert";
 export default function PrivateLayout({ children }: { children: ReactNode }) {
   const { isConnected } = useSocketContext();
   return (
-    <CssVarsProvider disableTransitionOnChange>
+    <>
       {!isConnected && <AlertFail isConnected={isConnected} />}
-      <CssBaseline />
       <Box sx={{ display: "flex", minHeight: "100dvh" }}>
         <PrivateHeader />
         <PrivateSidebar />
@@ -57,6 +55,6 @@ export default function PrivateLayout({ children }: { children: ReactNode }) {
           {children}
         </Box>
       </Box>
-    </CssVarsProvider>
+    </>
   );
 }

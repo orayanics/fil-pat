@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
 import SocketProvider from "@/context/SocketProvider";
+import ThemeRegistry from "./ThemeRegistry";
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
@@ -28,7 +29,9 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <SocketProvider>{children}</SocketProvider>
+        <ThemeRegistry options={{ key: "joy" }}>
+          <SocketProvider>{children}</SocketProvider>
+        </ThemeRegistry>
       </body>
     </html>
   );

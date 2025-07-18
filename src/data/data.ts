@@ -455,7 +455,7 @@ export const sampleData = [
     vowel: 2,
   },
   {
-    item: 57,
+    item: 51,
     question: "Ito ay ginagamit bilang pamunas sa puwet",
     sound: "SIWW /ʃ/",
     ipa_key: "/ti.ʃu/",
@@ -464,7 +464,7 @@ export const sampleData = [
     vowel: 2,
   },
   {
-    item: 58,
+    item: 52,
     question: "Ginagamit ito tuwing brownout",
     sound: "SFWW /ʃ/",
     ipa_key: "/flaʃ.laɪt/",
@@ -473,7 +473,7 @@ export const sampleData = [
     vowel: 2,
   },
   {
-    item: 59,
+    item: 53,
     question: "Sinsusuot sa paa",
     sound: "SIWI /ʧ/",
     ipa_key: "/tʃɪ.nɛ.las/",
@@ -482,7 +482,7 @@ export const sampleData = [
     vowel: 3,
   },
   {
-    item: 60,
+    item: 54,
     question: "Isang lugar na may tubig at buhangin",
     sound: "SFWF /ʧ/",
     ipa_key: "/bitʃ/",
@@ -491,7 +491,7 @@ export const sampleData = [
     vowel: 1,
   },
   {
-    item: 61,
+    item: 55,
     question: "Kapares nito ang tinidor",
     sound: "SIWW /tʃ/",
     ipa_key: "/ku.tʃa.ra/",
@@ -500,7 +500,7 @@ export const sampleData = [
     vowel: 3,
   },
   {
-    item: 62,
+    item: 56,
     question: "Sikat ito sa kanilang Chicken Joy",
     sound: "SIWI /dʒ/",
     ipa_key: "/dʒa.lɪ.bi/",
@@ -509,7 +509,7 @@ export const sampleData = [
     vowel: 3,
   },
   {
-    item: 63,
+    item: 57,
     question: "Sinusuot sa paa",
     sound: "SIWW /dʒ/",
     ipa_key: "/mɛ.dʒas/",
@@ -518,7 +518,7 @@ export const sampleData = [
     vowel: 2,
   },
   {
-    item: 64,
+    item: 58,
     question: "Ginagamit natin ito kapag mainit",
     sound: "SIWI /f/",
     ipa_key: "/fan/",
@@ -527,7 +527,7 @@ export const sampleData = [
     vowel: 1,
   },
   {
-    item: 65,
+    item: 59,
     question: "May mahabang leeg",
     sound: "SFWF /f/",
     ipa_key: "/dʒi.raf/",
@@ -536,7 +536,7 @@ export const sampleData = [
     vowel: 2,
   },
   {
-    item: 66,
+    item: 60,
     question: "Uri ng isda na nagsasayaw",
     sound: "SIWW /f/",
     ipa_key: "/dɔl.fɪn/",
@@ -545,7 +545,7 @@ export const sampleData = [
     vowel: 2,
   },
   {
-    item: 67,
+    item: 61,
     question: "Anong kulay ito?",
     sound: "SIWI /v/",
     ipa_key: "/va.jɔ.lɛt/",
@@ -554,7 +554,7 @@ export const sampleData = [
     vowel: 3,
   },
   {
-    item: 68,
+    item: 62,
     question: "Anong numero ito?",
     sound: "SIWF /v/",
     ipa_key: "/faɪv/",
@@ -563,7 +563,7 @@ export const sampleData = [
     vowel: 1,
   },
   {
-    item: 69,
+    item: 63,
     question: "Anong hugis ito?",
     sound: "SIWW /v/",
     ipa_key: "/o.val/",
@@ -572,7 +572,7 @@ export const sampleData = [
     vowel: 2,
   },
   {
-    item: 70,
+    item: 64,
     question: "Hayop na may kulay puti at itim na guhit sa katawan",
     sound: "SIWI /z/",
     ipa_key: "/zi.bra/",
@@ -581,7 +581,7 @@ export const sampleData = [
     vowel: 2,
   },
   {
-    item: 71,
+    item: 65,
     question: "Laruan na kailangan buuin",
     sound: "SIWW /z/",
     ipa_key: "/pa.zɛl/",
@@ -590,7 +590,7 @@ export const sampleData = [
     vowel: 2,
   },
   {
-    item: 72,
+    item: 66,
     question: "Tinitirhan ito ng tao",
     sound: "/aj/",
     ipa_key: "/ba.haj/",
@@ -599,7 +599,7 @@ export const sampleData = [
     vowel: 2,
   },
   {
-    item: 73,
+    item: 67,
     question: "Tawag sa isang indibidwal kapag pinanganak",
     sound: "/ej/",
     ipa_key: "/bej.bi/",
@@ -608,7 +608,7 @@ export const sampleData = [
     vowel: 2,
   },
   {
-    item: 74,
+    item: 68,
     question: "Ito ay nagsasabi ng oink oink",
     sound: "/ɔj/",
     ipa_key: "/ba.bɔj/",
@@ -617,7 +617,7 @@ export const sampleData = [
     vowel: 2,
   },
   {
-    item: 75,
+    item: 69,
     question: "Ito ay hinihigop natin",
     sound: "SFWF /aw/",
     ipa_key: "/sa.baw/",
@@ -626,7 +626,7 @@ export const sampleData = [
     vowel: 2,
   },
   {
-    item: 76,
+    item: 70,
     question: "Sanggol ng manok",
     sound: "/iw/",
     ipa_key: "/si.siw/",

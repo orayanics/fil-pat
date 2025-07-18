@@ -82,14 +82,15 @@ export default function Page() {
             Fil-PAT is a digital speech assessment tool that utilizes picture
             assessment test. This is developed for the UST-CRS.
           </Typography>
-          <Button size="lg" endDecorator={<ArrowForward fontSize="large" />}>
-            <Link
-              href="/dashboard"
-              style={{ textDecoration: "none", color: "inherit" }}
-            >
+          <Link
+            href="/dashboard"
+            style={{ textDecoration: "none", color: "inherit" }}
+          >
+            <Button size="lg" endDecorator={<ArrowForward fontSize="large" />}>
               Start Assessment
-            </Link>
-          </Button>
+            </Button>
+          </Link>
+
           <Typography
             level="body-xs"
             sx={{

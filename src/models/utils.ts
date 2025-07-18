@@ -1,4 +1,6 @@
 import { AssessmentItem } from "./context";
+import { ReactNode } from "react";
+import { EmotionCache, Options } from "@emotion/cache";
 
 export interface UseDataOptions {
   socket: WebSocket | null;
@@ -11,3 +13,14 @@ export interface UseQrOptions {
 }
 
 export type Role = "patient" | "clinician";
+
+// MUI Theme
+export interface ThemeRegistryProps {
+  options: Options;
+  children: ReactNode;
+}
+
+export interface CacheState {
+  cache: EmotionCache;
+  flush: () => string[];
+}

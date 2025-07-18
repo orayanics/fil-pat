@@ -2,30 +2,30 @@
 
 import Image from "next/image";
 import { useSocketContext } from "@/context/SocketProvider";
-import { Box } from "@mui/joy";
 
-import PatientHeader from "./PatientHeader";
+import { Box } from "@mui/joy";
+import { PageHeader } from "@/components/Page";
+import PatientStatus from "./PatientStatus";
 
 export default function Patient() {
-  const { isConnected, qrData } = useSocketContext();
+  const { qrData } = useSocketContext();
 
   return (
     <>
-      <PatientHeader />
+      <PageHeader isLink={false} />
+
       <Box
-        style={{ padding: 6, textAlign: "center", height: "100dvh" }}
+        style={{ padding: 6, textAlign: "center" }}
         display={"flex"}
         flexDirection="column"
         justifyContent="center"
         alignItems="center"
+        height={"90vh"}
       >
+        <PatientStatus isQrGenerated={!!qrData} />
+
         {qrData && qrData.qrData && (
-          <Box
-            style={{ marginTop: "30px" }}
-            display={"flex"}
-            flexDirection="column"
-            alignItems="center"
-          >
+          <Box display={"flex"} flexDirection="column" alignItems="center">
             <Image
               src={qrData.qrData || ""}
               alt="Session QR Code"
@@ -39,17 +39,7 @@ export default function Patient() {
                 boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
               }}
             />
-
-            <p style={{ marginTop: "10px", fontSize: "14px", color: "#666" }}>
-              Scan this QR code to join the session
-            </p>
           </Box>
-        )}
-
-        {!qrData && isConnected && (
-          <div style={{ marginTop: "30px" }}>
-            <p>Waiting for QR code to be generated...</p>
-          </div>
         )}
       </Box>
     </>

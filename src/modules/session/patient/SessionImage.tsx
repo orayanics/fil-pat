@@ -6,14 +6,22 @@ export default function SessionImage() {
   const url = currentItem?.image;
 
   return (
-    <div style={{ padding: "16px" }}>
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        height: "90dvh",
+        margin: "auto auto",
+      }}
+    >
       {currentItem && (
         <Image
-          src={url || "https://placehold.co/600x400?text=Filipino+PAT"}
+          src={url || "https://placehold.co/600x400/png?text=Filipino+PAT"}
           alt="Session Image"
-          fill
+          width={600}
+          height={400}
           loading="lazy"
-          style={{ objectFit: "contain" }}
+          objectFit="contain"
         />
       )}
     </div>

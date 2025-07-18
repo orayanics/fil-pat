@@ -17,7 +17,11 @@ import { useSocketContext } from "@/context/SocketProvider";
 
 export default function SessionCard() {
   const { socket, sessionId, currentItem } = useSocketContext();
-  const { item, changeItem } = useData({ socket, sessionId, currentItem });
+  const { length, item, changeItem } = useData({
+    socket,
+    sessionId,
+    currentItem,
+  });
 
   return (
     <Card sx={{ width: "100%", padding: 2 }}>
@@ -27,7 +31,9 @@ export default function SessionCard() {
         sx={{ width: "100%", borderRadius: "8px" }}
       >
         <Image
-          src={item.image || "https://placehold.co/600x400?text=Filipino+PAT"}
+          src={
+            item.image || "https://placehold.co/600x400/png?text=Filipino+PAT"
+          }
           alt={item.question}
           width={800}
           height={450}
@@ -49,17 +55,19 @@ export default function SessionCard() {
         <CardActions buttonFlex="1" sx={{ justifyContent: "space-between" }}>
           <Button
             startDecorator={<KeyboardArrowLeftRounded />}
-            variant="solid"
-            color="primary"
+            variant="outlined"
+            color="neutral"
             onClick={() => changeItem(-1)}
+            disabled={item.item === 1}
           >
             Back
           </Button>
           <Button
             endDecorator={<KeyboardArrowRightRounded />}
             variant="solid"
-            color="danger"
+            color="primary"
             onClick={() => changeItem(+1)}
+            disabled={item.item === length}
           >
             Next
           </Button>
