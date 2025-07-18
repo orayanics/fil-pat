@@ -59,28 +59,32 @@ export default function DashboardQR() {
             Generate QR Code
           </Button>
 
-          <Box
-            sx={{
-              display: "flex",
-              gap: 2,
-            }}
-          >
-            <Button
-              fullWidth
-              color="primary"
-              onClick={() =>
-                handleGoToSession(buildSessionUrl("clinician", sessionId || ""))
-              }
-              disabled={!sessionId || !qrCode}
+          {qrCode && sessionId && (
+            <Box
+              sx={{
+                display: "flex",
+                gap: 2,
+              }}
             >
-              Go to Session
-            </Button>
+              <Button
+                fullWidth
+                color="primary"
+                onClick={() =>
+                  handleGoToSession(
+                    buildSessionUrl("clinician", sessionId || "")
+                  )
+                }
+                disabled={!sessionId || !qrCode}
+              >
+                Go to Session
+              </Button>
 
-            {/* TODO: Turn into component, use WS to send signal and update state */}
-            <Button variant="soft" fullWidth>
-              Redirect Patient
-            </Button>
-          </Box>
+              {/* TODO: Turn into component, use WS to send signal and update state */}
+              <Button variant="soft" fullWidth>
+                Redirect Patient
+              </Button>
+            </Box>
+          )}
         </Box>
       </Box>
     </Card>
