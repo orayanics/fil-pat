@@ -4,20 +4,27 @@ export default function useWebSocket() {
   const [isConnected, setIsConnected] = useState(false);
   const socketRef = useRef<WebSocket | null>(null);
 
-  // TODO: Handle reconnection logic if connection fails or lost
   useEffect(() => {
-    if (socketRef.current) return;
-    const webSocket = new WebSocket("ws://localhost:8080");
+    if (socketRef.current || typeof window === "undefined") return;
+
+    const hostname = window.location.hostname; // use LAN IP, not localhost
+    const port = 8080;
+    //const path = "/api/websocket"; // optional path, only if your server uses one
+
+    const wsUrl = `ws://${hostname}:${port}`;
+    const webSocket = new WebSocket(wsUrl);
+
     socketRef.current = webSocket;
 
-    socketRef.current.onopen = () => setIsConnected(true);
-    socketRef.current.onclose = () => setIsConnected(false);
-    socketRef.current.onerror = (error) => {
+    webSocket.onopen = () => setIsConnected(true);
+    webSocket.onclose = () => setIsConnected(false);
+    webSocket.onerror = (error) => {
       console.error("WebSocket error:", error);
       setIsConnected(false);
     };
+
     return () => {
-      socketRef.current?.close();
+      webSocket.close();
     };
   }, []);
 

@@ -1,7 +1,8 @@
 import { useState } from "react";
 import QRCode from "qrcode";
+import getLocalIp from "@/utils/getLocalIp";
 
-const BASE_URL = process.env.NEXT_PUBLIC_ASSESSMENT_BASE_URL;
+const BASE_URL = getLocalIp() ?? "http://localhost:3000";
 
 import type { Role, UseQrOptions } from "@/models/utils";
 

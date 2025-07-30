@@ -3,7 +3,7 @@ import Image from "next/image";
 
 export default function SessionImage() {
   const { currentItem } = useSocketContext();
-  const url = currentItem?.image;
+  const url = currentItem?.item.image;
 
   return (
     <div

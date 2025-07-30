@@ -4,7 +4,7 @@ import { sampleData } from "./src/data/data";
 const port = process.env.WEBSOCKET_PORT
   ? parseInt(process.env.WEBSOCKET_PORT, 10)
   : 8080;
-const host = process.env.WEBSOCKET_HOST || "localhost";
+const host = process.env.WEBSOCKET_HOST || "0.0.0.0";
 
 const wss = new WebSocketServer({ port, host });
 
