@@ -13,9 +13,28 @@ import { LogoutRounded } from "@mui/icons-material";
 
 import { closeSidebar } from "@/utils/sidebar";
 import { NavList } from "@/components/Navigation";
+import { useEffect, useState } from "react";
 import Image from "next/image";
+import { disconnectWebSocket } from "@/lib/websocketClient";
+
 
 export default function PrivateSidebar() {
+
+  const [user, setUser] = useState<{ username: string } | null>(null);
+
+  useEffect(() => {
+    const stored = localStorage.getItem("clinician");
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored);
+        setUser(parsed);
+      } catch (err) {
+        console.error("Failed to parse clinician data:", err);
+      }
+    }
+  }, []);
+
+
   return (
     <Sheet
       className="Sidebar"
@@ -112,10 +131,20 @@ export default function PrivateSidebar() {
           src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=286"
         />
         <Box sx={{ minWidth: 0, flex: 1 }}>
-          <Typography level="title-sm">Test.</Typography>
-          <Typography level="body-xs">test@test.com</Typography>
+          <Typography level="title-sm">{user?.username || "Unknown"}</Typography>
+          <Typography level="body-xs">UST-CRS Clinician</Typography>
         </Box>
-        <IconButton size="sm" variant="plain" color="neutral">
+        <IconButton
+          size="sm"
+          variant="plain"
+          color="neutral"
+          onClick={() => {
+            disconnectWebSocket(); 
+            localStorage.removeItem("clinicianLoggedIn");
+            localStorage.removeItem("clinician");
+            window.location.href = "/login";
+          }}
+        >
           <LogoutRounded />
         </IconButton>
       </Box>

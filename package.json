@@ -14,7 +14,10 @@
     "dev:electron": "npm run build:electron && electron dist-electron/main.js",
     "dist": "npm run build && npm run build:electron && electron-builder",
     "clean:dist": "taskkill /F /IM electron.exe || exit 0 && rd /s /q release",
-    "rebuild:dist": "npm run clean:dist && npm run build && npm run build:electron && npm run dist"
+    "rebuild:dist": "npm run clean:dist && npm run build && npm run build:electron && npm run dist",
+    "dev:electron:watch": "tsc -p tsconfig.electron.json --watch",
+    "dev:electron:start": "nodemon --config nodemon.electron.json",
+    "dev:electron:full": "concurrently \"npm run dev:electron:watch\" \"npm run dev:electron:start\""
   },
   "dependencies": {
     "@emotion/cache": "^11.14.0",
@@ -23,6 +26,9 @@
     "@mui/icons-material": "^7.2.0",
     "@mui/joy": "^5.0.0-beta.52",
     "@types/ws": "^8.18.1",
+    "bcrypt": "^6.0.0",
+    "bcryptjs": "^3.0.2",
+    "better-sqlite3": "^12.2.0",
     "next": "15.3.5",
     "nodemon": "^3.1.10",
     "qrcode": "^1.5.4",
@@ -33,6 +39,8 @@
   "devDependencies": {
     "@eslint/eslintrc": "^3",
     "@tailwindcss/postcss": "^4",
+    "@types/bcrypt": "^6.0.0",
+    "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^20",
     "@types/qrcode": "^1.5.5",
     "@types/react": "^19",
@@ -56,16 +64,15 @@
       "package.json"
     ],
     "extraMetadata": {
-    "main": "dist-electron/main.js"
-  },
+      "main": "dist-electron/main.js"
+    },
     "directories": {
       "output": "release"
     },
     "win": {
       "target": "portable",
-       "icon": "/crs-logo.png",
-      "forceCodeSigning": false  
+      "icon": "assets/icons/icon",
+      "forceCodeSigning": false
+    }
   }
-}
-
 }

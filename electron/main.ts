@@ -2,6 +2,9 @@ import { app, BrowserWindow } from 'electron';
 import * as path from 'path';
 import { spawn } from 'child_process';
 import * as os from 'os';
+import { ipcMain } from 'electron';
+import { registerClinician, loginClinician } from './database';
+
 
 function getLocalIp(): string {
   const interfaces = os.networkInterfaces();
@@ -23,8 +26,11 @@ function createWindow() {
   const win = new BrowserWindow({
     width: 1280,
     height: 800,
+    icon: path.join(__dirname, 'assets', 'icons', 'icon.ico'),
     webPreferences: {
+      preload: path.join(__dirname, 'preload.js'), 
       nodeIntegration: false,
+      contextIsolation: true,
     },
   });
 
@@ -35,7 +41,6 @@ function createWindow() {
   if (isDev) {
     win.loadURL(`http://${ip}:3000`);
   } else {
-    // In production, you can change this to load a static HTML if needed
     win.loadURL(`http://${ip}:3000`);
   }
 
@@ -54,13 +59,12 @@ function startDevServers() {
   });
 }
 
-// ✅ SINGLE `whenReady` block
 app.whenReady().then(() => {
   if (isDev) {
     startDevServers();
     setTimeout(() => {
       createWindow();
-    }, 3000); // adjust if needed
+    }, 3000); 
   } else {
     createWindow();
   }
@@ -68,4 +72,20 @@ app.whenReady().then(() => {
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
+});
+
+
+ipcMain.handle('register-clinician', (event, username, password) => {
+  try {
+    registerClinician(username, password);
+    return { success: true };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : 'Unknown error' };
+  }
+});
+
+ipcMain.handle('login-clinician', (event, username, password) => {
+  const user = loginClinician(username, password);
+  if (user) return { success: true, user };
+  return { success: false, error: 'Invalid credentials' };
 });

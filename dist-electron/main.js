@@ -37,6 +37,8 @@ const electron_1 = require("electron");
 const path = __importStar(require("path"));
 const child_process_1 = require("child_process");
 const os = __importStar(require("os"));
+const electron_2 = require("electron");
+const database_1 = require("./database");
 function getLocalIp() {
     const interfaces = os.networkInterfaces();
     for (const name of Object.keys(interfaces)) {
@@ -54,8 +56,11 @@ function createWindow() {
     const win = new electron_1.BrowserWindow({
         width: 1280,
         height: 800,
+        icon: path.join(__dirname, 'assets', 'icons', 'icon.ico'),
         webPreferences: {
+            preload: path.join(__dirname, 'preload.js'),
             nodeIntegration: false,
+            contextIsolation: true,
         },
     });
     win.setMenuBarVisibility(false);
@@ -64,7 +69,6 @@ function createWindow() {
         win.loadURL(`http://${ip}:3000`);
     }
     else {
-        // In production, you can change this to load a static HTML if needed
         win.loadURL(`http://${ip}:3000`);
     }
     mainWindow = win;
@@ -79,13 +83,12 @@ function startDevServers() {
         console.log(`Dev servers exited with code ${code}`);
     });
 }
-// ✅ SINGLE `whenReady` block
 electron_1.app.whenReady().then(() => {
     if (isDev) {
         startDevServers();
         setTimeout(() => {
             createWindow();
-        }, 3000); // adjust if needed
+        }, 3000);
     }
     else {
         createWindow();
@@ -94,4 +97,19 @@ electron_1.app.whenReady().then(() => {
 electron_1.app.on('window-all-closed', () => {
     if (process.platform !== 'darwin')
         electron_1.app.quit();
+});
+electron_2.ipcMain.handle('register-clinician', (event, username, password) => {
+    try {
+        (0, database_1.registerClinician)(username, password);
+        return { success: true };
+    }
+    catch (err) {
+        return { success: false, error: err instanceof Error ? err.message : 'Unknown error' };
+    }
+});
+electron_2.ipcMain.handle('login-clinician', (event, username, password) => {
+    const user = (0, database_1.loginClinician)(username, password);
+    if (user)
+        return { success: true, user };
+    return { success: false, error: 'Invalid credentials' };
 });

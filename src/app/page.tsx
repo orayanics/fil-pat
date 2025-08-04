@@ -10,8 +10,20 @@ import {
 import { ArrowForward } from "@mui/icons-material";
 import Image from "next/image";
 import Link from "next/link";
+import React, { useEffect } from "react";
+import { useRouter } from "next/navigation";
+
 
 export default function Page() {
+const router = useRouter();
+
+useEffect(() => {
+    const loggedIn = localStorage.getItem("clinicianLoggedIn");
+    if (!loggedIn) {
+      router.replace("/login");
+    }
+  }, []);
+
   return (
     <Box
       sx={{
@@ -83,7 +95,7 @@ export default function Page() {
             assessment test. This is developed for the UST-CRS.
           </Typography>
           <Link
-            href="/dashboard"
+            href="/login"
             style={{ textDecoration: "none", color: "inherit" }}
           >
             <Button size="lg" endDecorator={<ArrowForward fontSize="large" />}>

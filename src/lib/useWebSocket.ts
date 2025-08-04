@@ -1,32 +1,26 @@
-import { useState, useRef, useEffect } from "react";
+import { useEffect, useState } from "react";
+import { initWebSocket, getSocket } from "./websocketClient";
 
 export default function useWebSocket() {
   const [isConnected, setIsConnected] = useState(false);
-  const socketRef = useRef<WebSocket | null>(null);
 
   useEffect(() => {
-    if (socketRef.current || typeof window === "undefined") return;
+    const socket = initWebSocket();
 
-    const hostname = window.location.hostname; // use LAN IP, not localhost
-    const port = 8080;
-    //const path = "/api/websocket"; // optional path, only if your server uses one
-
-    const wsUrl = `ws://${hostname}:${port}`;
-    const webSocket = new WebSocket(wsUrl);
-
-    socketRef.current = webSocket;
-
-    webSocket.onopen = () => setIsConnected(true);
-    webSocket.onclose = () => setIsConnected(false);
-    webSocket.onerror = (error) => {
-      console.error("WebSocket error:", error);
-      setIsConnected(false);
+    const checkOpen = () => {
+      if (socket.readyState === WebSocket.OPEN) {
+        setIsConnected(true);
+      } else {
+        socket.addEventListener("open", () => setIsConnected(true));
+      }
     };
 
+    checkOpen();
+
     return () => {
-      webSocket.close();
+      // Don't close the socket here to keep it alive globally
     };
   }, []);
 
-  return { socket: socketRef.current, isConnected };
+  return { socket: getSocket(), isConnected };
 }
