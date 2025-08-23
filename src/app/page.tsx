@@ -1,4 +1,7 @@
 "use client";
+import {useEffect} from "react";
+import {useRouter} from "next/navigation";
+
 import {
   Box,
   Container,
@@ -7,20 +10,18 @@ import {
   Button,
   typographyClasses,
 } from "@mui/joy";
-import { ArrowForward } from "@mui/icons-material";
+import {ArrowForward} from "@mui/icons-material";
+
 import Image from "next/image";
 import Link from "next/link";
-import React, { useEffect } from "react";
-import { useRouter } from "next/navigation";
-
 
 export default function Page() {
-const router = useRouter();
+  const router = useRouter();
 
-useEffect(() => {
+  useEffect(() => {
     const loggedIn = localStorage.getItem("clinicianLoggedIn");
-    if (!loggedIn) {
-      router.replace("/login");
+    if (loggedIn) {
+      router.replace("/dashboard");
     }
   }, []);
 
@@ -33,6 +34,7 @@ useEffect(() => {
         "& > div": {
           scrollSnapAlign: "start",
         },
+        backgroundColor: "background.paper",
       }}
     >
       <Container
@@ -74,8 +76,7 @@ useEffect(() => {
             },
           })}
         >
-          {/* {children} */}
-          <Typography color="primary" sx={{ fontSize: "lg", fontWeight: "lg" }}>
+          <Typography color="primary" sx={{fontSize: "lg", fontWeight: "lg"}}>
             Empowering Voices
           </Typography>
           <Typography
@@ -89,16 +90,20 @@ useEffect(() => {
           </Typography>
           <Typography
             textColor="text.secondary"
-            sx={{ fontSize: "lg", lineHeight: "lg" }}
+            sx={{fontSize: "lg", lineHeight: "lg"}}
           >
             Fil-PAT is a digital speech assessment tool that utilizes picture
             assessment test. This is developed for the UST-CRS.
           </Typography>
           <Link
             href="/login"
-            style={{ textDecoration: "none", color: "inherit" }}
+            style={{textDecoration: "none", color: "inherit"}}
           >
-            <Button size="lg" endDecorator={<ArrowForward fontSize="large" />}>
+            <Button
+              color="primary"
+              size="lg"
+              endDecorator={<ArrowForward fontSize="large" />}
+            >
               Start Assessment
             </Button>
           </Link>

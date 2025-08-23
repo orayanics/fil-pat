@@ -5,7 +5,7 @@ export interface SocketContextType {
   sendMessage: (message: string) => void;
   currentItem: AssessmentItem | null;
   joinRoom: () => void;
-  qrData: { qrData: string; sessionId: string } | null;
+  qrData: {qrData: string; sessionId: string} | null;
 }
 
 export type QrItem = {
@@ -14,15 +14,13 @@ export type QrItem = {
 };
 
 export type AssessmentItem = {
-  item: {
-    item: number;
-    question: string;
-    sound: string;
-    ipa_key: string;
-    group: string;
-    consonants: number;
-    vowel: number;
-    image: string;
-  };
+  item: number;
+  question: string;
+  sound: string;
+  ipa_key: string;
+  group: string;
+  consonants: number;
+  vowel: number;
+  image: string;
   sessionId: string;
 };

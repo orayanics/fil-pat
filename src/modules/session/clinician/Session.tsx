@@ -1,6 +1,6 @@
-import { Box, Container } from "@mui/joy";
+import {Box, Container} from "@mui/joy";
 
-import { PageHeader } from "@/components/Page";
+import {PageHeader} from "@/components/Page";
 import SessionCard from "./SessionCard";
 import SessionForm from "./SessionForm";
 

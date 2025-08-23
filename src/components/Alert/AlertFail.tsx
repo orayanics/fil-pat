@@ -1,6 +1,6 @@
-import { Snackbar, CircularProgress, Typography, Box, Button } from "@mui/joy";
+import {Snackbar, CircularProgress, Typography, Box, Button} from "@mui/joy";
 
-export default function AlertFail({ isConnected }: { isConnected: boolean }) {
+export default function AlertFail({isConnected}: {isConnected: boolean}) {
   return (
     <Snackbar
       open={!isConnected}
@@ -8,7 +8,7 @@ export default function AlertFail({ isConnected }: { isConnected: boolean }) {
       variant="soft"
       color="danger"
       invertedColors
-      anchorOrigin={{ vertical: "top", horizontal: "center" }}
+      anchorOrigin={{vertical: "bottom", horizontal: "center"}}
       endDecorator={
         <Button
           variant="plain"
@@ -18,6 +18,9 @@ export default function AlertFail({ isConnected }: { isConnected: boolean }) {
           Refresh
         </Button>
       }
+      sx={{
+        zIndex: 1000,
+      }}
     >
       <Box
         sx={{
@@ -26,7 +29,7 @@ export default function AlertFail({ isConnected }: { isConnected: boolean }) {
           gap: 1,
         }}
       >
-        <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
+        <Box sx={{display: "flex", gap: 1, alignItems: "center"}}>
           <CircularProgress size="sm" color="danger" />
           <Typography level="title-md" fontWeight={700}>
             Lost Connection

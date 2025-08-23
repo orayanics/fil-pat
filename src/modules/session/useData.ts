@@ -1,7 +1,7 @@
-import { useState, useEffect } from "react";
-import { sampleData } from "@/data/data";
+import {useState, useEffect} from "react";
+import {sampleData} from "@/data/data";
 
-import type { UseDataOptions } from "@/models/utils";
+import type {UseDataOptions} from "@/models/utils";
 
 export default function useData({
   socket,
@@ -15,7 +15,7 @@ export default function useData({
   useEffect(() => {
     if (currentItem) {
       const index = sampleData.findIndex(
-        (item) => item.item === currentItem.item.item
+        (item) => item.item === currentItem.item
       );
       if (index !== -1 && index !== currentIndex) {
         setCurrentIndex(index);
@@ -45,5 +45,5 @@ export default function useData({
     }
   };
 
-  return { changeItem, item, length };
+  return {changeItem, item, length};
 }
