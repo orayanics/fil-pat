@@ -1,34 +1,43 @@
-import {Box, Container} from "@mui/joy";
-
-import {PageHeader} from "@/components/Page";
 import SessionCard from "./SessionCard";
 import SessionForm from "./SessionForm";
 
+import {Alert, Box, CircularProgress} from "@mui/joy";
+import {useSocketContext} from "@/context/SocketProvider";
+
 export default function Session() {
+  const {isPersisting} = useSocketContext();
+
   return (
-    <Box>
-      <PageHeader isLink={false} />
-      <Container
-        sx={[
-          (theme) => ({
-            display: "flex",
-            alignItems: "start",
-            gap: 4,
-            [theme.breakpoints.up(834)]: {
-              flexDirection: "row",
-              gap: 6,
-            },
-            [theme.breakpoints.up(1199)]: {
-              gap: 2,
-            },
-            flexDirection: "column",
-            padding: 2,
-          }),
-        ]}
+    <Box
+      sx={{
+        display: "flex",
+        flexDirection: "column",
+        gap: 2,
+      }}
+    >
+      {isPersisting && (
+        <Alert
+          color="primary"
+          size="md"
+          variant="soft"
+          startDecorator={<CircularProgress />}
+        >
+          <strong>The system is saving the current session data!</strong>This is
+          to persist data if ever a user is disconnected from the session.
+          Please wait until the process is finished.
+        </Alert>
+      )}
+
+      <Box
+        sx={{
+          display: "flex",
+          gap: 2,
+          flexWrap: {xs: "wrap", md: "nowrap"},
+        }}
       >
         <SessionCard />
         <SessionForm />
-      </Container>
+      </Box>
     </Box>
   );
 }

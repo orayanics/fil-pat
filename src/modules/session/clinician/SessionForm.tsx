@@ -15,16 +15,25 @@ import Ipa from "@/components/Keyboard/Ipa";
 import useData from "../useData";
 import {useSessionForm} from "./useForm";
 import {useSocketContext} from "@/context/SocketProvider";
+import {useEffect} from "react";
 
 export default function SessionForm() {
-  const {socket, sessionId, currentItem} = useSocketContext();
-  const {length} = useData({
+  const {
     socket,
     sessionId,
     currentItem,
+    updateCurrentItem,
+    saveSessionManually,
+  } = useSocketContext();
+  const {item, length} = useData({
+    socket,
+    sessionId,
+    currentItem,
+    updateCurrentItem,
   });
 
-  const {item, ipa_key, consonants, vowel} = currentItem || {};
+  const currentData = currentItem?.item || item;
+  const {item: itemNumber, ipa_key, consonants, vowel} = currentData || {};
 
   const {
     formData,
@@ -34,7 +43,27 @@ export default function SessionForm() {
     updateVowelsCorrect,
     updateScore,
     calculateScore,
-  } = useSessionForm(item);
+  } = useSessionForm(itemNumber);
+
+  // save session data to localstorage before unload
+  useEffect(() => {
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      saveSessionManually();
+
+      // before leave, alert dialog
+      if (hasData) {
+        event.preventDefault();
+        event.returnValue = "";
+        return "";
+      }
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
+  }, [saveSessionManually, hasData]);
 
   const handleIpaSymbolInsert = (symbol: string) => {
     updateChildResponse(formData.childResponse + symbol);
@@ -80,7 +109,7 @@ export default function SessionForm() {
             }}
           >
             <Typography level="h3">
-              No. {item} of {length}
+              No. {itemNumber} of {length}
             </Typography>
             <Box sx={{display: "flex", alignItems: "center", gap: 2}}>
               {hasData && (

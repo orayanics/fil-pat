@@ -1,4 +1,5 @@
-import {useState} from "react";
+import {useState, useEffect, useCallback} from "react";
+import {useSocketContext} from "@/context/SocketProvider";
 
 export interface ItemFormData {
   childResponse: string;
@@ -15,16 +16,36 @@ const createDefaultFormData = (): ItemFormData => ({
 });
 
 export function useSessionForm(currentItemId?: number) {
+  const {formData: contextFormData, updateFormData: updateContextFormData} =
+    useSocketContext();
   const [formDataMap, setFormDataMap] = useState<Map<number, ItemFormData>>(
     new Map()
   );
+
+  // sync: formdata from context to localstorage
+  // this happens on mount and when formdata from context changes
+  // parse item huahua
+  useEffect(() => {
+    if (contextFormData && typeof contextFormData === "object") {
+      const newMap = new Map<number, ItemFormData>();
+
+      Object.entries(contextFormData).forEach(([key, value]) => {
+        const itemId = parseInt(key);
+        if (!isNaN(itemId) && value && typeof value === "object") {
+          const itemData = value as ItemFormData;
+          newMap.set(itemId, itemData);
+        }
+      });
+
+      setFormDataMap(newMap);
+    }
+  }, [contextFormData]);
 
   function getCurrentFormData(): ItemFormData {
     if (!currentItemId) return createDefaultFormData();
     return formDataMap.get(currentItemId) || createDefaultFormData();
   }
 
-  // Determine if current item has any data
   const data = getCurrentFormData();
   const hasData = Boolean(
     data.childResponse ||
@@ -33,53 +54,77 @@ export function useSessionForm(currentItemId?: number) {
       data.score > 0
   );
 
-  function updateFormData(field: keyof ItemFormData, value: string | number) {
-    if (!currentItemId) return;
+  const updateFormData = useCallback(
+    (field: keyof ItemFormData, value: string | number) => {
+      if (!currentItemId) return;
 
-    setFormDataMap((prev) => {
-      const newMap = new Map(prev);
-      const currentData = newMap.get(currentItemId) || createDefaultFormData();
+      setFormDataMap((prev) => {
+        const newMap = new Map(prev);
+        const currentData =
+          newMap.get(currentItemId) || createDefaultFormData();
 
-      const updatedData = {...currentData};
-      if (field === "childResponse") {
-        updatedData[field] = String(value);
-      } else {
-        updatedData[field] = Number(value) || 0;
-      }
+        const updatedData = {...currentData};
+        if (field === "childResponse") {
+          updatedData[field] = String(value);
+        } else {
+          updatedData[field] = Number(value) || 0;
+        }
 
-      newMap.set(currentItemId, updatedData);
-      return newMap;
-    });
-  }
+        newMap.set(currentItemId, updatedData);
+
+        // sync to context from local
+        const formDataObj = Object.fromEntries(newMap);
+        updateContextFormData(formDataObj);
+
+        return newMap;
+      });
+    },
+    [currentItemId, updateContextFormData]
+  );
 
   // child response, consonant, vowel, score update helpers for form
-  function updateChildResponse(response: string) {
-    updateFormData("childResponse", response);
-  }
+  const updateChildResponse = useCallback(
+    (response: string) => {
+      updateFormData("childResponse", response);
+    },
+    [updateFormData]
+  );
 
-  function updateConsonantsCorrect(count: number) {
-    updateFormData("consonantsCorrect", count);
-  }
+  const updateConsonantsCorrect = useCallback(
+    (count: number) => {
+      updateFormData("consonantsCorrect", count);
+    },
+    [updateFormData]
+  );
 
-  function updateVowelsCorrect(count: number) {
-    updateFormData("vowelsCorrect", count);
-  }
+  const updateVowelsCorrect = useCallback(
+    (count: number) => {
+      updateFormData("vowelsCorrect", count);
+    },
+    [updateFormData]
+  );
 
-  function updateScore(score: number) {
-    updateFormData("score", score);
-  }
+  const updateScore = useCallback(
+    (score: number) => {
+      updateFormData("score", score);
+    },
+    [updateFormData]
+  );
 
-  function calculateScore(
-    consonantsCorrect: number,
-    consonantsTotal: number,
-    vowelsCorrect: number,
-    vowelsTotal: number
-  ): number {
-    const consonantsPerfect = consonantsCorrect === consonantsTotal;
-    const vowelsPerfect = vowelsCorrect === vowelsTotal;
+  const calculateScore = useCallback(
+    (
+      consonantsCorrect: number,
+      consonantsTotal: number,
+      vowelsCorrect: number,
+      vowelsTotal: number
+    ): number => {
+      const consonantsPerfect = consonantsCorrect === consonantsTotal;
+      const vowelsPerfect = vowelsCorrect === vowelsTotal;
 
-    return consonantsPerfect && vowelsPerfect ? 1 : 0;
-  }
+      return consonantsPerfect && vowelsPerfect ? 1 : 0;
+    },
+    []
+  );
 
   // returns the object array
   function getAllFormData(): Map<number, ItemFormData> {

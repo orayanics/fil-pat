@@ -2,8 +2,13 @@ let socket: WebSocket | null = null;
 let reconnectAttempts = 0;
 const maxReconnectAttempts = 5;
 const reconnectDelay = 1000;
+let currentSessionId: string | null = null;
 
-export function initWebSocket(): WebSocket {
+export function initWebSocket(sessionId?: string): WebSocket {
+  if (sessionId) {
+    currentSessionId = sessionId;
+  }
+
   if (!socket || socket.readyState === WebSocket.CLOSED) {
     const hostname = window.location.hostname;
     const port = 8080;
@@ -11,16 +16,23 @@ export function initWebSocket(): WebSocket {
     socket = new WebSocket(wsUrl);
 
     socket.onopen = () => {
+      console.log("✅ WebSocket connected");
       reconnectAttempts = 0;
+
+      if (currentSessionId) {
+        socket?.send(
+          JSON.stringify({
+            type: "joinRoom",
+            roomId: currentSessionId,
+          })
+        );
+      }
     };
 
     socket.onclose = () => {
-      // reconnect attemp
+      console.log("❌ WebSocket disconnected");
       if (reconnectAttempts < maxReconnectAttempts) {
         reconnectAttempts++;
-        console.log(
-          `🔄 Attempting to reconnect (${reconnectAttempts}/${maxReconnectAttempts})...`
-        );
         setTimeout(() => {
           initWebSocket();
         }, reconnectDelay * reconnectAttempts);

@@ -3,4 +3,11 @@ import PrivateHeader from "./PrivateHeader";
 import PrivateSidebar from "./PrivateSidebar";
 import PrivateLayout from "./PrivateLayout";
 
-export { Breadcrumbs, PrivateHeader, PrivateSidebar, PrivateLayout };
+import SessionLayout from "./SessionLayout";
+export {
+  Breadcrumbs,
+  PrivateHeader,
+  PrivateSidebar,
+  PrivateLayout,
+  SessionLayout,
+};

@@ -1,5 +1,5 @@
-import PrivateLayout from "../../components/Layout/PrivateLayout";
+import {PrivateLayout} from "@/components/Layout";
 
-export default function layout({ children }: { children: React.ReactNode }) {
+export default function layout({children}: {children: React.ReactNode}) {
   return <PrivateLayout>{children}</PrivateLayout>;
 }

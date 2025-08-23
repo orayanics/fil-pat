@@ -1,3 +1,6 @@
+"use client";
+import {useEffect, useState} from "react";
+
 import {
   GlobalStyles,
   Avatar,
@@ -8,19 +11,16 @@ import {
   Typography,
   Sheet,
 } from "@mui/joy";
-import { listItemButtonClasses } from "@mui/joy/ListItemButton";
-import { LogoutRounded } from "@mui/icons-material";
+import {listItemButtonClasses} from "@mui/joy/ListItemButton";
+import {LogoutRounded} from "@mui/icons-material";
 
-import { closeSidebar } from "@/utils/sidebar";
-import { NavList } from "@/components/Navigation";
-import { useEffect, useState } from "react";
+import {closeSidebar} from "@/utils/sidebar";
+import {NavList} from "@/components/Navigation";
 import Image from "next/image";
-import { disconnectWebSocket } from "@/lib/websocketClient";
-
+import {disconnectWebSocket} from "@/lib/websocketClient";
 
 export default function PrivateSidebar() {
-
-  const [user, setUser] = useState<{ username: string } | null>(null);
+  const [user, setUser] = useState<{username: string} | null>(null);
 
   useEffect(() => {
     const stored = localStorage.getItem("clinician");
@@ -34,12 +34,11 @@ export default function PrivateSidebar() {
     }
   }, []);
 
-
   return (
     <Sheet
       className="Sidebar"
       sx={{
-        position: { xs: "fixed", md: "sticky" },
+        position: {xs: "fixed", md: "sticky"},
         transform: {
           xs: "translateX(calc(100% * (var(--SideNavigation-slideIn, 0) - 1)))",
           md: "none",
@@ -87,7 +86,7 @@ export default function PrivateSidebar() {
         }}
         onClick={() => closeSidebar()}
       />
-      <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
+      <Box sx={{display: "flex", gap: 1, alignItems: "center"}}>
         <IconButton variant="plain" size="sm">
           <Image
             src="/crs-logo.png"
@@ -124,14 +123,16 @@ export default function PrivateSidebar() {
 
       <Divider />
 
-      <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
+      <Box sx={{display: "flex", gap: 1, alignItems: "center"}}>
         <Avatar
           variant="outlined"
           size="sm"
           src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=286"
         />
-        <Box sx={{ minWidth: 0, flex: 1 }}>
-          <Typography level="title-sm">{user?.username || "Unknown"}</Typography>
+        <Box sx={{minWidth: 0, flex: 1}}>
+          <Typography level="title-sm">
+            {user?.username || "Unknown"}
+          </Typography>
           <Typography level="body-xs">UST-CRS Clinician</Typography>
         </Box>
         <IconButton
@@ -139,7 +140,7 @@ export default function PrivateSidebar() {
           variant="plain"
           color="neutral"
           onClick={() => {
-            disconnectWebSocket(); 
+            disconnectWebSocket();
             localStorage.removeItem("clinicianLoggedIn");
             localStorage.removeItem("clinician");
             window.location.href = "/login";

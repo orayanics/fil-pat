@@ -1,17 +1,23 @@
-import { WebSocketServer, WebSocket } from "ws";
-import { sampleData } from "./src/data/data";
+import {WebSocketServer, WebSocket} from "ws";
+import {sampleData} from "./src/data/data";
 
 const port = process.env.WEBSOCKET_PORT
   ? parseInt(process.env.WEBSOCKET_PORT, 10)
   : 8080;
 const host = process.env.WEBSOCKET_HOST || "0.0.0.0";
 
-const wss = new WebSocketServer({ port, host });
+const wss = new WebSocketServer({port, host});
 
+// room helpers
 const rooms: Record<string, Set<WebSocket>> = {};
-const roomCurrentItems: Record<string, unknown> = {};
+const roomDeletionTimers: Record<string, NodeJS.Timeout> = {};
+const ROOM_GRACE_PERIOD = 5 * 60 * 1000;
 
-// Broadcast message to all clients in a specific room
+// session room data
+const roomCurrentItems: Record<string, unknown> = {};
+const roomFormData: Record<string, unknown> = {};
+
+// message to all clients in a specific room
 const broadcastToRoom = (roomId: string, message: string) => {
   const clients = rooms[roomId];
   if (clients) {
@@ -23,7 +29,7 @@ const broadcastToRoom = (roomId: string, message: string) => {
   }
 };
 
-// Broadcast qrData and sessionId to all connected clients in a room
+// qrData and sessionId to all connected clients in a room
 const broadcastQrData = (qrData: string, sessionId: string) => {
   const message = JSON.stringify({
     type: "sendQrData",
@@ -39,7 +45,7 @@ const broadcastQrData = (qrData: string, sessionId: string) => {
   });
 };
 
-// Broadcast assessment item changes to all connected clients in a room
+// assessment item changes to all connected clients in a room
 const broadcastAssessmentItemChange = (item: unknown, sessionId: string) => {
   roomCurrentItems[sessionId] = item;
 
@@ -52,26 +58,86 @@ const broadcastAssessmentItemChange = (item: unknown, sessionId: string) => {
   broadcastToRoom(sessionId, message);
 };
 
+// form data changes to all connected clients in a room
+const broadcastFormDataChange = (formData: unknown, sessionId: string) => {
+  roomFormData[sessionId] = formData;
+
+  const message = JSON.stringify({
+    type: "updateFormData",
+    formData,
+    sessionId,
+  });
+
+  broadcastToRoom(sessionId, message);
+};
+
+const sendRoomState = (ws: WebSocket, roomId: string) => {
+  // current item and form data if exists
+  // session persistence
+  if (roomCurrentItems[roomId]) {
+    ws.send(
+      JSON.stringify({
+        type: "changeAssessmentItem",
+        item: roomCurrentItems[roomId],
+        sessionId: roomId,
+      })
+    );
+  }
+
+  if (roomFormData[roomId]) {
+    ws.send(
+      JSON.stringify({
+        type: "updateFormData",
+        formData: roomFormData[roomId],
+        sessionId: roomId,
+      })
+    );
+  }
+};
+
 // Room Management
 const joinRoom = (ws: WebSocket, roomId: string) => {
   const isNewRoom = !rooms[roomId];
 
+  if (roomDeletionTimers[roomId]) {
+    clearTimeout(roomDeletionTimers[roomId]);
+    delete roomDeletionTimers[roomId];
+  }
+
   if (isNewRoom) {
     rooms[roomId] = new Set<WebSocket>();
-    roomCurrentItems[roomId] = sampleData[0];
+    // set data if room is new (no existing data)
+    if (!roomCurrentItems[roomId]) {
+      roomCurrentItems[roomId] = {item: sampleData[0], sessionId: roomId};
+    }
+    if (!roomFormData[roomId]) {
+      roomFormData[roomId] = {};
+    }
   }
+
   rooms[roomId].add(ws);
+  console.log(
+    `Client joined room: ${roomId}, total clients: ${rooms[roomId].size}`
+  );
 };
 
 const leaveRoom = (ws: WebSocket, roomId: string) => {
   const clients = rooms[roomId];
   if (clients) {
     clients.delete(ws);
-    console.log(`Client left room: ${roomId}`);
+
     if (clients.size === 0) {
-      delete rooms[roomId];
-      delete roomCurrentItems[roomId];
-      console.log(`Room ${roomId} has been deleted due to no clients.`);
+      // grace period timer start
+      roomDeletionTimers[roomId] = setTimeout(() => {
+        // verify room is empty before deletion
+        if (!rooms[roomId] || rooms[roomId].size === 0) {
+          delete rooms[roomId];
+          delete roomCurrentItems[roomId];
+          delete roomFormData[roomId];
+          delete roomDeletionTimers[roomId];
+          console.log(`Room ${roomId} deleted after grace period`);
+        }
+      }, ROOM_GRACE_PERIOD);
     }
   }
 };
@@ -86,26 +152,24 @@ wss.on("connection", (ws) => {
       switch (data.type) {
         case "joinRoom":
           joinRoom(ws, data.roomId);
-          ws.send(JSON.stringify({ type: "joinedRoom", roomId: data.roomId }));
-          if (roomCurrentItems[data.roomId]) {
-            ws.send(
-              JSON.stringify({
-                type: "changeAssessmentItem",
-                item: roomCurrentItems[data.roomId],
-                sessionId: data.roomId,
-              })
-            );
-          }
+          ws.send(JSON.stringify({type: "joinedRoom", roomId: data.roomId}));
+          sendRoomState(ws, data.roomId);
           break;
         case "leaveRoom":
           leaveRoom(ws, data.roomId);
-          ws.send(JSON.stringify({ type: "leftRoom", roomId: data.roomId }));
+          ws.send(JSON.stringify({type: "leftRoom", roomId: data.roomId}));
           break;
         case "sendQrData":
           broadcastQrData(data.qrData, data.sessionId);
           break;
         case "changeAssessmentItem":
           broadcastAssessmentItemChange(data.item, data.sessionId);
+          break;
+        case "updateFormData":
+          broadcastFormDataChange(data.formData, data.sessionId);
+          break;
+        case "requestRoomState":
+          sendRoomState(ws, data.roomId);
           break;
 
         default:

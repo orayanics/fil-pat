@@ -7,28 +7,51 @@ import {
   AspectRatio,
   Button,
   Typography,
+  Tooltip,
 } from "@mui/joy";
 import {
   KeyboardArrowLeftRounded,
   KeyboardArrowRightRounded,
+  SaveRounded,
 } from "@mui/icons-material";
 import useData from "../useData";
-import { useSocketContext } from "@/context/SocketProvider";
+import {useSocketContext} from "@/context/SocketProvider";
 
 export default function SessionCard() {
-  const { socket, sessionId, currentItem } = useSocketContext();
-  const { length, item, changeItem } = useData({
+  const {
     socket,
     sessionId,
     currentItem,
+    updateCurrentItem,
+    saveSessionManually,
+  } = useSocketContext();
+  const {length, item, changeItem} = useData({
+    socket,
+    sessionId,
+    currentItem,
+    updateCurrentItem,
   });
 
   return (
-    <Card sx={{ width: "100%", padding: 2 }}>
+    <Card sx={{width: "100%", padding: 2}}>
+      <Tooltip
+        describeChild
+        title="The system also saves the session every 5 minutes."
+      >
+        <Button
+          startDecorator={<SaveRounded />}
+          variant="outlined"
+          color="success"
+          onClick={saveSessionManually}
+          sx={{mx: 1}}
+        >
+          Save session
+        </Button>
+      </Tooltip>
       <AspectRatio
         variant="outlined"
         ratio="16/9"
-        sx={{ width: "100%", borderRadius: "8px" }}
+        sx={{width: "100%", borderRadius: "8px"}}
       >
         <Image
           src={
@@ -37,22 +60,22 @@ export default function SessionCard() {
           alt={item.question}
           width={800}
           height={450}
-          style={{ objectFit: "cover" }}
+          style={{objectFit: "cover"}}
         />
       </AspectRatio>
       <CardContent>
-        <Typography level="h2" fontSize="lg" sx={{ mb: 0.5 }}>
+        <Typography level="h2" fontSize="lg" sx={{mb: 0.5}}>
           Item No. {item.item}
         </Typography>
-        <Typography level="body-lg" sx={{ mb: 1 }}>
+        <Typography level="body-lg" sx={{mb: 1}}>
           {item.question}
         </Typography>
 
-        <Typography level="body-md" sx={{ mb: 1 }}>
+        <Typography level="body-md" sx={{mb: 1}}>
           {item.sound}
         </Typography>
 
-        <CardActions buttonFlex="1" sx={{ justifyContent: "space-between" }}>
+        <CardActions buttonFlex="1" sx={{justifyContent: "space-between"}}>
           <Button
             startDecorator={<KeyboardArrowLeftRounded />}
             variant="outlined"
@@ -62,6 +85,7 @@ export default function SessionCard() {
           >
             Back
           </Button>
+
           <Button
             endDecorator={<KeyboardArrowRightRounded />}
             variant="solid"

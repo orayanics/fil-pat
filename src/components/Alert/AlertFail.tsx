@@ -3,12 +3,12 @@ import {Snackbar, CircularProgress, Typography, Box, Button} from "@mui/joy";
 export default function AlertFail({isConnected}: {isConnected: boolean}) {
   return (
     <Snackbar
-      open={!isConnected}
+      open={isConnected}
       autoHideDuration={null}
       variant="soft"
       color="danger"
       invertedColors
-      anchorOrigin={{vertical: "bottom", horizontal: "center"}}
+      anchorOrigin={{vertical: "top", horizontal: "center"}}
       endDecorator={
         <Button
           variant="plain"
@@ -18,9 +18,6 @@ export default function AlertFail({isConnected}: {isConnected: boolean}) {
           Refresh
         </Button>
       }
-      sx={{
-        zIndex: 1000,
-      }}
     >
       <Box
         sx={{

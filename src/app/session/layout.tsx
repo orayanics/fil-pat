@@ -1,17 +1,14 @@
 "use client";
-import { AlertFail } from "@/components/Alert";
-import { useSocketContext } from "@/context/SocketProvider";
+import {AlertFail} from "@/components/Alert";
+import {useSocketContext} from "@/context/SocketProvider";
+import {SessionLayout} from "@/components/Layout";
 
-export default function SessionLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  const { isConnected } = useSocketContext();
+export default function Layout({children}: {children: React.ReactNode}) {
+  const {isConnected} = useSocketContext();
   return (
     <>
       {!isConnected && <AlertFail isConnected={isConnected} />}
-      {children}
+      <SessionLayout>{children}</SessionLayout>
     </>
   );
 }

@@ -1,8 +1,9 @@
-import { useState } from "react";
-import { Box, Button, Modal, ModalDialog, Typography } from "@mui/joy";
-import { HelpRounded } from "@mui/icons-material";
+"use client";
+import {useState} from "react";
+import {Box, Button, Modal, ModalDialog, Typography} from "@mui/joy";
+import {HelpRounded} from "@mui/icons-material";
 
-import { MODAL_STYLES, MODAL_CONTENT } from "@/utils/modal";
+import {MODAL_STYLES, MODAL_CONTENT} from "@/utils/modal";
 
 type ModalType =
   | "modal_default"
@@ -20,7 +21,7 @@ interface ModalTriggerProps {
 }
 
 export default function ModalTrigger(props: ModalTriggerProps) {
-  const { type, action, onConfirm } = props;
+  const {type, action, onConfirm} = props;
   const [isOpen, setIsOpen] = useState(false);
 
   const handleTrigger = (isCancel: boolean) => {
@@ -46,7 +47,7 @@ export default function ModalTrigger(props: ModalTriggerProps) {
         role="alertdialog"
         maxWidth={"sm"}
       >
-        <Box sx={{ margin: "0 auto" }}>
+        <Box sx={{margin: "0 auto"}}>
           <HelpRounded
             sx={{
               width: 60,
@@ -61,7 +62,7 @@ export default function ModalTrigger(props: ModalTriggerProps) {
           {MODAL_CONTENT[type][action]?.description}
         </Typography>
 
-        <Box sx={{ display: "flex", justifyContent: "center", gap: 1 }}>
+        <Box sx={{display: "flex", justifyContent: "center", gap: 1}}>
           <Button
             variant="outlined"
             onClick={() => {
@@ -86,5 +87,5 @@ export default function ModalTrigger(props: ModalTriggerProps) {
     </Modal>
   );
 
-  return { ModalComponent, setIsOpen, isOpen };
+  return {ModalComponent, setIsOpen, isOpen};
 }

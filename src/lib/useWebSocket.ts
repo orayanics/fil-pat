@@ -1,11 +1,11 @@
 import {useEffect, useState} from "react";
 import {initWebSocket, getSocket} from "./websocketClient";
 
-export default function useWebSocket() {
+export default function useWebSocket(sessionId?: string) {
   const [isConnected, setIsConnected] = useState(false);
 
   useEffect(() => {
-    const socket = initWebSocket();
+    const socket = initWebSocket(sessionId);
 
     const handleOpen = () => setIsConnected(true);
     const handleClose = () => setIsConnected(false);
@@ -29,7 +29,7 @@ export default function useWebSocket() {
       socket.removeEventListener("close", handleClose);
       socket.removeEventListener("error", handleError);
     };
-  }, []);
+  }, [sessionId]);
 
   return {socket: getSocket(), isConnected};
 }

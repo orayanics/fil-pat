@@ -1,11 +1,12 @@
-import { AssessmentItem } from "./context";
-import { ReactNode } from "react";
-import { EmotionCache, Options } from "@emotion/cache";
+import {AssessmentItem} from "./context";
+import {ReactNode} from "react";
+import {EmotionCache, Options} from "@emotion/cache";
 
 export interface UseDataOptions {
   socket: WebSocket | null;
   sessionId: string | null;
   currentItem?: AssessmentItem | null;
+  updateCurrentItem?: (item: AssessmentItem) => void;
 }
 
 export interface UseQrOptions {

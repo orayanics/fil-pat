@@ -3,7 +3,7 @@ import Image from "next/image";
 
 export default function SessionImage() {
   const {currentItem} = useSocketContext();
-  const url = currentItem?.image;
+  const url = currentItem?.item?.image;
 
   return (
     <div
@@ -14,7 +14,7 @@ export default function SessionImage() {
         margin: "auto auto",
       }}
     >
-      {currentItem && (
+      {currentItem?.item && (
         <Image
           src={url || "https://placehold.co/600x400/png?text=Filipino+PAT"}
           alt="Session Image"
