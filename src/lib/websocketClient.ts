@@ -1,4 +1,7 @@
 let socket: WebSocket | null = null;
+let reconnectAttempts = 0;
+const maxReconnectAttempts = 5;
+const reconnectDelay = 1000;
 
 export function initWebSocket(): WebSocket {
   if (!socket || socket.readyState === WebSocket.CLOSED) {
@@ -8,11 +11,20 @@ export function initWebSocket(): WebSocket {
     socket = new WebSocket(wsUrl);
 
     socket.onopen = () => {
-      console.log("✅ WebSocket connected");
+      reconnectAttempts = 0;
     };
 
     socket.onclose = () => {
-      console.log("❌ WebSocket disconnected");
+      // reconnect attemp
+      if (reconnectAttempts < maxReconnectAttempts) {
+        reconnectAttempts++;
+        console.log(
+          `🔄 Attempting to reconnect (${reconnectAttempts}/${maxReconnectAttempts})...`
+        );
+        setTimeout(() => {
+          initWebSocket();
+        }, reconnectDelay * reconnectAttempts);
+      }
     };
 
     socket.onerror = (err) => {
