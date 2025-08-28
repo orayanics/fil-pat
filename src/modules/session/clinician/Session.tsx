@@ -1,5 +1,6 @@
 import SessionCard from "./SessionCard";
 import SessionForm from "./SessionForm";
+import SessionActions from "./SessionActions";
 
 import {Alert, Box, CircularProgress} from "@mui/joy";
 import {useSocketContext} from "@/context/SocketProvider";
@@ -27,6 +28,10 @@ export default function Session() {
           Please wait until the process is finished.
         </Alert>
       )}
+
+      <Box width={"100%"}>
+        <SessionActions />
+      </Box>
 
       <Box
         sx={{

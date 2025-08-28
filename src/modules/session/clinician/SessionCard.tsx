@@ -7,24 +7,17 @@ import {
   AspectRatio,
   Button,
   Typography,
-  Tooltip,
 } from "@mui/joy";
 import {
   KeyboardArrowLeftRounded,
   KeyboardArrowRightRounded,
-  SaveRounded,
 } from "@mui/icons-material";
 import useData from "../useData";
 import {useSocketContext} from "@/context/SocketProvider";
 
 export default function SessionCard() {
-  const {
-    socket,
-    sessionId,
-    currentItem,
-    updateCurrentItem,
-    saveSessionManually,
-  } = useSocketContext();
+  const {socket, sessionId, currentItem, updateCurrentItem} =
+    useSocketContext();
   const {length, item, changeItem} = useData({
     socket,
     sessionId,
@@ -34,20 +27,6 @@ export default function SessionCard() {
 
   return (
     <Card sx={{width: "100%", padding: 2}}>
-      <Tooltip
-        describeChild
-        title="The system also saves the session every 5 minutes."
-      >
-        <Button
-          startDecorator={<SaveRounded />}
-          variant="outlined"
-          color="success"
-          onClick={saveSessionManually}
-          sx={{mx: 1}}
-        >
-          Save session
-        </Button>
-      </Tooltip>
       <AspectRatio
         variant="outlined"
         ratio="16/9"

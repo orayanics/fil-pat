@@ -34,6 +34,7 @@
     "qrcode": "^1.5.4",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "react-to-pdf": "^2.0.1",
     "ws": "^8.18.3"
   },
   "devDependencies": {

@@ -1,7 +1,10 @@
 import {useState, useEffect, useCallback} from "react";
 import {useSocketContext} from "@/context/SocketProvider";
+import {sampleData} from "@/data/data";
 
 export interface ItemFormData {
+  ipa_key: string;
+  group: string;
   childResponse: string;
   consonantsCorrect: number;
   vowelsCorrect: number;
@@ -9,6 +12,8 @@ export interface ItemFormData {
 }
 
 const createDefaultFormData = (): ItemFormData => ({
+  ipa_key: "",
+  group: "",
   childResponse: "",
   consonantsCorrect: 0,
   vowelsCorrect: 0,
@@ -21,6 +26,50 @@ export function useSessionForm(currentItemId?: number) {
   const [formDataMap, setFormDataMap] = useState<Map<number, ItemFormData>>(
     new Map()
   );
+
+  useEffect(() => {
+    if (!currentItemId) return;
+
+    const itemKey = String(currentItemId);
+    const sampleItem = sampleData.find((s) => s.item === Number(currentItemId));
+
+    const ctxEntry = (contextFormData as Record<string, unknown>)?.[itemKey];
+    const baseData = createDefaultFormData();
+    let updatedData: ItemFormData = {...baseData};
+    let needsContextUpdate = false;
+
+    if (ctxEntry && typeof ctxEntry === "object") {
+      updatedData = {...baseData, ...(ctxEntry as ItemFormData)};
+
+      if (!updatedData.ipa_key && sampleItem?.ipa_key) {
+        updatedData.ipa_key = sampleItem.ipa_key;
+        needsContextUpdate = true;
+      }
+
+      if (!updatedData.group && sampleItem?.group) {
+        updatedData.group = sampleItem.group;
+        needsContextUpdate = true;
+      }
+    } else {
+      if (sampleItem) {
+        updatedData.ipa_key = sampleItem.ipa_key || "";
+        updatedData.group = sampleItem.group || "";
+      }
+      needsContextUpdate = true;
+    }
+
+    setFormDataMap((prev) => {
+      const newMap = new Map(prev);
+      newMap.set(currentItemId as number, updatedData);
+
+      if (needsContextUpdate) {
+        updateContextFormData(Object.fromEntries(newMap));
+      }
+
+      return newMap;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentItemId, contextFormData, sampleData, updateContextFormData]);
 
   // sync: formdata from context to localstorage
   // this happens on mount and when formdata from context changes
@@ -43,7 +92,22 @@ export function useSessionForm(currentItemId?: number) {
 
   function getCurrentFormData(): ItemFormData {
     if (!currentItemId) return createDefaultFormData();
-    return formDataMap.get(currentItemId) || createDefaultFormData();
+
+    const existing = formDataMap.get(currentItemId);
+    if (existing) return existing;
+
+    // seed ipa_key and group from sampleData for the current item when no entry exists yet
+    const sampleItem = sampleData.find(
+      (s) => s.item === (currentItemId as number)
+    );
+    if (sampleItem) {
+      const seeded = createDefaultFormData();
+      seeded.ipa_key = sampleItem.ipa_key || "";
+      seeded.group = sampleItem.group || "";
+      return seeded;
+    }
+
+    return createDefaultFormData();
   }
 
   const data = getCurrentFormData();
@@ -64,7 +128,12 @@ export function useSessionForm(currentItemId?: number) {
           newMap.get(currentItemId) || createDefaultFormData();
 
         const updatedData = {...currentData};
-        if (field === "childResponse") {
+        // treat text fields as strings, numeric fields as numbers
+        if (
+          field === "childResponse" ||
+          field === "ipa_key" ||
+          field === "group"
+        ) {
           updatedData[field] = String(value);
         } else {
           updatedData[field] = Number(value) || 0;
@@ -133,7 +202,7 @@ export function useSessionForm(currentItemId?: number) {
 
   // returns meta of total items, completed items, completion percentage
   function getCompletionStats() {
-    const totalItems = formDataMap.size;
+    const totalItems = sampleData.length;
     const completedItems = Array.from(formDataMap.values()).filter(
       (data) =>
         data.childResponse.length > 0 ||
@@ -152,12 +221,57 @@ export function useSessionForm(currentItemId?: number) {
   // helper function for json export
   function exportFormData() {
     const allData = Object.fromEntries(getAllFormData());
+    const meta = getCompletionStats();
+
+    const allAnswered =
+      meta.totalItems > 0 && meta.completedItems === meta.totalItems;
+
+    if (!allAnswered) {
+      return false;
+    }
+
     return {
       session: allData,
-      meta: getCompletionStats(),
+      meta,
       exportedAt: new Date().toISOString(),
     };
   }
+
+  // helpfer function to get formdata from localstorage with session id
+  const getFormDataFromLocalStorage = (sessionId: string) => {
+    if (typeof window === "undefined") return null;
+
+    //
+
+    try {
+      const localData = localStorage.getItem(`session_${sessionId}_formData`);
+      const parsedData = localData ? JSON.parse(localData) : null;
+
+      // get total items from localData
+      const totalItems = sampleData.length;
+      // count parsedData object
+      const completedItems = parsedData ? Object.keys(parsedData).length : 0;
+
+      const meta = {
+        totalItems,
+        completedItems,
+        completionPercentage:
+          totalItems > 0 ? Math.round((completedItems / totalItems) * 100) : 0,
+      };
+
+      if (localData) {
+        return {
+          session: parsedData,
+          meta,
+          exportedAt: new Date().toISOString(),
+        };
+      }
+    } catch {
+      console.error("Failed to parse form data from localStorage");
+    }
+
+    return null;
+  };
 
   return {
     formData: getCurrentFormData(),
@@ -176,6 +290,7 @@ export function useSessionForm(currentItemId?: number) {
     getAllFormData,
     getCompletionStats,
     exportFormData,
+    getFormDataFromLocalStorage,
 
     // Raw form data map for advanced use cases
     formDataMap,
