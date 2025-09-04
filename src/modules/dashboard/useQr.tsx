@@ -1,12 +1,13 @@
-import { useState } from "react";
+"use client";
+import {useState} from "react";
 import QRCode from "qrcode";
 import getLocalIp from "@/utils/getLocalIp";
 
 const BASE_URL = getLocalIp() ?? "http://localhost:3000";
 
-import type { Role, UseQrOptions } from "@/models/utils";
+import type {Role, UseQrOptions} from "@/models/utils";
 
-export default function useQr({ socket }: UseQrOptions) {
+export default function useQr({socket}: UseQrOptions) {
   const [qrCode, setQrCode] = useState<string | null>(null);
   const [sessionId, setSessionId] = useState<string | null>(null);
 
@@ -19,33 +20,28 @@ export default function useQr({ socket }: UseQrOptions) {
     const url = buildSessionUrl(role, id);
 
     setSessionId(id);
-    let dummy = "";
 
     try {
-      setQrCode(
-        await QRCode.toDataURL(url, {
-          width: 200,
-          margin: 1,
-          errorCorrectionLevel: "H",
-        }).catch((error) => {
-          console.error("Error generating QR code:", error);
-          return null;
-        })
-      );
-
-      dummy = await QRCode.toDataURL(url, {
+      const primary = await QRCode.toDataURL(url, {
         width: 200,
         margin: 1,
         errorCorrectionLevel: "H",
+      }).catch((err) => {
+        console.error("Error generating QR code:", err);
+        return null;
       });
+
+      setQrCode(primary);
+
+      if (!primary) return;
 
       if (socket) {
         socket.send(
           JSON.stringify({
             type: "sendQrData",
-            qrData: dummy,
+            qrData: primary,
             sessionId: id,
-            qr: dummy,
+            qr: primary,
           })
         );
       }
@@ -54,5 +50,5 @@ export default function useQr({ socket }: UseQrOptions) {
       setQrCode(null);
     }
   }
-  return { qrCode, sessionId, buildSessionUrl, generate };
+  return {qrCode, sessionId, buildSessionUrl, generate};
 }

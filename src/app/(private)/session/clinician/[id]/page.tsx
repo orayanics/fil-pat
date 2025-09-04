@@ -1,4 +1,3 @@
-"use client";
 import Session from "@/modules/session/clinician/Session";
 
 export default function SessionPage() {

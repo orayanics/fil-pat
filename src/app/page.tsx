@@ -19,11 +19,13 @@ export default function Page() {
   const router = useRouter();
 
   useEffect(() => {
+    if (typeof window === "undefined") return;
+
     const loggedIn = localStorage.getItem("clinicianLoggedIn");
     if (loggedIn) {
       router.replace("/dashboard");
     }
-  }, []);
+  }, [router]);
 
   return (
     <Box

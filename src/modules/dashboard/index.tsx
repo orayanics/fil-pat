@@ -1,5 +1,1 @@
-import DashboardQR from "./DashboardQR";
-
-export default function index() {
-  return <DashboardQR />;
-}
+export {default as DashboardQR} from "./DashboardQR";

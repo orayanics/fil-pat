@@ -1,8 +1,7 @@
-import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import type {Metadata} from "next";
+import {Geist, Geist_Mono} from "next/font/google";
 import "./globals.css";
 
-import SocketProvider from "@/context/SocketProvider";
 import ThemeRegistry from "./ThemeRegistry";
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -29,9 +28,7 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <ThemeRegistry options={{ key: "joy" }}>
-          <SocketProvider>{children}</SocketProvider>
-        </ThemeRegistry>
+        <ThemeRegistry options={{key: "joy"}}>{children}</ThemeRegistry>
       </body>
     </html>
   );

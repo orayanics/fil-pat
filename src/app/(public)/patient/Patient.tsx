@@ -1,21 +1,21 @@
 "use client";
 
-import Image from "next/image";
-import { useSocketContext } from "@/context/SocketProvider";
+import {useSocketContext} from "@/context/SocketProvider";
 
-import { Box } from "@mui/joy";
-import { PageHeader } from "@/components/Page";
+import PatientHeader from "./PatientHeader";
 import PatientStatus from "./PatientStatus";
 
+import Image from "next/image";
+import {Box} from "@mui/joy";
+
 export default function Patient() {
-  const { qrData } = useSocketContext();
+  const {qrData} = useSocketContext();
 
   return (
     <>
-      <PageHeader isLink={false} />
-
+      <PatientHeader />
       <Box
-        style={{ padding: 6, textAlign: "center" }}
+        style={{padding: 6, textAlign: "center"}}
         display={"flex"}
         flexDirection="column"
         justifyContent="center"

@@ -1,28 +1,31 @@
 "use client";
 
-import { Card, Button, Box, Typography } from "@mui/joy";
+import {Card, Button, Box, Typography} from "@mui/joy";
 import Image from "next/image";
-import { redirect } from "next/navigation";
+import {useRouter} from "next/navigation";
 
 import useQr from "./useQr";
-import { useSocketContext } from "@/context/SocketProvider";
+import {useSocketContext} from "@/context/SocketProvider";
 
 export default function DashboardQR() {
-  const { socket } = useSocketContext();
-  const { qrCode, sessionId, buildSessionUrl, generate } = useQr({ socket });
+  const {socket} = useSocketContext();
+  const {qrCode, sessionId, buildSessionUrl, generate} = useQr({socket});
+  const router = useRouter();
 
   const handleGoToSession = (link: string | null) => {
-    if (link) {
-      redirect(link);
-    }
+    if (link) router.push(link);
   };
 
   return (
-    <Card
-      orientation="horizontal"
-      sx={{ padding: 2, gap: 2, flexWrap: "wrap" }}
-    >
-      {qrCode && <Image src={qrCode} alt={qrCode} width={200} height={200} />}
+    <Card orientation="horizontal" sx={{padding: 2, gap: 2, flexWrap: "wrap"}}>
+      {qrCode && (
+        <Image
+          src={qrCode}
+          alt="Session access QR code"
+          width={200}
+          height={200}
+        />
+      )}
 
       <Box
         sx={{
@@ -39,7 +42,7 @@ export default function DashboardQR() {
             <Typography level="h2" fontSize="lg">
               Generated QR Code
             </Typography>
-            <Typography level="body-md" sx={{ mb: 1 }}>
+            <Typography level="body-md" sx={{mb: 1}}>
               This QR code is used to access the session by the patient.
             </Typography>
           </div>
@@ -56,7 +59,7 @@ export default function DashboardQR() {
             variant={qrCode ? "outlined" : "solid"}
             onClick={() => generate("patient")}
           >
-            Generate QR Code
+            {qrCode ? "Regenerate QR Code" : "Generate QR Code"}
           </Button>
 
           {qrCode && sessionId && (
@@ -70,9 +73,7 @@ export default function DashboardQR() {
                 fullWidth
                 color="primary"
                 onClick={() =>
-                  handleGoToSession(
-                    buildSessionUrl("clinician", sessionId || "")
-                  )
+                  handleGoToSession(buildSessionUrl("clinician", sessionId))
                 }
                 disabled={!sessionId || !qrCode}
               >

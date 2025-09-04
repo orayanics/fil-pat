@@ -1,6 +1,6 @@
-"use client";
-import {AlertFail} from "@/components/Alert";
 import {useSocketContext} from "@/context/SocketProvider";
+
+import {AlertFail} from "@/components/Alert";
 import {SessionLayout} from "@/components/Layout";
 
 export default function Layout({children}: {children: React.ReactNode}) {

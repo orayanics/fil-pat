@@ -1,6 +1,5 @@
-"use client";
-import Dashboard from "@/modules/dashboard";
+import {DashboardQR} from "@/modules/dashboard";
 
 export default function DashboardPage() {
-  return <Dashboard />;
+  return <DashboardQR />;
 }
