@@ -3,11 +3,13 @@ import {createContext, useContext, useEffect, useState} from "react";
 import useWebSocket from "@/lib/useWebSocket";
 import {useRouter, usePathname} from "next/navigation";
 
+import type {AssessmentItem} from "@/models/context";
 interface PatientContextType {
   socket: WebSocket | null;
   qrData: {qrData: string; sessionId: string} | null;
   patient: string;
   setPatient: (message: string) => void;
+  currentItem: AssessmentItem | null;
 }
 
 const PatientContext = createContext<PatientContextType | undefined>(undefined);
@@ -18,6 +20,8 @@ export function PatientProvider({children}: {children: React.ReactNode}) {
 
   const {socket, isConnected} = useWebSocket();
   const [patient, setPatient] = useState("");
+
+  const [currentItem, setCurrentItem] = useState<AssessmentItem | null>(null);
 
   const [qrData, setQrData] = useState<{
     qrData: string;
@@ -47,9 +51,11 @@ export function PatientProvider({children}: {children: React.ReactNode}) {
           patientName: storedPatient,
         })
       );
-      router.replace(`/patient/${storedPatientId}`);
+      if (pathname === "/patient") {
+        router.replace(`/patient/${storedPatientId}`);
+      }
     }
-  }, [socket, isConnected, router]);
+  }, [socket, isConnected, router, pathname]);
 
   useEffect(() => {
     if (!socket) return;
@@ -62,13 +68,18 @@ export function PatientProvider({children}: {children: React.ReactNode}) {
           case "patientAdded":
             localStorage.setItem("patientName", data.patientName);
             localStorage.setItem("patientId", data.patientId);
-            router.push(`/patient/${data.patientId}`);
+            if (pathname === "/patient") {
+              router.push(`/patient/${data.patientId}`);
+            }
             break;
           case "patientRejoined":
             setPatient(data.patientName);
             break;
           case "sendQrData":
             setQrData({qrData: data.qrData, sessionId: data.sessionId});
+            break;
+          case "changeAssessmentItem":
+            setCurrentItem(data.item);
             break;
           default:
             console.warn("Unhandled message type:", data.type);
@@ -87,10 +98,12 @@ export function PatientProvider({children}: {children: React.ReactNode}) {
     return () => {
       socket.removeEventListener("message", handleMessage);
     };
-  }, [socket, router]);
+  }, [socket, router, pathname]);
 
   return (
-    <PatientContext.Provider value={{socket, qrData, patient, setPatient}}>
+    <PatientContext.Provider
+      value={{socket, qrData, patient, setPatient, currentItem}}
+    >
       {children}
     </PatientContext.Provider>
   );

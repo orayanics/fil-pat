@@ -3,8 +3,10 @@
 import {Box} from "@mui/joy";
 import SocketProvider from "@/context/SocketProvider";
 import {PageHeader} from "@/components/Page";
-
+import {usePathname} from "next/navigation";
 export default function SessionLayout({children}: {children: React.ReactNode}) {
+  const path = usePathname();
+  const isPatient = path.startsWith("/session/patient");
   return (
     <SocketProvider>
       <Box
@@ -24,7 +26,7 @@ export default function SessionLayout({children}: {children: React.ReactNode}) {
           }),
         ]}
       >
-        <PageHeader />
+        {!isPatient && <PageHeader />}
         {children}
       </Box>
     </SocketProvider>

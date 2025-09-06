@@ -1,28 +1,32 @@
 "use client";
-import {useSocketState} from "@/context/SocketProvider";
+import {usePatient} from "@/context/PatientProvider";
 import Image from "next/image";
 
 export default function SessionImage() {
-  const {currentItem} = useSocketState();
+  const {currentItem} = usePatient();
   const url = currentItem?.item?.image;
 
+  const isUrl = url
+    ? url
+    : "https://placehold.co/600x400/png?text=Filipino+PAT";
+
+  console.log(isUrl);
   return (
     <div
       style={{
         display: "flex",
         alignItems: "center",
-        height: "90dvh",
-        margin: "auto auto",
+        height: "100dvh",
       }}
     >
-      {currentItem?.item && (
+      {isUrl && (
         <Image
-          src={url || "https://placehold.co/600x400/png?text=Filipino+PAT"}
+          src={isUrl}
           alt="Session Image"
           width={600}
           height={400}
           loading="lazy"
-          objectFit="contain"
+          style={{objectFit: "contain", margin: "auto"}}
         />
       )}
     </div>
