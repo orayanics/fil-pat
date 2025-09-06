@@ -16,8 +16,7 @@ const ROOM_GRACE_PERIOD = 5 * 60 * 1000;
 // patient list as a record for reliable lookup and removal
 const patientList: Record<string, {patientId: string; patientName: string}> =
   {};
-// Map WebSocket to patientId for disconnect cleanup
-const wsToPatientId: Map<WebSocket, string> = new Map();
+const patientMap: Record<string, Set<WebSocket>> = {};
 
 // session room data
 const roomCurrentItems: Record<string, unknown> = {};
@@ -143,6 +142,36 @@ const leaveRoom = (ws: WebSocket, roomId: string) => {
   }
 };
 
+// Patient List Management
+function joinPatient(ws: WebSocket, patientId: string, patientName: string) {
+  patientList[patientId] = {patientId, patientName};
+
+  if (!patientMap[patientId]) {
+    patientMap[patientId] = new Set();
+  }
+
+  patientMap[patientId].add(ws);
+
+  return {
+    patientId,
+    patientName,
+  };
+}
+
+function leavePatient(ws: WebSocket) {
+  for (const [patientId, sockets] of Object.entries(patientMap)) {
+    if (sockets.has(ws)) {
+      sockets.delete(ws);
+
+      if (sockets.size === 0) {
+        delete patientMap[patientId];
+        delete patientList[patientId];
+      }
+      break;
+    }
+  }
+}
+
 wss.on("connection", (ws) => {
   console.log("Client connected");
 
@@ -153,18 +182,18 @@ wss.on("connection", (ws) => {
       switch (data.type) {
         case "addPatient": {
           const {patientName, patientId} = data;
-          patientList[patientId] = {patientId, patientName};
-          wsToPatientId.set(ws, patientId);
+          const isReconnect = patientMap[patientId]?.size > 0;
 
+          joinPatient(ws, patientId, patientName);
           joinRoom(ws, patientId);
+
           ws.send(
             JSON.stringify({
-              type: "patientAdded",
+              type: isReconnect ? "patientRejoined" : "patientAdded",
               patientId,
-              patientName: data.patientName,
+              patientName,
             })
           );
-
           wss.clients.forEach((client) => {
             if (client.readyState === WebSocket.OPEN) {
               client.send(
@@ -205,12 +234,24 @@ wss.on("connection", (ws) => {
 
   ws.on("close", () => {
     console.log("Client disconnected");
-    // Remove client from all rooms
     for (const roomId in rooms) {
       if (rooms[roomId].has(ws)) {
         leaveRoom(ws, roomId);
       }
     }
+
+    leavePatient(ws);
+
+    wss.clients.forEach((client) => {
+      if (client.readyState === WebSocket.OPEN) {
+        client.send(
+          JSON.stringify({
+            type: "updatePatientList",
+            patientList,
+          })
+        );
+      }
+    });
   });
 });
 
