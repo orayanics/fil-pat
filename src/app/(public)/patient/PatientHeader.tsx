@@ -1,8 +1,8 @@
 import {Box, Chip} from "@mui/joy";
-import {useSocketContext} from "@/context/SocketProvider";
+import {useSocketState} from "@/context/SocketProvider";
 
 export default function PatientHeader() {
-  const {isConnected} = useSocketContext();
+  const {isConnected} = useSocketState();
   return (
     <Box
       sx={{

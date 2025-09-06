@@ -1,8 +1,9 @@
-import {useSocketContext} from "@/context/SocketProvider";
+"use client";
+import {useSocketState} from "@/context/SocketProvider";
 import Image from "next/image";
 
 export default function SessionImage() {
-  const {currentItem} = useSocketContext();
+  const {currentItem} = useSocketState();
   const url = currentItem?.item?.image;
 
   return (

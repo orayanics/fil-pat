@@ -1,5 +1,7 @@
+"use client";
+
 import {useState, useEffect, useCallback} from "react";
-import {useSocketContext} from "@/context/SocketProvider";
+import {useSocketState, useSocketDispatch} from "@/context/SocketProvider";
 import {sampleData} from "@/data/data";
 
 export interface ItemFormData {
@@ -21,8 +23,8 @@ const createDefaultFormData = (): ItemFormData => ({
 });
 
 export function useSessionForm(currentItemId?: number) {
-  const {formData: contextFormData, updateFormData: updateContextFormData} =
-    useSocketContext();
+  const {formData: contextFormData} = useSocketState();
+  const {updateFormData: updateContextFormData} = useSocketDispatch();
   const [formDataMap, setFormDataMap] = useState<Map<number, ItemFormData>>(
     new Map()
   );

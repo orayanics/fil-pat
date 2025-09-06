@@ -1,10 +1,11 @@
+"use client";
 import SocketProvider from "@/context/SocketProvider";
-import DashboardQR from "./DashboardQR";
+import SessionPdf from "./SessionPdf";
 
 export default function Index() {
   return (
     <SocketProvider>
-      <DashboardQR />
+      <SessionPdf />
     </SocketProvider>
   );
 }

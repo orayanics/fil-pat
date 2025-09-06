@@ -4,7 +4,7 @@ import {useParams} from "next/navigation";
 import {Margin, usePDF} from "react-to-pdf";
 
 import {Box, Button, Alert, Table} from "@mui/joy";
-import {useSessionForm} from "./useForm";
+import {useSessionForm} from "../session/clinician/useForm";
 
 import {ExportedSessionData} from "@/models/variables";
 

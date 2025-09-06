@@ -1,16 +1,19 @@
-export interface SocketContextType {
+export type SocketState = {
   socket: WebSocket | null;
   isConnected: boolean;
   sessionId: string | null;
-  sendMessage: (message: string) => void;
   currentItem: AssessmentItem | null;
   formData: Record<string, unknown>;
-  updateFormData: (formData: Record<string, unknown>) => void;
-  updateCurrentItem: (item: AssessmentItem) => void;
-  saveSessionManually: () => void;
   qrData: {qrData: string; sessionId: string} | null;
   isPersisting: boolean;
-}
+};
+
+export type SocketDispatch = {
+  updateFormData: (data: Record<string, unknown>) => void;
+  updateCurrentItem: (item: AssessmentItem) => void;
+  saveSessionManually: () => void;
+  sendMessage: (message: string) => void;
+};
 
 export type QrItem = {
   qrData: string;

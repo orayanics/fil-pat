@@ -15,17 +15,13 @@ import Ipa from "@/components/Keyboard/Ipa";
 
 import useData from "../useData";
 import {useSessionForm} from "./useForm";
-import {useSocketContext} from "@/context/SocketProvider";
+import {useSocketState, useSocketDispatch} from "@/context/SocketProvider";
 import {useEffect} from "react";
 
 export default function SessionForm() {
-  const {
-    socket,
-    sessionId,
-    currentItem,
-    updateCurrentItem,
-    saveSessionManually,
-  } = useSocketContext();
+  const {socket, sessionId, currentItem} = useSocketState();
+  const {updateCurrentItem, saveSessionManually} = useSocketDispatch();
+
   const {item, length} = useData({
     socket,
     sessionId,

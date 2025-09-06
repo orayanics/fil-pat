@@ -5,10 +5,10 @@ import Image from "next/image";
 import {useRouter} from "next/navigation";
 
 import useQr from "./useQr";
-import {useSocketContext} from "@/context/SocketProvider";
+import {useSocketState} from "@/context/SocketProvider";
 
 export default function DashboardQR() {
-  const {socket} = useSocketContext();
+  const {socket} = useSocketState();
   const {qrCode, sessionId, buildSessionUrl, generate} = useQr({socket});
   const router = useRouter();
 

@@ -1,3 +1,5 @@
-import SessionPdf from "./SessionPdf";
+import Session from "./Session";
 
-export {SessionPdf};
+export default function Index() {
+  return <Session />;
+}

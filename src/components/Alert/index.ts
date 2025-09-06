@@ -1,3 +1,6 @@
 import AlertFail from "./AlertFail";
 import AlertInfo from "./AlertInfo";
-export {AlertFail, AlertInfo};
+import AlertWarning from "./AlertWarning";
+
+import {useAlert} from "./useAlert";
+export {AlertFail, AlertInfo, AlertWarning, useAlert};

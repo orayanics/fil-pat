@@ -1,23 +1,11 @@
 import Image from "next/image";
-import Link from "next/link";
-import { Box, IconButton } from "@mui/joy";
+import {Box, IconButton} from "@mui/joy";
 
-import { ModalTrigger } from "@/components/Modal";
-import { PageStatus } from "@/components/Page";
+import {AlertWarning, useAlert} from "@/components/Alert";
+import {PageStatus} from "@/components/Page";
 
-import { redirect } from "next/navigation";
-
-export default function PageHeader({ isLink = true }: { isLink: boolean }) {
-  const { ModalComponent, setIsOpen, isOpen } = ModalTrigger({
-    type: "modal_warning",
-    action: "redirect",
-    onConfirm: (confirmed) => {
-      if (confirmed) {
-        redirect("/dashboard");
-      }
-    },
-  });
-
+export default function PageHeader() {
+  const {open, toggle, setOpen} = useAlert();
   return (
     <Box
       sx={{
@@ -28,20 +16,20 @@ export default function PageHeader({ isLink = true }: { isLink: boolean }) {
         paddingBottom: 1,
         padding: 1,
         borderBottom: "1px solid #ddd",
+        width: "100%",
       }}
     >
-      {isOpen && <ModalComponent />}
+      <AlertWarning
+        description="You are about to be redirected to a different page. Any unsaved or unsubmitted changes will be lost. Do you want to continue?"
+        open={open}
+        onClose={() => setOpen(false)}
+      />
       <IconButton
         variant="plain"
         color="neutral"
         size="sm"
-        component={isLink ? Link : "button"}
-        {...(isLink ? { href: "/dashboard" } : {})}
-        onClick={() => {
-          if (!isLink) {
-            setIsOpen((prev) => !prev);
-          }
-        }}
+        component={"button"}
+        onClick={toggle}
       >
         <Image src="/crs-logo.png" alt="Fil-PAT Logo" width={25} height={25} />
       </IconButton>

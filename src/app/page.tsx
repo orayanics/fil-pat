@@ -144,8 +144,7 @@ export default function Page() {
             src="/crs-logo.png"
             alt="Hero Image"
             fill
-            loading="lazy"
-            objectFit="contain"
+            style={{objectFit: "contain"}}
           />
         </AspectRatio>
       </Container>

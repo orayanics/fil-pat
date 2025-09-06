@@ -1,6 +1,6 @@
 "use client";
 
-import {useSocketContext} from "@/context/SocketProvider";
+import {useSocketState} from "@/context/SocketProvider";
 
 import PatientHeader from "./PatientHeader";
 import PatientStatus from "./PatientStatus";
@@ -9,7 +9,7 @@ import Image from "next/image";
 import {Box} from "@mui/joy";
 
 export default function Patient() {
-  const {qrData} = useSocketContext();
+  const {qrData} = useSocketState();
 
   return (
     <>

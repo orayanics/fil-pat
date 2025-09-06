@@ -1,9 +1,4 @@
-import {SessionPdf} from "@/modules/session/clinician";
-
+import ExportPdf from "@/modules/pdf";
 export default function page() {
-  return (
-    <div>
-      <SessionPdf />
-    </div>
-  );
+  return <ExportPdf />;
 }

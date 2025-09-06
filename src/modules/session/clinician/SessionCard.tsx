@@ -13,11 +13,12 @@ import {
   KeyboardArrowRightRounded,
 } from "@mui/icons-material";
 import useData from "../useData";
-import {useSocketContext} from "@/context/SocketProvider";
+import {useSocketState, useSocketDispatch} from "@/context/SocketProvider";
 
 export default function SessionCard() {
-  const {socket, sessionId, currentItem, updateCurrentItem} =
-    useSocketContext();
+  const {socket, sessionId, currentItem} = useSocketState();
+  const {updateCurrentItem} = useSocketDispatch();
+
   const {length, item, changeItem} = useData({
     socket,
     sessionId,

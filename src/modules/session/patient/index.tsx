@@ -1,5 +1,5 @@
 import SessionImage from "./SessionImage";
 
-export default function Session() {
+export default function Index() {
   return <SessionImage />;
 }

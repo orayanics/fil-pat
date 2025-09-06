@@ -1,13 +1,12 @@
 "use client";
-import Link from "next/link";
 import {useParams} from "next/navigation";
 import {SaveRounded} from "@mui/icons-material";
 import {Card, Tooltip, Button} from "@mui/joy";
 
-import {useSocketContext} from "@/context/SocketProvider";
+import {useSocketDispatch} from "@/context/SocketProvider";
 
 export default function SessionActions() {
-  const {saveSessionManually} = useSocketContext();
+  const {saveSessionManually} = useSocketDispatch();
   const params = useParams();
   const sessionId = params.id;
 

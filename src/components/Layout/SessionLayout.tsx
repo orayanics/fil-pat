@@ -1,34 +1,32 @@
-import {ReactNode} from "react";
+"use client";
 
-import {Box, Container} from "@mui/joy";
+import {Box} from "@mui/joy";
+import SocketProvider from "@/context/SocketProvider";
 import {PageHeader} from "@/components/Page";
 
-export default function SessionLayout({children}: {children: ReactNode}) {
+export default function SessionLayout({children}: {children: React.ReactNode}) {
   return (
-    <>
-      <Box>
-        <PageHeader isLink={false} />
-        <Container
-          sx={[
-            (theme) => ({
-              display: "flex",
-              alignItems: "start",
-              gap: 4,
-              [theme.breakpoints.up(834)]: {
-                flexDirection: "row",
-                gap: 6,
-              },
-              [theme.breakpoints.up(1199)]: {
-                gap: 2,
-              },
+    <SocketProvider>
+      <Box
+        sx={[
+          (theme) => ({
+            display: "flex",
+            alignItems: "start",
+            gap: 4,
+            [theme.breakpoints.up(834)]: {
               flexDirection: "column",
-              padding: 2,
-            }),
-          ]}
-        >
-          {children}
-        </Container>
+              gap: 6,
+            },
+            [theme.breakpoints.up(1199)]: {
+              gap: 2,
+            },
+            flexDirection: "column",
+          }),
+        ]}
+      >
+        <PageHeader />
+        {children}
       </Box>
-    </>
+    </SocketProvider>
   );
 }

@@ -1,3 +1,4 @@
+"use client";
 import {Snackbar, CircularProgress, Typography, Box, Button} from "@mui/joy";
 
 export default function AlertFail({isConnected}: {isConnected: boolean}) {

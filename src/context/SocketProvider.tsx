@@ -1,6 +1,8 @@
 "use client";
+
 import {createContext, useContext, useState, useEffect} from "react";
 import {useParams} from "next/navigation";
+import {AlertFail} from "@/components/Alert";
 
 import {
   persistSessionData,
@@ -9,9 +11,19 @@ import {
 } from "@/lib/sessionPersistence";
 import useWebSocket from "@/lib/useWebSocket";
 
-import type {SocketContextType, AssessmentItem} from "@/models/context";
+import type {
+  SocketState,
+  SocketDispatch,
+  AssessmentItem,
+} from "@/models/context";
 
-const SocketContext = createContext<SocketContextType | undefined>(undefined);
+// split context to avoid unnecessary re-renders
+const SocketStateContext = createContext<SocketState | undefined>(undefined);
+const SocketDispatchContext = createContext<SocketDispatch | undefined>(
+  undefined
+);
+
+// const SocketContext = createContext<SocketContextType | undefined>(undefined);
 
 export default function SocketProvider({
   children,
@@ -29,6 +41,13 @@ export default function SocketProvider({
     qrData: string;
     sessionId: string;
   } | null>(null);
+
+  const [pendingFormData, setPendingFormData] = useState<Record<
+    string,
+    unknown
+  > | null>(null);
+  const [pendingItem, setPendingItem] = useState<AssessmentItem | null>(null);
+  const [isPersisting, setIsPersisting] = useState(false);
 
   useEffect(() => {
     cleanupOldSessions();
@@ -52,57 +71,6 @@ export default function SocketProvider({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  const [pendingFormData, setPendingFormData] = useState<Record<
-    string,
-    unknown
-  > | null>(null);
-  const [pendingItem, setPendingItem] = useState<AssessmentItem | null>(null);
-  const [isPersisting, setIsPersisting] = useState(false);
-
-  useEffect(() => {
-    const persistItem = (item: AssessmentItem) => {
-      if (sessionId) {
-        setIsPersisting(true);
-        try {
-          persistSessionData(sessionId, "currentItem", item);
-        } finally {
-          setIsPersisting(false);
-        }
-      }
-    };
-
-    const persistFormData = (data: Record<string, unknown>) => {
-      if (sessionId && Object.keys(data).length > 0) {
-        setIsPersisting(true);
-        try {
-          persistSessionData(sessionId, "formData", data);
-        } finally {
-          setIsPersisting(false);
-        }
-      }
-    };
-
-    const interval = setInterval(() => {
-      if (pendingFormData || pendingItem) {
-        setIsPersisting(true);
-        try {
-          if (pendingFormData) {
-            persistFormData(pendingFormData);
-            setPendingFormData(null);
-          }
-          if (pendingItem) {
-            persistItem(pendingItem);
-            setPendingItem(null);
-          }
-        } finally {
-          setTimeout(() => setIsPersisting(false), 500);
-        }
-      }
-    }, 5 * 60 * 1000);
-
-    return () => clearInterval(interval);
-  }, [sessionId, pendingFormData, pendingItem]);
 
   useEffect(() => {
     if (!isConnected) {
@@ -157,6 +125,72 @@ export default function SocketProvider({
       socket.removeEventListener("message", handleMessage);
     };
   }, [socket, sessionId]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (pendingFormData || pendingItem) {
+        setIsPersisting(true);
+        try {
+          if (sessionId && pendingFormData) {
+            persistSessionData(sessionId, "formData", pendingFormData);
+            setPendingFormData(null);
+          }
+          if (sessionId && pendingItem) {
+            persistSessionData(sessionId, "currentItem", pendingItem);
+            setPendingItem(null);
+          }
+        } finally {
+          setTimeout(() => setIsPersisting(false), 500);
+        }
+      }
+    }, 5 * 60 * 1000);
+
+    return () => clearInterval(interval);
+  }, [sessionId, pendingFormData, pendingItem]);
+
+  useEffect(() => {
+    if (isConnected && hasJoinedRoom && sessionId) {
+      const timeoutId = setTimeout(() => {
+        if (socket && sessionId && socket.readyState === WebSocket.OPEN) {
+          if (currentItem) {
+            socket.send(
+              JSON.stringify({
+                type: "changeAssessmentItem",
+                item: currentItem,
+                sessionId,
+              })
+            );
+          }
+
+          if (Object.keys(formData).length > 0) {
+            socket.send(
+              JSON.stringify({
+                type: "updateFormData",
+                formData,
+                sessionId,
+              })
+            );
+          }
+        }
+      }, 500);
+
+      return () => clearTimeout(timeoutId);
+    }
+  }, [isConnected, hasJoinedRoom, sessionId, socket, currentItem, formData]);
+
+  // auto-join room
+  useEffect(() => {
+    if (socket && sessionId && isConnected && !hasJoinedRoom) {
+      if (socket.readyState === WebSocket.OPEN) {
+        socket.send(
+          JSON.stringify({
+            type: "joinRoom",
+            roomId: sessionId,
+          })
+        );
+      }
+    }
+  }, [socket, sessionId, isConnected, hasJoinedRoom]);
 
   const updateFormData = (newFormData: Record<string, unknown>) => {
     setFormData(newFormData);
@@ -213,52 +247,12 @@ export default function SocketProvider({
     }
   };
 
-  // auto-join room
-  useEffect(() => {
-    if (socket && sessionId && isConnected && !hasJoinedRoom) {
-      if (socket.readyState === WebSocket.OPEN) {
-        socket.send(
-          JSON.stringify({
-            type: "joinRoom",
-            roomId: sessionId,
-          })
-        );
-      }
-    }
-  }, [socket, sessionId, isConnected, hasJoinedRoom]);
-
-  useEffect(() => {
-    if (isConnected && hasJoinedRoom && sessionId) {
-      const timeoutId = setTimeout(() => {
-        if (socket && sessionId && socket.readyState === WebSocket.OPEN) {
-          if (currentItem) {
-            socket.send(
-              JSON.stringify({
-                type: "changeAssessmentItem",
-                item: currentItem,
-                sessionId,
-              })
-            );
-          }
-
-          if (Object.keys(formData).length > 0) {
-            socket.send(
-              JSON.stringify({
-                type: "updateFormData",
-                formData,
-                sessionId,
-              })
-            );
-          }
-        }
-      }, 500);
-
-      return () => clearTimeout(timeoutId);
-    }
-  }, [isConnected, hasJoinedRoom, sessionId, socket, currentItem, formData]);
+  const sendMessage = (message: string) => {
+    socket?.send(message);
+  };
 
   return (
-    <SocketContext.Provider
+    <SocketStateContext.Provider
       value={{
         socket,
         isConnected,
@@ -267,21 +261,34 @@ export default function SocketProvider({
         formData,
         qrData,
         isPersisting,
-        updateFormData,
-        updateCurrentItem,
-        saveSessionManually,
-        sendMessage: (message) => socket?.send(message),
       }}
     >
-      {children}
-    </SocketContext.Provider>
+      <SocketDispatchContext.Provider
+        value={{
+          updateFormData,
+          updateCurrentItem,
+          saveSessionManually,
+          sendMessage,
+        }}
+      >
+        {!isConnected && <AlertFail isConnected={!isConnected} />}
+
+        {children}
+      </SocketDispatchContext.Provider>
+    </SocketStateContext.Provider>
   );
 }
 
-export function useSocketContext() {
-  const context = useContext(SocketContext);
-  if (!context) {
-    throw new Error("useSocketContext must be used within a SocketProvider");
-  }
-  return context;
+export function useSocketState() {
+  const ctx = useContext(SocketStateContext);
+  if (!ctx)
+    throw new Error("useSocketState must be used within SocketProvider");
+  return ctx;
+}
+
+export function useSocketDispatch() {
+  const ctx = useContext(SocketDispatchContext);
+  if (!ctx)
+    throw new Error("useSocketDispatch must be used within SocketProvider");
+  return ctx;
 }

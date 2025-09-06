@@ -1,9 +1,9 @@
 import React from "react";
-import { Box, Chip } from "@mui/joy";
-import { useSocketContext } from "@/context/SocketProvider";
+import {Box, Chip} from "@mui/joy";
+import {useSocketState} from "@/context/SocketProvider";
 
 export default function PageStatus() {
-  const { isConnected } = useSocketContext();
+  const {isConnected} = useSocketState();
   return (
     <Box
       sx={{
