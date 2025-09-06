@@ -13,6 +13,12 @@ const rooms: Record<string, Set<WebSocket>> = {};
 const roomDeletionTimers: Record<string, NodeJS.Timeout> = {};
 const ROOM_GRACE_PERIOD = 5 * 60 * 1000;
 
+// patient list as a record for reliable lookup and removal
+const patientList: Record<string, {patientId: string; patientName: string}> =
+  {};
+// Map WebSocket to patientId for disconnect cleanup
+const wsToPatientId: Map<WebSocket, string> = new Map();
+
 // session room data
 const roomCurrentItems: Record<string, unknown> = {};
 const roomFormData: Record<string, unknown> = {};
@@ -37,12 +43,7 @@ const broadcastQrData = (qrData: string, sessionId: string) => {
     sessionId,
   });
 
-  // broadcastToRoom(sessionId, message);
-  wss.clients.forEach((client) => {
-    if (client.readyState === WebSocket.OPEN) {
-      client.send(message);
-    }
-  });
+  broadcastToRoom(sessionId, message);
 };
 
 // assessment item changes to all connected clients in a room
@@ -150,14 +151,33 @@ wss.on("connection", (ws) => {
       const data = JSON.parse(message.toString());
 
       switch (data.type) {
+        case "addPatient": {
+          const {patientName, patientId} = data;
+          patientList[patientId] = {patientId, patientName};
+          wsToPatientId.set(ws, patientId);
+
+          joinRoom(ws, patientId);
+          ws.send(
+            JSON.stringify({
+              type: "patientAdded",
+              patientId,
+              patientName: data.patientName,
+            })
+          );
+
+          wss.clients.forEach((client) => {
+            if (client.readyState === WebSocket.OPEN) {
+              client.send(
+                JSON.stringify({type: "updatePatientList", patientList})
+              );
+            }
+          });
+          break;
+        }
         case "joinRoom":
           joinRoom(ws, data.roomId);
           ws.send(JSON.stringify({type: "joinedRoom", roomId: data.roomId}));
           sendRoomState(ws, data.roomId);
-          break;
-        case "leaveRoom":
-          leaveRoom(ws, data.roomId);
-          ws.send(JSON.stringify({type: "leftRoom", roomId: data.roomId}));
           break;
         case "sendQrData":
           broadcastQrData(data.qrData, data.sessionId);
@@ -171,7 +191,10 @@ wss.on("connection", (ws) => {
         case "requestRoomState":
           sendRoomState(ws, data.roomId);
           break;
-
+        case "requestPatientList": {
+          ws.send(JSON.stringify({type: "updatePatientList", patientList}));
+          break;
+        }
         default:
           console.log("Unknown message type:", data.type);
       }

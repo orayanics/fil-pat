@@ -12,8 +12,8 @@ import {
 import useWebSocket from "@/lib/useWebSocket";
 
 import type {
-  SocketState,
   SocketDispatch,
+  SocketState,
   AssessmentItem,
 } from "@/models/context";
 
@@ -41,6 +41,9 @@ export default function SocketProvider({
     qrData: string;
     sessionId: string;
   } | null>(null);
+  const [patientList, setPatientList] = useState<
+    Record<string, {patientId: string; patientName: string}>
+  >({});
 
   const [pendingFormData, setPendingFormData] = useState<Record<
     string,
@@ -101,6 +104,11 @@ export default function SocketProvider({
           case "updateFormData":
             setFormData(data.formData || {});
             break;
+          case "updatePatientList":
+            if (data.patientList && typeof data.patientList === "object") {
+              setPatientList(data.patientList);
+            }
+            break;
           case "joinedRoom":
             setHasJoinedRoom(true);
             socket.send(
@@ -115,7 +123,10 @@ export default function SocketProvider({
             break;
         }
       } catch (error) {
-        console.error("Error parsing WebSocket message:", error);
+        console.error(
+          "Error parsing WebSocket message from SocketProvider:",
+          error
+        );
       }
     };
 
@@ -260,6 +271,10 @@ export default function SocketProvider({
         currentItem,
         formData,
         qrData,
+        patientList: patientList as Record<
+          string,
+          {patientId: string; patientName: string}
+        >,
         isPersisting,
       }}
     >

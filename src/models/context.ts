@@ -1,3 +1,14 @@
+export type Patient = {
+  patientId: string;
+  patientName: string;
+};
+
+export interface RoomsListProps {
+  patientList: Record<string, Patient>;
+  sendingQr: string | null;
+  handleSendQr: (patientId: string) => void;
+  handleJoinRoom: (patientId: string) => void;
+}
 export type SocketState = {
   socket: WebSocket | null;
   isConnected: boolean;
@@ -5,6 +16,7 @@ export type SocketState = {
   currentItem: AssessmentItem | null;
   formData: Record<string, unknown>;
   qrData: {qrData: string; sessionId: string} | null;
+  patientList: Record<string, {patientId: string; patientName: string}>;
   isPersisting: boolean;
 };
 

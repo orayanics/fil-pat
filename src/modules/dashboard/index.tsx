@@ -1,10 +1,9 @@
 import SocketProvider from "@/context/SocketProvider";
-import DashboardQR from "./DashboardQR";
-
+import DashboardRooms from "./DashboardRooms";
 export default function Index() {
   return (
     <SocketProvider>
-      <DashboardQR />
+      <DashboardRooms />
     </SocketProvider>
   );
 }

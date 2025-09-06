@@ -1,5 +1,4 @@
-import SocketProvider from "@/context/SocketProvider";
-
+import {PatientProvider} from "@/context/PatientProvider";
 export default function layout({children}: {children: React.ReactNode}) {
-  return <SocketProvider>{children}</SocketProvider>;
+  return <PatientProvider>{children}</PatientProvider>;
 }
