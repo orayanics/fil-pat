@@ -63,13 +63,15 @@ export function useSessionForm(currentItemId?: number) {
     setFormDataMap((prev) => {
       const newMap = new Map(prev);
       newMap.set(currentItemId as number, updatedData);
-
-      if (needsContextUpdate) {
-        updateContextFormData(Object.fromEntries(newMap));
-      }
-
       return newMap;
     });
+
+    if (needsContextUpdate) {
+      // update context after local state update
+      const newMap = new Map(formDataMap);
+      newMap.set(currentItemId as number, updatedData);
+      updateContextFormData(Object.fromEntries(newMap));
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentItemId, contextFormData, sampleData, updateContextFormData]);
 
