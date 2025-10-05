@@ -1,8 +1,4 @@
-import {
-  HomeRounded,
-  GroupRounded,
-  SettingsRounded,
-} from "@mui/icons-material";
+import { HomeRounded, GroupRounded } from "@mui/icons-material";
 
 export const PrivateList = [
   {
@@ -14,10 +10,5 @@ export const PrivateList = [
     title: "Users",
     icon: <GroupRounded />,
     href: "/users",
-  },
-  {
-    title: "Settings",
-    icon: <SettingsRounded />,
-    href: "/settings",
   },
 ];

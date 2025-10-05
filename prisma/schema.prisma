@@ -1,0 +1,468 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// Clinicians Table
+model Clinician {
+  clinician_id            Int       @id @default(autoincrement())
+  username                String    @unique
+  email                   String    @unique
+  password_hash           String
+  
+  // Personal Information
+  first_name              String
+  last_name               String
+  middle_name             String?
+  date_of_birth           DateTime?
+  age                     Int?
+  gender                  String?
+  phone                   String?
+  mobile                  String?
+  address                 String?
+  city                    String?
+  state_province          String?
+  postal_code             String?
+  country                 String    @default("Philippines")
+  
+  // Professional Information
+  license_number          String?
+  license_expiry_date     DateTime?
+  specialization          String?
+  qualification           String?
+  years_of_experience     Int?
+  institution             String?
+  
+  // System Information
+  is_admin                Boolean   @default(false)
+  is_active               Boolean   @default(true)
+  last_login              DateTime?
+  password_changed_at     DateTime?
+  profile_picture_path    String?
+  
+  // Audit Fields
+  created_at              DateTime  @default(now())
+  updated_at              DateTime  @updatedAt
+  created_by              Int?
+  
+  // Relations
+  created_by_clinician    Clinician? @relation("ClinicianCreatedBy", fields: [created_by], references: [clinician_id])
+  created_clinicians      Clinician[] @relation("ClinicianCreatedBy")
+  patients                Patient[]
+  sessions                AssessmentSession[]
+  reports                 Report[]
+  activity_logs           ActivityLog[]
+  assessment_templates    AssessmentTemplate[]
+  websocket_connections   WebSocketConnection[]
+  app_settings_updates    AppSetting[]
+  file_attachments        FileAttachment[]
+  
+  @@map("clinicians")
+}
+
+// Patients Table
+model Patient {
+  patient_id              Int       @id @default(autoincrement())
+  first_name              String
+  last_name               String
+  middle_name             String?
+  date_of_birth           DateTime
+  age                     Int?
+  gender                  String?
+  phone                   String?
+  email                   String?
+  address                 String?
+  city                    String?
+  state_province          String?
+  postal_code             String?
+  
+  // Guardian Information
+  guardian_name           String?
+  guardian_phone          String?
+  guardian_email          String?
+  guardian_relationship   String?
+  
+  // Medical Information
+  medical_history         String?
+  allergies               String?
+  medications             String?
+  special_needs           String?
+  preferred_language      String    @default("Filipino")
+  
+  // Clinical Assignment
+  assigned_clinician_id   Int?
+  
+  // Additional Notes
+  notes                   String?
+  emergency_contact_name  String?
+  emergency_contact_phone String?
+  
+  // System Fields
+  is_active               Boolean   @default(true)
+  created_at              DateTime  @default(now())
+  updated_at              DateTime  @updatedAt
+  
+  // Relations
+  assigned_clinician      Clinician? @relation(fields: [assigned_clinician_id], references: [clinician_id])
+  sessions                AssessmentSession[]
+  reports                 Report[]
+  
+  @@map("patients")
+}
+
+// Assessment Templates
+model AssessmentTemplate {
+  template_id                 Int       @id @default(autoincrement())
+  name                        String
+  description                 String?
+  version                     String    @default("1.0")
+  is_default                  Boolean   @default(false)
+  is_for_kids                 Boolean   @default(false)
+  estimated_duration_minutes  Int       @default(60)
+  difficulty_level            String    @default("Standard")
+  
+  // Template Settings
+  allow_skip_items            Boolean   @default(false)
+  randomize_items             Boolean   @default(false)
+  show_progress_bar           Boolean   @default(true)
+  enable_audio_recording      Boolean   @default(true)
+  
+  // System Fields
+  created_by                  Int
+  is_active                   Boolean   @default(true)
+  created_at                  DateTime  @default(now())
+  updated_at                  DateTime  @updatedAt
+  
+  // Relations
+  creator                     Clinician @relation(fields: [created_by], references: [clinician_id])
+  session_items               SessionItem[]
+  sessions                    AssessmentSession[]
+  
+  @@map("assessment_templates")
+}
+
+// Session Items
+model SessionItem {
+  item_id                 Int       @id @default(autoincrement())
+  template_id             Int?
+  item_number             Int
+  question                String
+  sound                   String?
+  ipa_key                 String?
+  consonant_group         String?
+  consonants_count        Int       @default(0)
+  vowels_count            Int       @default(0)
+  
+  // Media Content
+  image_url               String?
+  image_alt_text          String?
+  audio_prompt_path       String?
+  video_path              String?
+  
+  // Assessment Details
+  difficulty_level        String    @default("Medium")
+  expected_response       String?
+  scoring_criteria        String?
+  max_score               Float     @default(1.00)
+  time_limit_seconds      Int?
+  
+  // Display Properties
+  display_order           Int?
+  background_color        String?
+  text_size               String    @default("medium")
+  
+  // System Fields
+  is_active               Boolean   @default(true)
+  created_at              DateTime  @default(now())
+  updated_at              DateTime  @updatedAt
+  
+  // Relations
+  template                AssessmentTemplate? @relation(fields: [template_id], references: [template_id])
+  session_responses       SessionResponse[]
+  current_sessions        AssessmentSession[]
+  
+  @@map("session_items")
+}
+
+// Assessment Sessions
+model AssessmentSession {
+  session_id              Int       @id @default(autoincrement())
+  session_uuid            String    @unique
+  patient_id              Int
+  clinician_id            Int
+  template_id             Int
+  
+  // Session Details
+  session_name            String?
+  session_date            DateTime
+  start_time              DateTime?
+  end_time                DateTime?
+  duration_minutes        Int?
+  
+  // Session Configuration
+  session_type            String    @default("Assessment")
+  session_mode            String    @default("Standard")
+  is_practice_session     Boolean   @default(false)
+  
+  // Progress Tracking
+  status                  String    @default("Scheduled")
+  current_item_id         Int?
+  total_items             Int?
+  completed_items         Int       @default(0)
+  skipped_items           Int       @default(0)
+  
+  // Scoring
+  overall_score           Float?
+  total_possible_score    Float?
+  percentage_score        Float?
+  
+  // Network Information
+  clinician_ip            String?
+  patient_ip              String?
+  websocket_room_id       String?
+  
+  // Session Notes
+  pre_session_notes       String?
+  post_session_notes      String?
+  session_summary         String?
+  recommendations         String?
+  
+  // System Fields
+  created_at              DateTime  @default(now())
+  updated_at              DateTime  @updatedAt
+  
+  // Relations
+  patient                 Patient   @relation(fields: [patient_id], references: [patient_id])
+  clinician               Clinician @relation(fields: [clinician_id], references: [clinician_id])
+  template                AssessmentTemplate @relation(fields: [template_id], references: [template_id])
+  current_item            SessionItem? @relation(fields: [current_item_id], references: [item_id])
+  responses               SessionResponse[]
+  reports                 Report[]
+  websocket_connections   WebSocketConnection[]
+  
+  @@map("assessment_sessions")
+}
+
+// Session Responses
+model SessionResponse {
+  response_id             Int       @id @default(autoincrement())
+  session_id              Int
+  session_item_id         Int
+  
+  // Response Data
+  response_text           String?
+  response_audio_path     String?
+  response_timestamp      DateTime  @default(now())
+  time_taken_seconds      Int?
+  
+  // Scoring
+  is_correct              Boolean?
+  score                   Float?
+  max_possible_score      Float?
+  scoring_method          String?
+  
+  // Analysis
+  phoneme_analysis        String?
+  error_patterns          String?
+  clinician_notes         String?
+  
+  // Attempt Tracking
+  attempt_number          Int       @default(1)
+  is_final_attempt        Boolean   @default(true)
+  
+  // Relations
+  session                 AssessmentSession @relation(fields: [session_id], references: [session_id], onDelete: Cascade)
+  session_item            SessionItem @relation(fields: [session_item_id], references: [item_id])
+  
+  @@map("session_responses")
+}
+
+// Reports
+model Report {
+  report_id               Int       @id @default(autoincrement())
+  patient_id              Int
+  session_id              Int?
+  clinician_id            Int
+  
+  // Report Details
+  report_type             String
+  title                   String
+  subtitle                String?
+  report_date             DateTime  @default(now())
+  date_range_start        DateTime?
+  date_range_end          DateTime?
+  
+  // Content
+  executive_summary       String?
+  content                 String?
+  findings                String?
+  recommendations         String?
+  next_steps              String?
+  
+  // Report Metadata
+  report_version          String    @default("1.0")
+  template_used           String?
+  generated_automatically Boolean   @default(false)
+  
+  // File Management
+  pdf_path                String?
+  word_doc_path           String?
+  excel_data_path         String?
+  
+  // Status and Approval
+  is_finalized            Boolean   @default(false)
+  finalized_by            Int?
+  finalized_at            DateTime?
+  requires_approval       Boolean   @default(false)
+  approved_by             Int?
+  approved_at             DateTime?
+  
+  // System Fields
+  generated_at            DateTime  @default(now())
+  updated_at              DateTime  @updatedAt
+  
+  // Relations
+  patient                 Patient   @relation(fields: [patient_id], references: [patient_id])
+  session                 AssessmentSession? @relation(fields: [session_id], references: [session_id])
+  clinician               Clinician @relation(fields: [clinician_id], references: [clinician_id])
+  
+  @@map("reports")
+}
+
+// Activity Logs
+model ActivityLog {
+  log_id                  Int       @id @default(autoincrement())
+  user_id                 Int?
+  user_type               String    @default("clinician")
+  
+  // Action Details
+  action                  String
+  action_category         String?
+  entity_type             String?
+  entity_id               Int?
+  
+  // Change Tracking
+  old_values              String?
+  new_values              String?
+  
+  // Technical Details
+  ip_address              String?
+  user_agent              String?
+  session_uuid            String?
+  websocket_connection_id String?
+  
+  // Context
+  description             String?
+  severity_level          String    @default("info")
+  
+  // Additional Metadata
+  duration_ms             Int?
+  success                 Boolean   @default(true)
+  error_message           String?
+  
+  timestamp               DateTime  @default(now())
+  
+  // Relations
+  user                    Clinician? @relation(fields: [user_id], references: [clinician_id])
+  
+  @@map("activity_logs")
+}
+
+// App Settings
+model AppSetting {
+  setting_id              Int       @id @default(autoincrement())
+  setting_key             String    @unique
+  setting_value           String?
+  setting_type            String    @default("string")
+  category                String    @default("general")
+  
+  // Setting Metadata
+  display_name            String?
+  description             String?
+  default_value           String?
+  validation_rule         String?
+  
+  // Access Control
+  is_user_configurable    Boolean   @default(true)
+  requires_admin          Boolean   @default(false)
+  requires_restart        Boolean   @default(false)
+  
+  // Audit
+  updated_by              Int?
+  updated_at              DateTime  @default(now())
+  
+  // Relations
+  updated_by_clinician    Clinician? @relation(fields: [updated_by], references: [clinician_id])
+  
+  @@map("app_settings")
+}
+
+// File Attachments
+model FileAttachment {
+  attachment_id           Int       @id @default(autoincrement())
+  entity_type             String
+  entity_id               Int
+  
+  // File Information
+  file_name               String
+  original_name           String
+  file_path               String
+  file_size               Int?
+  file_type               String?
+  mime_type               String?
+  file_extension          String?
+  
+  // File Metadata
+  is_primary              Boolean   @default(false)
+  display_order           Int       @default(0)
+  alt_text                String?
+  description             String?
+  
+  // Processing Status
+  is_processed            Boolean   @default(true)
+  processing_status       String?
+  thumbnail_path          String?
+  
+  // Access Control
+  is_public               Boolean   @default(false)
+  uploaded_by             Int?
+  uploaded_at             DateTime  @default(now())
+  
+  // Relations
+  uploader                Clinician? @relation(fields: [uploaded_by], references: [clinician_id])
+  
+  @@map("file_attachments")
+}
+
+// WebSocket Connections
+model WebSocketConnection {
+  connection_id           Int       @id @default(autoincrement())
+  connection_uuid         String    @unique
+  session_id              Int?
+  user_id                 Int?
+  user_type               String    @default("clinician")
+  
+  // Connection Details
+  ip_address              String?
+  user_agent              String?
+  connection_status       String    @default("active")
+  
+  // Session Context
+  room_id                 String?
+  role_in_session         String?
+  
+  // Timestamps
+  connected_at            DateTime  @default(now())
+  disconnected_at         DateTime?
+  last_activity           DateTime  @default(now())
+  
+  // Relations
+  session                 AssessmentSession? @relation(fields: [session_id], references: [session_id])
+  user                    Clinician? @relation(fields: [user_id], references: [clinician_id])
+  
+  @@map("websocket_connections")
+}

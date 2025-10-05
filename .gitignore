@@ -22,6 +22,7 @@
 
 # build output
 /dist
+dist-electron
 
 # misc
 .DS_Store
@@ -42,3 +43,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# github
+.github
+
+# vscode
+.vscode

@@ -9,32 +9,84 @@
     "fullstack": "concurrently \"npm run dev:next\" \"npm run dev:websocket\"",
     "build": "next build && tsc --project tsconfig.server.json",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "db:generate": "prisma generate",
+    "db:push": "prisma db push",
+    "db:migrate": "prisma migrate dev",
+    "db:seed": "tsx src/lib/database/seed.ts",
+    "db:studio": "prisma studio",
+    "db:reset": "prisma migrate reset && npm run db:seed",
+    "build:electron": "tsc -p tsconfig.electron.json",
+    "dev:electron": "npm run build:electron && electron dist-electron/main.js",
+    "dist": "npm run build && npm run build:electron && electron-builder",
+    "clean:dist": "taskkill /F /IM electron.exe || exit 0 && rd /s /q release",
+    "rebuild:dist": "npm run clean:dist && npm run build && npm run build:electron && npm run dist",
+    "dev:electron:watch": "tsc -p tsconfig.electron.json --watch",
+    "dev:electron:start": "nodemon --config nodemon.electron.json",
+    "dev:electron:full": "concurrently \"npm run dev:electron:watch\" \"npm run dev:electron:start\""
   },
   "dependencies": {
+    "@emotion/cache": "^11.14.0",
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
     "@mui/icons-material": "^7.2.0",
     "@mui/joy": "^5.0.0-beta.52",
+    "@prisma/client": "^5.22.0",
     "@types/ws": "^8.18.1",
+    "bcryptjs": "^2.4.3",
+    "better-sqlite3": "^12.2.0",
+    "cookie": "^0.6.0",
+    "jsonwebtoken": "^9.0.2",
     "next": "15.3.5",
     "nodemon": "^3.1.10",
     "qrcode": "^1.5.4",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "react-to-pdf": "^2.0.1",
     "ws": "^8.18.3"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
     "@tailwindcss/postcss": "^4",
+    "@types/bcrypt": "^6.0.0",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/cookie": "^0.6.0",
+    "@types/jsonwebtoken": "^9.0.7",
     "@types/node": "^20",
     "@types/qrcode": "^1.5.5",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "concurrently": "^9.2.0",
+    "electron": "^37.2.4",
+    "electron-builder": "^26.0.12",
     "eslint": "^9",
     "eslint-config-next": "15.3.5",
+    "prisma": "^5.22.0",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "ts-node": "^10.9.2",
+    "tsx": "^4.19.2",
+    "typescript": "^5.8.3"
+  },
+  "build": {
+    "appId": "com.filpath.app",
+    "productName": "FilPath",
+    "files": [
+      "dist/",
+      "dist-electron/",
+      "main.js",
+      "package.json"
+    ],
+    "extraMetadata": {
+      "main": "dist-electron/main.js"
+    },
+    "directories": {
+      "output": "release"
+    },
+    "win": {
+      "target": "portable",
+      "icon": "assets/icons/icon",
+      "forceCodeSigning": false
+    }
   }
 }

@@ -1,9 +1,9 @@
-import DashboardQR from "./DashboardQR";
-
-export default function index() {
+import SocketProvider from "@/context/SocketProvider";
+import DashboardRooms from "./DashboardRooms";
+export default function Index() {
   return (
-    <>
-      <DashboardQR />
-    </>
+    <SocketProvider>
+      <DashboardRooms />
+    </SocketProvider>
   );
 }

@@ -1,3 +1,3 @@
-import { useWebSocket } from "./useWebSocket";
+import useWebSocket from "./useWebSocket";
 
 export { useWebSocket };
