@@ -1,41 +1,44 @@
-import Database from 'better-sqlite3';
-import path from 'path';
-import fs from 'fs';
-import bcrypt from 'bcryptjs';
+import { PrismaClient } from "@prisma/client";
+import bcrypt from "bcrypt";
 
-const dbPath = path.join(__dirname, 'localdata', 'clinician.sqlite3');
-fs.mkdirSync(path.dirname(dbPath), { recursive: true });
+const prisma = new PrismaClient();
 
-const db = new Database(dbPath);
+// --- Register a new clinician ---
+export async function registerClinician(username: string, password: string) {
+  // Hash password before saving
+  const password_hash = await bcrypt.hash(password, 10);
 
-db.exec(`
-  CREATE TABLE IF NOT EXISTS clinicians (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    username TEXT UNIQUE NOT NULL,
-    password TEXT NOT NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  );
-`);
-
-type Clinician = {
-  id: number;
-  username: string;
-  password: string;
-  created_at: string;
-};
-
-export function registerClinician(username: string, password: string) {
-  const hashedPassword = bcrypt.hashSync(password, 10);
-  const stmt = db.prepare(`INSERT INTO clinicians (username, password) VALUES (?, ?)`);
-  stmt.run(username, hashedPassword);
+  return await prisma.clinician.create({
+    data: {
+      username,
+      email: `${username}@example.com`, // placeholder, adjust later
+      password_hash,
+      first_name: "New",
+      last_name: "Clinician",
+      is_active: true,
+      created_by: null, // since created_by is Int?
+    },
+  });
 }
 
-export function loginClinician(username: string, password: string): Clinician | null {
-  const stmt = db.prepare(`SELECT * FROM clinicians WHERE username = ?`);
-  const user = stmt.get(username) as Clinician | undefined;
+// --- Login existing clinician ---
+export async function loginClinician(username: string, password: string) {
+  const user = await prisma.clinician.findUnique({
+    where: { username },
+  });
 
-  if (user && bcrypt.compareSync(password, user.password)) {
-    return user;
-  }
-  return null;
+  if (!user) return null;
+
+  const passwordValid = await bcrypt.compare(password, user.password_hash);
+  if (!passwordValid) return null;
+
+  // Optionally, update last_login
+  await prisma.clinician.update({
+    where: { clinician_id: user.clinician_id },
+    data: { last_login: new Date() },
+  });
+
+  // Remove hash before returning
+  const { password_hash, ...safeUser } = user;
+  return safeUser;
 }
