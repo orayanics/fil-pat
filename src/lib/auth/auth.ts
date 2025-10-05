@@ -1,8 +1,9 @@
-import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
+import * as bcrypt from 'bcryptjs';
+import * as jwt from 'jsonwebtoken';
+import { JwtPayload } from 'jsonwebtoken';
 import { prisma } from '../database/client';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
+const JWT_SECRET = process.env.JWT_SECRET || 'filpat';
 const JWT_EXPIRES_IN = '24h';
 
 export interface AuthUser {
@@ -36,10 +37,10 @@ export function generateToken(user: AuthUser): string {
   );
 }
 
-export function verifyToken(token: string): any {
+export function verifyToken(token: string): JwtPayload | null {
   try {
-    return jwt.verify(token, JWT_SECRET);
-  } catch (error) {
+    return jwt.verify(token, JWT_SECRET) as JwtPayload;
+  } catch {
     return null;
   }
 }
@@ -48,35 +49,26 @@ export async function authenticateUser(username: string, password: string): Prom
   try {
     const clinician = await prisma.clinician.findFirst({
       where: {
-        OR: [
-          { username: username },
-          { email: username }
-        ],
-        is_active: true
-      }
+        OR: [{ username }, { email: username }],
+        is_active: true,
+      },
     });
 
-    if (!clinician) {
-      return null;
-    }
+    if (!clinician) return null;
 
     const isValidPassword = await verifyPassword(password, clinician.password_hash);
-    if (!isValidPassword) {
-      return null;
-    }
+    if (!isValidPassword) return null;
 
-    // Update last login
     await prisma.clinician.update({
       where: { clinician_id: clinician.clinician_id },
-      data: { last_login: new Date() }
+      data: { last_login: new Date() },
     });
 
-    // Log successful login
     await logActivity({
       user_id: clinician.clinician_id,
       action: 'login',
       description: `Successful login for user: ${clinician.username}`,
-      success: true
+      success: true,
     });
 
     return {
@@ -86,7 +78,7 @@ export async function authenticateUser(username: string, password: string): Prom
       first_name: clinician.first_name,
       last_name: clinician.last_name,
       is_admin: clinician.is_admin,
-      is_active: clinician.is_active
+      is_active: clinician.is_active,
     };
   } catch (error) {
     console.error('Authentication error:', error);
@@ -100,8 +92,8 @@ interface LogActivityParams {
   entity_type?: string;
   entity_id?: number;
   description?: string;
-  old_values?: any;
-  new_values?: any;
+  old_values?: unknown;
+  new_values?: unknown;
   ip_address?: string;
   user_agent?: string;
   session_uuid?: string;
@@ -109,7 +101,7 @@ interface LogActivityParams {
   error_message?: string;
 }
 
-export async function logActivity(params: LogActivityParams) {
+export async function logActivity(params: LogActivityParams): Promise<void> {
   try {
     await prisma.activityLog.create({
       data: {
@@ -125,7 +117,7 @@ export async function logActivity(params: LogActivityParams) {
         session_uuid: params.session_uuid,
         success: params.success ?? true,
         error_message: params.error_message,
-      }
+      },
     });
   } catch (error) {
     console.error('Failed to log activity:', error);

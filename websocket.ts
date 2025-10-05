@@ -1,7 +1,7 @@
 import { WebSocketServer, WebSocket } from "ws";
 import { prisma } from "./src/lib/database/client";
 import { logActivity } from "./src/lib/auth/auth";
-import QRCode from "qrcode";
+import * as QRCode from "qrcode";
 
 const port = process.env.WEBSOCKET_PORT
   ? parseInt(process.env.WEBSOCKET_PORT, 10)
@@ -13,7 +13,7 @@ const wss = new WebSocketServer({ port, host });
 
 // Enhanced room management with database tracking
 const rooms: Record<string, Set<WebSocket>> = {};
-const roomCurrentItems: Record<string, any> = {};
+const roomCurrentItems: Record<string, SessionItemData> = {};
 const connectionMap: Map<WebSocket, { 
   connectionId: string;
   userId?: number;
@@ -21,53 +21,76 @@ const connectionMap: Map<WebSocket, {
   sessionId?: string;
   roomId?: string;
   ipAddress?: string;
+  last_activity?: Date; 
 }> = new Map();
 
 // =============================================
 // DATABASE HELPERS
 // =============================================
 
-async function createWebSocketConnection(ws: WebSocket, data: any) {
+interface WebSocketConnectionData {
+  sessionId?: string;
+  userId?: number;
+  userType?: string;
+  ipAddress?: string;
+  userAgent?: string;
+  roomId?: string;
+  role?: string;
+}
+
+async function createWebSocketConnection(ws: WebSocket, data: WebSocketConnectionData) {
   try {
     const connectionId = Math.random().toString(36).substring(2, 15);
-    
+
     const connection = await prisma.webSocketConnection.create({
       data: {
         connection_uuid: connectionId,
         session_id: data.sessionId ? parseInt(data.sessionId) : null,
-        user_id: data.userId || null,
-        user_type: data.userType || 'clinician',
+        user_id: data.userId ?? null,
+        user_type: data.userType ?? "clinician",
         ip_address: data.ipAddress,
         user_agent: data.userAgent,
         room_id: data.roomId,
-        role_in_session: data.role || 'participant'
-      }
+        role_in_session: data.role ?? "participant",
+      },
     });
 
     connectionMap.set(ws, {
       connectionId,
       userId: data.userId,
-      userType: data.userType || 'clinician',
+      userType: data.userType ?? "clinician",
       sessionId: data.sessionId,
       roomId: data.roomId,
-      ipAddress: data.ipAddress
+      ipAddress: data.ipAddress,
     });
 
     await logActivity({
       user_id: data.userId,
-      action: 'websocket_connect',
-      description: `WebSocket connection established for ${data.userType}`,
+      action: "websocket_connect",
+      description: `WebSocket connection established for ${data.userType ?? "clinician"}`,
       session_uuid: connectionId,
-      ip_address: data.ipAddress
+      ip_address: data.ipAddress,
     });
 
     return connection;
   } catch (error) {
-    console.error('Failed to create WebSocket connection record:', error);
+    console.error("Failed to create WebSocket connection record:", error);
   }
 }
 
-async function updateWebSocketConnection(ws: WebSocket, updates: any) {
+
+interface WebSocketConnectionUpdates {
+  session_id?: number | null;
+  user_id?: number | null;
+  user_type?: string;
+  ip_address?: string;
+  user_agent?: string;
+  room_id?: string;
+  role_in_session?: string;
+  last_activity?: Date;
+}
+
+async function updateWebSocketConnection(ws: WebSocket, updates: WebSocketConnectionUpdates) {
   try {
     const connectionData = connectionMap.get(ws);
     if (!connectionData) return;
@@ -76,19 +99,21 @@ async function updateWebSocketConnection(ws: WebSocket, updates: any) {
       where: { connection_uuid: connectionData.connectionId },
       data: {
         ...updates,
-        last_activity: new Date()
-      }
+        last_activity: new Date(), // always update this field
+      },
     });
 
-    // Update local connection map
+    // Merge the updates into the in-memory map
     connectionMap.set(ws, {
       ...connectionData,
-      ...updates
+      ...updates,
+      last_activity: new Date(),
     });
   } catch (error) {
-    console.error('Failed to update WebSocket connection:', error);
+    console.error("Failed to update WebSocket connection:", error);
   }
 }
+
 
 async function removeWebSocketConnection(ws: WebSocket) {
   try {
@@ -117,120 +142,168 @@ async function removeWebSocketConnection(ws: WebSocket) {
   }
 }
 
-async function createOrUpdateAssessmentSession(data: any) {
+interface AssessmentSessionInput {
+  sessionId: string;
+  roomId?: string;
+  clinicianId?: number;
+  patientId?: number;
+  isKidsMode?: boolean;
+}
+
+async function createOrUpdateAssessmentSession(data: AssessmentSessionInput) {
   try {
     // Check if session already exists
     let session = await prisma.assessmentSession.findUnique({
-      where: { session_uuid: data.sessionId }
+      where: { session_uuid: data.sessionId },
     });
 
     if (!session) {
       // Get default template
       const template = await prisma.assessmentTemplate.findFirst({
         where: { is_default: true },
-        include: { session_items: true }
+        include: { session_items: true },
       });
 
       if (!template) {
-        throw new Error('No default template found');
+        throw new Error("No default template found");
       }
 
       session = await prisma.assessmentSession.create({
         data: {
           session_uuid: data.sessionId,
-          patient_id: data.patientId || 1, // Temporary - will be updated when patient joins
-          clinician_id: data.clinicianId || 1,
+          patient_id: data.patientId ?? 1, // Temporary placeholder
+          clinician_id: data.clinicianId ?? 1,
           template_id: template.template_id,
           session_name: `Session ${data.sessionId}`,
           session_date: new Date(),
-          session_mode: data.isKidsMode ? 'Kids' : 'Standard',
-          status: 'Scheduled',
+          session_mode: data.isKidsMode ? "Kids" : "Standard",
+          status: "Scheduled",
           total_items: template.session_items.length,
-          websocket_room_id: data.roomId
-        }
+          websocket_room_id: data.roomId,
+        },
       });
 
       await logActivity({
         user_id: data.clinicianId,
-        action: 'create_session',
-        entity_type: 'assessment_session',
+        action: "create_session",
+        entity_type: "assessment_session",
         entity_id: session.session_id,
         description: `Created new assessment session: ${session.session_uuid}`,
-        new_values: { session_uuid: session.session_uuid, template_id: template.template_id }
+        new_values: {
+          session_uuid: session.session_uuid,
+          template_id: template.template_id,
+        },
       });
     }
 
     return session;
   } catch (error) {
-    console.error('Failed to create/update assessment session:', error);
+    console.error("Failed to create/update assessment session:", error);
     return null;
   }
 }
 
-async function updateSessionProgress(sessionId: string, itemData: any) {
+
+interface SessionItemData {
+  item: number;
+  question?: string;
+  [key: string]: unknown;
+}
+
+
+async function updateSessionProgress(sessionId: string, itemData: SessionItemData): Promise<void> {
   try {
     const session = await prisma.assessmentSession.findUnique({
-      where: { session_uuid: sessionId }
+      where: { session_uuid: sessionId },
     });
 
-    if (!session) return;
+    if (!session) {
+      console.warn(`Session not found for UUID: ${sessionId}`);
+      return;
+    }
 
     await prisma.assessmentSession.update({
       where: { session_uuid: sessionId },
       data: {
         current_item_id: itemData.item,
-        completed_items: itemData.item - 1, // Assuming sequential progression
-        status: 'In Progress'
-      }
+        completed_items: itemData.item > 0 ? itemData.item - 1 : 0, // ✅ Prevent negatives
+        status: "In Progress",
+      },
     });
 
     await logActivity({
       user_id: session.clinician_id,
-      action: 'update_session_progress',
-      entity_type: 'assessment_session',
+      action: "update_session_progress",
+      entity_type: "assessment_session",
       entity_id: session.session_id,
       description: `Session progress updated to item ${itemData.item}`,
-      new_values: { current_item: itemData.item }
+      new_values: { current_item: itemData.item },
     });
   } catch (error) {
-    console.error('Failed to update session progress:', error);
+    console.error("Failed to update session progress:", error);
   }
 }
 
-async function saveSessionResponse(sessionId: string, itemData: any, responseData: any) {
+
+interface SessionItemData {
+  item: number;
+  max_score?: number;
+}
+
+interface ResponseData {
+  response?: string;
+  audioPath?: string;
+  isCorrect?: boolean;
+  score?: number;
+  timeTaken?: number;
+  notes?: string;
+}
+
+async function saveSessionResponse(
+  sessionId: string,
+  itemData: SessionItemData,
+  responseData: ResponseData
+): Promise<void> {
   try {
     const session = await prisma.assessmentSession.findUnique({
-      where: { session_uuid: sessionId }
+      where: { session_uuid: sessionId },
     });
 
-    if (!session) return;
+    if (!session) {
+      console.warn(`Session not found for UUID: ${sessionId}`);
+      return;
+    }
 
     await prisma.sessionResponse.create({
       data: {
         session_id: session.session_id,
         session_item_id: itemData.item,
-        response_text: responseData.response,
-        response_audio_path: responseData.audioPath,
-        is_correct: responseData.isCorrect,
-        score: responseData.score,
-        max_possible_score: itemData.max_score || 1.0,
-        time_taken_seconds: responseData.timeTaken,
-        clinician_notes: responseData.notes
-      }
+        response_text: responseData.response ?? null,
+        response_audio_path: responseData.audioPath ?? null,
+        is_correct: responseData.isCorrect ?? null,
+        score: responseData.score ?? null,
+        max_possible_score: itemData.max_score ?? 1.0,
+        time_taken_seconds: responseData.timeTaken ?? null,
+        clinician_notes: responseData.notes ?? null,
+      },
     });
 
     await logActivity({
       user_id: session.clinician_id,
-      action: 'save_response',
-      entity_type: 'session_response',
+      action: "save_response",
+      entity_type: "session_response",
       entity_id: session.session_id,
       description: `Response saved for item ${itemData.item}`,
-      new_values: { item_id: itemData.item, score: responseData.score }
+      new_values: {
+        item_id: itemData.item,
+        score: responseData.score ?? null,
+      },
     });
   } catch (error) {
-    console.error('Failed to save session response:', error);
+    console.error("Failed to save session response:", error);
   }
 }
+
 
 // =============================================
 // ENHANCED BROADCASTING FUNCTIONS
@@ -276,27 +349,47 @@ const broadcastQrData = async (qrData: string, sessionId: string, clinicianId?: 
   });
 };
 
-const broadcastAssessmentItemChange = async (item: any, sessionId: string) => {
+interface AssessmentItem {
+  item: number;
+  question?: string;
+  max_score?: number;
+  [key: string]: unknown; // Allows extra optional fields
+}
+
+async function broadcastAssessmentItemChange(
+  item: AssessmentItem,
+  sessionId: string
+): Promise<void> {
+  // Update the in-memory room state
   roomCurrentItems[sessionId] = item;
 
   const message = JSON.stringify({
     type: "changeAssessmentItem",
     item,
     sessionId,
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
   });
 
+  // Broadcast to all clients in the same session room
   broadcastToRoom(sessionId, message);
 
-  // Update session progress in database
+  // Persist progress in the database
   await updateSessionProgress(sessionId, item);
-};
+}
+
 
 // =============================================
 // ENHANCED ROOM MANAGEMENT
 // =============================================
 
-const joinRoom = async (ws: WebSocket, roomId: string, userData?: any) => {
+interface UserData {
+  clinicianId?: number;
+  patientId?: number;
+  isKidsMode?: boolean;
+  role?: string;
+}
+
+const joinRoom = async (ws: WebSocket, roomId: string, userData?: UserData) => {
   const isNewRoom = !rooms[roomId];
 
   if (isNewRoom) {
@@ -315,7 +408,12 @@ const joinRoom = async (ws: WebSocket, roomId: string, userData?: any) => {
       });
       
       if (template && template.session_items.length > 0) {
-        roomCurrentItems[roomId] = template.session_items[0];
+        const firstItem = template.session_items[0];
+        roomCurrentItems[roomId] = {
+          item: firstItem.item_number || firstItem.item_id,
+          question: firstItem.question,
+          ...firstItem // keep all extra data
+        };
       }
     } catch (error) {
       console.error('Failed to load default session items:', error);
@@ -343,6 +441,8 @@ const joinRoom = async (ws: WebSocket, roomId: string, userData?: any) => {
 
   console.log(`Client joined room: ${roomId}, total clients: ${rooms[roomId].size}`);
 };
+
+
 
 const leaveRoom = async (ws: WebSocket, roomId: string) => {
   const clients = rooms[roomId];
@@ -405,8 +505,8 @@ wss.on("connection", async (ws, request) => {
         case "authenticate":
           // Update connection with user information
           await updateWebSocketConnection(ws, {
-            userId: data.userId,
-            userType: data.userType,
+            user_id: data.userId,
+            user_type: data.userType,
             role_in_session: data.role
           });
           

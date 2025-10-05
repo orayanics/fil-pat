@@ -17,13 +17,15 @@ export interface CreateClinicianData {
 
 export async function createClinician(data: CreateClinicianData): Promise<Clinician> {
   const password_hash = await hashPassword(data.password);
-  
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { password, ...rest } = data;
+
   const clinician = await prisma.clinician.create({
     data: {
-      ...data,
+      ...rest,
       password_hash,
-      password: undefined, // Remove plain password
-    }
+    },
   });
 
   await logActivity({
@@ -36,12 +38,13 @@ export async function createClinician(data: CreateClinicianData): Promise<Clinic
       clinician_id: clinician.clinician_id,
       username: clinician.username,
       email: clinician.email,
-      is_admin: clinician.is_admin
-    }
+      is_admin: clinician.is_admin,
+    },
   });
 
   return clinician;
 }
+
 
 export async function getAllClinicians(include_inactive = false) {
   return prisma.clinician.findMany({

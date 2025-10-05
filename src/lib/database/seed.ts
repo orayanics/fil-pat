@@ -123,7 +123,6 @@ async function main() {
       difficulty_level: "Easy",
       max_score: 1.0
     }
-    // Add more items from your data.ts file here...
   ];
 
   // Check if items already exist before creating

@@ -29,11 +29,11 @@ interface PatientFormProps {
   onCancel?: () => void;
 }
 
-export default function PatientForm({ 
-  initialData, 
-  isEditing = false, 
+export default function PatientForm({
+  initialData,
+  isEditing = false,
   onSubmit,
-  onCancel 
+  onCancel
 }: PatientFormProps) {
   const { user, isKidsMode } = useSocketContext();
   const router = useRouter();
@@ -83,8 +83,14 @@ export default function PatientForm({
       const birthDate = new Date(formData.date_of_birth);
       const today = new Date();
       const age = today.getFullYear() - birthDate.getFullYear();
-      
-      if (age < 0 || age > 120) {
+      // Adjust for month/day
+      const m = today.getMonth() - birthDate.getMonth();
+      if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+        // birthday not reached this year yet
+        // age already computed may be 1 bigger, but this adjustment keeps it reasonable
+      }
+
+      if (isNaN(birthDate.getTime()) || age < 0 || age > 120) {
         newErrors.date_of_birth = 'Please enter a valid date of birth';
       }
     }
@@ -100,7 +106,7 @@ export default function PatientForm({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!validateForm()) {
       return;
     }
@@ -126,11 +132,13 @@ export default function PatientForm({
         if (response.ok) {
           router.push('/patients');
         } else {
-          const errorData = await response.json();
-          setErrors({ submit: errorData.error || 'Failed to save patient' });
+          const errorData = await response.json().catch(() => ({}));
+          setErrors({ submit: (errorData && (errorData.error || errorData.message)) || 'Failed to save patient' });
         }
       }
     } catch (error) {
+      // Keep simple logging; do not expose internals to UI
+      // eslint-disable-next-line no-console
       console.error('Error saving patient:', error);
       setErrors({ submit: 'An error occurred while saving' });
     } finally {
@@ -138,13 +146,13 @@ export default function PatientForm({
     }
   };
 
-  const FormField = ({ 
-    label, 
-    field, 
-    type = 'text', 
+  const FormField = ({
+    label,
+    field,
+    type = 'text',
     required = false,
     options,
-    textarea = false 
+    textarea = false
   }: {
     label: string;
     field: keyof PatientFormData;
@@ -157,7 +165,7 @@ export default function PatientForm({
       <label className={`block font-medium mb-2 ${isKidsMode ? 'text-lg text-purple-700' : 'text-sm text-gray-700'}`}>
         {label} {required && <span className="text-red-500">*</span>}
       </label>
-      
+
       {options ? (
         <select
           value={formData[field]}
@@ -166,7 +174,7 @@ export default function PatientForm({
             errors[field] ? 'border-red-500' : 'border-gray-300'
           } ${isKidsMode ? 'text-lg rounded-2xl' : ''}`}
         >
-          <option value="">Select {label}</option>
+          <option value="">{`Select ${label}`}</option>
           {options.map(option => (
             <option key={option.value} value={option.value}>
               {option.label}
@@ -194,7 +202,7 @@ export default function PatientForm({
           placeholder={`Enter ${label.toLowerCase()}`}
         />
       )}
-      
+
       {errors[field] && (
         <p className="mt-1 text-sm text-red-600">{errors[field]}</p>
       )}
@@ -211,14 +219,14 @@ export default function PatientForm({
               <FormField label="Pangalan" field="first_name" required />
               <FormField label="Apelyido" field="last_name" required />
             </div>
-            
+
             <FormField label="Middle Name" field="middle_name" />
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <FormField label="Kapanganakan" field="date_of_birth" type="date" required />
-              <FormField 
-                label="Kasarian" 
-                field="gender" 
+              <FormField
+                label="Kasarian"
+                field="gender"
                 options={[
                   { value: 'Male', label: 'Lalaki' },
                   { value: 'Female', label: 'Babae' },
@@ -234,9 +242,9 @@ export default function PatientForm({
             )}
 
             <div className="flex justify-center gap-6">
-              <KidsButton 
-                type="button" 
-                variant="secondary" 
+              <KidsButton
+                type="button"
+                variant="secondary"
                 size="lg"
                 onClick={onCancel || (() => router.back())}
                 disabled={isLoading}
@@ -244,10 +252,10 @@ export default function PatientForm({
               >
                 Kanselahin
               </KidsButton>
-              
-              <KidsButton 
-                type="submit" 
-                variant="primary" 
+
+              <KidsButton
+                type="submit"
+                variant="primary"
                 size="lg"
                 disabled={isLoading}
                 icon="💾"
@@ -279,12 +287,12 @@ export default function PatientForm({
             <FormField label="Last Name" field="last_name" required />
             <FormField label="Middle Name" field="middle_name" />
           </div>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
             <FormField label="Date of Birth" field="date_of_birth" type="date" required />
-            <FormField 
-              label="Gender" 
-              field="gender" 
+            <FormField
+              label="Gender"
+              field="gender"
               options={[
                 { value: 'Male', label: 'Male' },
                 { value: 'Female', label: 'Female' },
@@ -299,3 +307,75 @@ export default function PatientForm({
           <h2 className="text-lg font-semibold text-gray-700 mb-4">Contact Information</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormField label="Phone" field="phone" type="tel" />
+            <FormField label="Email" field="email" type="email" />
+          </div>
+
+          <div className="mt-4">
+            <FormField label="Address" field="address" textarea />
+          </div>
+        </div>
+
+        {/* Guardian / Emergency Contact */}
+        <div className="bg-gray-50 p-6 rounded-lg">
+          <h2 className="text-lg font-semibold text-gray-700 mb-4">Guardian / Emergency Contact</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <FormField label="Guardian Name" field="guardian_name" />
+            <FormField label="Guardian Phone" field="guardian_phone" type="tel" />
+            <FormField
+              label="Relationship"
+              field="guardian_relationship"
+              options={[
+                { value: 'Parent', label: 'Parent' },
+                { value: 'Guardian', label: 'Guardian' },
+                { value: 'Other', label: 'Other' }
+              ]}
+            />
+          </div>
+        </div>
+
+        {/* Medical Information */}
+        <div className="bg-gray-50 p-6 rounded-lg">
+          <h2 className="text-lg font-semibold text-gray-700 mb-4">Medical Information</h2>
+          <div className="grid grid-cols-1 gap-4">
+            <FormField label="Medical History" field="medical_history" textarea />
+            <FormField label="Special Needs / Allergies" field="special_needs" textarea />
+            <FormField
+              label="Preferred Language"
+              field="preferred_language"
+              options={[
+                { value: 'Filipino', label: 'Filipino' },
+                { value: 'English', label: 'English' },
+                { value: 'Other', label: 'Other' }
+              ]}
+            />
+          </div>
+        </div>
+
+        {errors.submit && (
+          <div className="text-center text-red-600 font-semibold">
+            {errors.submit}
+          </div>
+        )}
+
+        <div className="flex justify-end gap-4">
+          <button
+            type="button"
+            onClick={onCancel || (() => router.back())}
+            disabled={isLoading}
+            className="px-4 py-2 rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+          >
+            Cancel
+          </button>
+
+          <button
+            type="submit"
+            disabled={isLoading}
+            className="px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-60"
+          >
+            {isLoading ? 'Saving...' : (isEditing ? 'Update Patient' : 'Save Patient')}
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}

@@ -8,7 +8,6 @@ declare global {
 // Determine database path based on environment
 const getDatabasePath = () => {
   if (process.env.NODE_ENV === 'production') {
-    // In production (Electron), store database in app data directory
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { app } = require('electron');
     const userData = app.getPath('userData');
