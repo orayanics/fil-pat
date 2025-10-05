@@ -1,16 +1,14 @@
 "use client";
+import { useSocketContext } from "@/context/SocketProvider";
 import {useRouter} from "next/navigation";
 import {Box, Card, Table, Button} from "@mui/joy";
-
 import RoomsList from "./RoomsList";
-
 import {useState} from "react";
-import {useSocketState, useSocketDispatch} from "@/context/SocketProvider";
 
 export default function DashboardRooms() {
   const router = useRouter();
-  const {patientList, socket, isConnected} = useSocketState();
-  const {sendMessage} = useSocketDispatch();
+  const socketContext = useSocketContext();
+  const { socket, isConnected, sendMessage, patientList } = socketContext;
   const [sendingQr, setSendingQr] = useState<string | null>(null);
 
   const handleSendQr = async (patientId: string) => {
@@ -19,13 +17,11 @@ export default function DashboardRooms() {
     try {
       const qrDataUri = await qrGenerateQrData(url);
       if (socket && socket.readyState === WebSocket.OPEN) {
-        sendMessage(
-          JSON.stringify({
-            type: "sendQrData",
-            qrData: qrDataUri,
-            sessionId: patientId,
-          })
-        );
+        sendMessage({
+          type: "sendQrData",
+          qrData: qrDataUri,
+          sessionId: patientId,
+        });
         alert("QR sent to patient!");
       }
     } catch (err) {
@@ -49,7 +45,7 @@ export default function DashboardRooms() {
 
   const handleRefreshList = () => {
     if (socket && socket.readyState === WebSocket.OPEN) {
-      sendMessage(JSON.stringify({type: "requestPatientList"}));
+      sendMessage({ type: "requestPatientList" });
     }
   };
 

@@ -29,7 +29,7 @@ export function createAuthMiddleware() {
     const isAdminRoute = adminRoutes.some(route => pathname.startsWith(route));
     
     if (isAdminRoute && !user.is_admin) {
-      return NextResponse.redirect(new URL('/dashboard', request.url));
+  return NextResponse.redirect(new URL('/clinician-dashboard', request.url));
     }
 
     // Add user info to headers for use in components

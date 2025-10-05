@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { prisma } from '../database/client';
 import { hashPassword, logActivity } from '../auth/auth';
 import { Clinician } from '@prisma/client';
@@ -17,12 +18,12 @@ export interface CreateClinicianData {
 
 export async function createClinician(data: CreateClinicianData): Promise<Clinician> {
   const password_hash = await hashPassword(data.password);
-  
+  // Exclude password from Prisma input
+  const { password, ...rest } = data;
   const clinician = await prisma.clinician.create({
     data: {
-      ...data,
+      ...rest,
       password_hash,
-      password: undefined, // Remove plain password
     }
   });
 

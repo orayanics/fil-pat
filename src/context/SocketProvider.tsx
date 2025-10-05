@@ -1,9 +1,27 @@
 "use client";
-import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from "react";
 import { useParams, useRouter } from "next/navigation";
 import useWebSocket from "@/lib/useWebSocket";
 
 // Enhanced types
+// Message types for WebSocket
+export type WebSocketMessage =
+  | { type: 'startSession'; sessionId: string }
+  | { type: 'pauseSession'; sessionId: string }
+  | { type: 'resumeSession'; sessionId: string }
+  | { type: 'endSession'; sessionId: string; summary?: string; notes?: string }
+  | { type: 'updateSessionSettings'; sessionId: string; settings: SessionSettings }
+  | { type: 'submitResponse'; sessionId: string; item: AssessmentItem; response: SessionResponsePayload }
+  | { type: string; [key: string]: unknown };
+
+export interface SessionSettings {
+  [key: string]: string | number | boolean | undefined;
+}
+
+export interface SessionResponsePayload {
+  [key: string]: string | number | boolean | undefined;
+  timestamp?: string;
+}
 export interface AuthUser {
   clinician_id: number;
   username: string;
@@ -82,6 +100,7 @@ export interface SocketContextType {
   // Room management
   hasJoinedRoom: boolean;
   roomParticipants: number;
+  patientList: Record<string, { patientId: string; patientName: string }>;
   
   // Session state
   isKidsMode: boolean;
@@ -93,17 +112,17 @@ export interface SocketContextType {
   logout: () => void;
   joinRoom: (roomId: string, role?: string) => void;
   leaveRoom: () => void;
-  sendMessage: (message: any) => void;
+  sendMessage: (message: WebSocketMessage) => void;
   
   // Session functions
   startSession: () => void;
   pauseSession: () => void;
   resumeSession: () => void;
   endSession: (summary?: string, notes?: string) => void;
-  updateSessionSettings: (settings: any) => void;
+  updateSessionSettings: (settings: SessionSettings) => void;
   
   // Response functions
-  submitResponse: (response: any) => void;
+  submitResponse: (response: SessionResponsePayload) => void;
   
   // UI functions
   toggleKidsMode: () => void;
@@ -116,7 +135,8 @@ export default function SocketProvider({ children }: { children: ReactNode }) {
   const { socket, isConnected } = useWebSocket();
   const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'disconnected' | 'error'>('connecting');
   const router = useRouter();
-  const { id } = useParams();
+  const params = useParams();
+  const id = params && typeof params === 'object' && 'id' in params ? params.id : null;
 
   // Authentication state
   const [user, setUser] = useState<AuthUser | null>(null);
@@ -140,6 +160,9 @@ export default function SocketProvider({ children }: { children: ReactNode }) {
   const [isKidsMode, setIsKidsMode] = useState(false);
   const [sessionStarted, setSessionStarted] = useState(false);
   const [sessionPaused, setSessionPaused] = useState(false);
+
+  // Patient list state
+  const [patientList, setPatientList] = useState<Record<string, { patientId: string; patientName: string }> >({});
 
   // Initialize session ID from URL
   useEffect(() => {
@@ -182,6 +205,11 @@ export default function SocketProvider({ children }: { children: ReactNode }) {
         console.log('Received WebSocket message:', data);
 
         switch (data.type) {
+      case 'patientList':
+        if (data.patientList && typeof data.patientList === 'object') {
+          setPatientList(data.patientList);
+        }
+        break;
           case 'connected':
             setConnectionStatus('connected');
             // Authenticate if user is logged in
@@ -268,7 +296,7 @@ export default function SocketProvider({ children }: { children: ReactNode }) {
             }
             // Navigate to session summary or dashboard
             setTimeout(() => {
-              router.push('/dashboard');
+              router.push('/clinician-dashboard');
             }, 3000);
             break;
 
@@ -326,12 +354,10 @@ export default function SocketProvider({ children }: { children: ReactNode }) {
     };
   }, [socket, user, sessionInfo, router]);
 
-  // Auto-join room when session ID is available and user is authenticated
-  useEffect(() => {
-    if (socket && sessionId && isAuthenticated && !hasJoinedRoom && isConnected) {
-      joinRoom(sessionId);
-    }
-  }, [socket, sessionId, isAuthenticated, hasJoinedRoom, isConnected]);
+  // ...existing code...
+  // Room management functions
+
+  // ...existing code...
 
   // Send heartbeat every 30 seconds
   useEffect(() => {
@@ -395,7 +421,7 @@ export default function SocketProvider({ children }: { children: ReactNode }) {
   };
 
   // Room management functions
-  const joinRoom = (roomId: string, role = 'participant') => {
+  const joinRoom = useCallback((roomId: string, role = 'participant') => {
     if (socket && socket.readyState === WebSocket.OPEN && !hasJoinedRoom) {
       socket.send(JSON.stringify({
         type: 'joinRoom',
@@ -405,7 +431,14 @@ export default function SocketProvider({ children }: { children: ReactNode }) {
         isKidsMode
       }));
     }
-  };
+  }, [socket, hasJoinedRoom, user?.clinician_id, isKidsMode]);
+
+  // Auto-join room when session ID is available and user is authenticated
+  useEffect(() => {
+    if (socket && sessionId && isAuthenticated && !hasJoinedRoom && isConnected) {
+      joinRoom(sessionId);
+    }
+  }, [socket, sessionId, isAuthenticated, hasJoinedRoom, isConnected, joinRoom]);
 
   const leaveRoom = () => {
     if (socket && sessionId && hasJoinedRoom) {
@@ -417,7 +450,7 @@ export default function SocketProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const sendMessage = (message: any) => {
+  const sendMessage = (message: WebSocketMessage) => {
     if (socket && socket.readyState === WebSocket.OPEN) {
       socket.send(JSON.stringify({
         ...message,
@@ -467,7 +500,7 @@ export default function SocketProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const updateSessionSettings = (settings: any) => {
+  const updateSessionSettings = (settings: SessionSettings) => {
     if (sessionInfo) {
       sendMessage({
         type: 'updateSessionSettings',
@@ -478,7 +511,7 @@ export default function SocketProvider({ children }: { children: ReactNode }) {
   };
 
   // Response functions
-  const submitResponse = (response: any) => {
+  const submitResponse = (response: SessionResponsePayload) => {
     if (sessionInfo && currentItem) {
       sendMessage({
         type: 'submitResponse',
@@ -529,6 +562,7 @@ export default function SocketProvider({ children }: { children: ReactNode }) {
     // Room management
     hasJoinedRoom,
     roomParticipants,
+    patientList,
     
     // Session state
     isKidsMode,

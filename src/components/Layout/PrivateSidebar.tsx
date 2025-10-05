@@ -1,6 +1,5 @@
 "use client";
 import {useEffect, useState} from "react";
-
 import {
   GlobalStyles,
   Avatar,
@@ -20,7 +19,7 @@ import Image from "next/image";
 import {disconnectWebSocket} from "@/lib/websocketClient";
 
 export default function PrivateSidebar() {
-  const [user, setUser] = useState<{username: string} | null>(null);
+  const [user, setUser] = useState<{username: string, is_admin?: boolean} | null>(null);
 
   useEffect(() => {
     const stored = localStorage.getItem("clinician");
@@ -28,6 +27,12 @@ export default function PrivateSidebar() {
       try {
         const parsed = JSON.parse(stored);
         setUser(parsed);
+        // Set dashboard home based on role
+        if (parsed.is_admin) {
+          localStorage.setItem("sidebarHome", "/admin-dashboard");
+        } else {
+          localStorage.setItem("sidebarHome", "/clinician-dashboard");
+        }
       } catch (err) {
         console.error("Failed to parse clinician data:", err);
       }

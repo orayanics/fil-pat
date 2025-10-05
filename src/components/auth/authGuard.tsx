@@ -14,7 +14,7 @@ export default function AuthGuard({ children, adminOnly = false }: AuthGuardProp
   const pathname = usePathname();
 
   useEffect(() => {
-    // Skip auth check for public routes
+    if (!pathname) return;
     const publicRoutes = ['/', '/login'];
     if (publicRoutes.includes(pathname)) {
       return;
@@ -25,9 +25,26 @@ export default function AuthGuard({ children, adminOnly = false }: AuthGuardProp
       return;
     }
 
+    // Admin route protection
     if (adminOnly && !user.is_admin) {
-      router.push('/dashboard');
+      router.push('/clinician-dashboard');
       return;
+    }
+
+    // Clinician route protection
+    if (!user.is_admin) {
+      // Only allow clinician-dashboard and session routes for clinicians
+      const allowedClinicianRoutes = [
+        '/clinician-dashboard',
+        '/session',
+        '/session/clinician',
+        '/session/clinician/',
+      ];
+      const isAllowed = allowedClinicianRoutes.some((route) => pathname.startsWith(route));
+      if (!isAllowed) {
+        router.push('/clinician-dashboard');
+        return;
+      }
     }
   }, [isAuthenticated, user, router, pathname, adminOnly]);
 

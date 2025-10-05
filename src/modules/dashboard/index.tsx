@@ -1,9 +1,9 @@
-import SocketProvider from "@/context/SocketProvider";
 import DashboardRooms from "./DashboardRooms";
+import AuthGuard from "@/components/auth/authGuard";
 export default function Index() {
   return (
-    <SocketProvider>
+    <AuthGuard>
       <DashboardRooms />
-    </SocketProvider>
+    </AuthGuard>
   );
 }

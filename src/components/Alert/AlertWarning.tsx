@@ -48,7 +48,7 @@ export default function AlertWarning({description, open, onClose}: ModalProps) {
 
           <Button
             variant="solid"
-            onClick={() => redirect("/dashboard", RedirectType.push)}
+            onClick={() => redirect("/clinician-dashboard", RedirectType.push)}
             color="warning"
           >
             Yes, continue

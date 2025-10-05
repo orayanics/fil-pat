@@ -1,6 +1,6 @@
 "use client";
 import {useState} from "react";
-import QRCode from "qrcode";
+import * as QRCode from "qrcode";
 import getLocalIp from "@/utils/getLocalIp";
 
 const BASE_URL = getLocalIp() ?? "http://localhost:3000";
