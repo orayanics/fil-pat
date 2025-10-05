@@ -1,14 +1,7 @@
 "use client";
 import {useEffect} from "react";
 import {useRouter} from "next/navigation";
-import {
-  Box,
-  Container,
-  AspectRatio,
-  Typography,
-  Button,
-  Card,
-} from "@mui/joy";
+import { Box, Container, Typography, Button, Card } from "@mui/joy";
 import {ArrowForward} from "@mui/icons-material";
 import Image from "next/image";
 import Link from "next/link";

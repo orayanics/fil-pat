@@ -3,41 +3,11 @@ import { useSocketContext } from "@/context/SocketProvider";
 import {useRouter} from "next/navigation";
 import {Box, Card, Table, Button} from "@mui/joy";
 import RoomsList from "./RoomsList";
-import {useState} from "react";
 
 export default function DashboardRooms() {
   const router = useRouter();
   const socketContext = useSocketContext();
   const { socket, isConnected, sendMessage, patientList } = socketContext;
-  const [sendingQr, setSendingQr] = useState<string | null>(null);
-
-  const handleSendQr = async (patientId: string) => {
-    setSendingQr(patientId);
-    const url = `/patient/${patientId}`;
-    try {
-      const qrDataUri = await qrGenerateQrData(url);
-      if (socket && socket.readyState === WebSocket.OPEN) {
-        sendMessage({
-          type: "sendQrData",
-          qrData: qrDataUri,
-          sessionId: patientId,
-        });
-        alert("QR sent to patient!");
-      }
-    } catch (err) {
-      console.error("QR generation error:", err);
-    }
-    setSendingQr(null);
-  };
-
-  async function qrGenerateQrData(url: string): Promise<string> {
-    const QRCode = (await import("qrcode")).default;
-    return QRCode.toDataURL(url, {
-      width: 200,
-      margin: 1,
-      errorCorrectionLevel: "H",
-    });
-  }
 
   const handleJoinRoom = (patientId: string) => {
     router.push(`/session/clinician/${patientId}`);
@@ -82,8 +52,6 @@ export default function DashboardRooms() {
           <tbody>
             <RoomsList
               patientList={patientList}
-              sendingQr={sendingQr}
-              handleSendQr={handleSendQr}
               handleJoinRoom={handleJoinRoom}
             />
           </tbody>
