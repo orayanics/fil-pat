@@ -1,91 +1,176 @@
 "use client";
-
-import {createContext, useContext, useState, useEffect} from "react";
-import {useParams} from "next/navigation";
-import {AlertFail} from "@/components/Alert";
-
-import {
-  persistSessionData,
-  loadSessionData,
-  cleanupOldSessions,
-} from "@/lib/sessionPersistence";
+import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { useParams, useRouter } from "next/navigation";
 import useWebSocket from "@/lib/useWebSocket";
 
-import type {
-  SocketDispatch,
-  SocketState,
-  AssessmentItem,
-} from "@/models/context";
+// Enhanced types
+export interface AuthUser {
+  clinician_id: number;
+  username: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  is_admin: boolean;
+  is_active: boolean;
+}
 
-// split context to avoid unnecessary re-renders
-const SocketStateContext = createContext<SocketState | undefined>(undefined);
-const SocketDispatchContext = createContext<SocketDispatch | undefined>(
-  undefined
-);
+export interface AssessmentItem {
+  item_id: number;
+  item_number: number;
+  question: string;
+  sound?: string;
+  ipa_key?: string;
+  consonant_group?: string;
+  consonants_count: number;
+  vowels_count: number;
+  image_url?: string;
+  image_alt_text?: string;
+  difficulty_level: string;
+  expected_response?: string;
+  max_score: number;
+  time_limit_seconds?: number;
+  background_color?: string;
+  text_size: string;
+}
 
-// const SocketContext = createContext<SocketContextType | undefined>(undefined);
+export interface PatientInfo {
+  patient_id: number;
+  first_name: string;
+  last_name: string;
+  age?: number;
+  gender?: string;
+  guardian_name?: string;
+  guardian_phone?: string;
+}
 
-export default function SocketProvider({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  const {id} = useParams();
+export interface SessionInfo {
+  session_id: number;
+  session_uuid: string;
+  session_name?: string;
+  session_mode: 'Standard' | 'Kids';
+  status: string;
+  total_items: number;
+  completed_items: number;
+  current_item_id?: number;
+  start_time?: Date;
+  template_name: string;
+  is_practice_session: boolean;
+}
+
+export interface SocketContextType {
+  // WebSocket connection
+  socket: WebSocket | null;
+  isConnected: boolean;
+  connectionStatus: 'connecting' | 'connected' | 'disconnected' | 'error';
+  
+  // Authentication
+  user: AuthUser | null;
+  isAuthenticated: boolean;
+  
+  // Session management
+  sessionId: string | null;
+  sessionInfo: SessionInfo | null;
+  currentItem: AssessmentItem | null;
+  patientInfo: PatientInfo | null;
+  
+  // QR Code functionality
+  qrData: {
+    qrData: string;
+    sessionId: string;
+  } | null;
+  
+  // Room management
+  hasJoinedRoom: boolean;
+  roomParticipants: number;
+  
+  // Session state
+  isKidsMode: boolean;
+  sessionStarted: boolean;
+  sessionPaused: boolean;
+  
+  // Functions
+  authenticate: (username: string, password: string) => Promise<boolean>;
+  logout: () => void;
+  joinRoom: (roomId: string, role?: string) => void;
+  leaveRoom: () => void;
+  sendMessage: (message: any) => void;
+  
+  // Session functions
+  startSession: () => void;
+  pauseSession: () => void;
+  resumeSession: () => void;
+  endSession: (summary?: string, notes?: string) => void;
+  updateSessionSettings: (settings: any) => void;
+  
+  // Response functions
+  submitResponse: (response: any) => void;
+  
+  // UI functions
+  toggleKidsMode: () => void;
+  updatePatientInfo: (patientInfo: PatientInfo) => void;
+}
+
+const SocketContext = createContext<SocketContextType | undefined>(undefined);
+
+export default function SocketProvider({ children }: { children: ReactNode }) {
+  const { socket, isConnected } = useWebSocket();
+  const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'disconnected' | 'error'>('connecting');
+  const router = useRouter();
+  const { id } = useParams();
+
+  // Authentication state
+  const [user, setUser] = useState<AuthUser | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  // Session state
   const [sessionId, setSessionId] = useState<string | null>(null);
-  const {socket, isConnected} = useWebSocket(sessionId || undefined);
-  const [hasJoinedRoom, setHasJoinedRoom] = useState(false);
-
-  const [formData, setFormData] = useState<Record<string, unknown>>({});
+  const [sessionInfo, setSessionInfo] = useState<SessionInfo | null>(null);
   const [currentItem, setCurrentItem] = useState<AssessmentItem | null>(null);
+  const [patientInfo, setPatientInfo] = useState<PatientInfo | null>(null);
+  const [hasJoinedRoom, setHasJoinedRoom] = useState(false);
+  const [roomParticipants, setRoomParticipants] = useState(0);
+
+  // QR functionality
   const [qrData, setQrData] = useState<{
     qrData: string;
     sessionId: string;
   } | null>(null);
-  const [patientList, setPatientList] = useState<
-    Record<string, {patientId: string; patientName: string}>
-  >({});
 
-  const [pendingFormData, setPendingFormData] = useState<Record<
-    string,
-    unknown
-  > | null>(null);
-  const [pendingItem, setPendingItem] = useState<AssessmentItem | null>(null);
-  const [isPersisting, setIsPersisting] = useState(false);
+  // Session control
+  const [isKidsMode, setIsKidsMode] = useState(false);
+  const [sessionStarted, setSessionStarted] = useState(false);
+  const [sessionPaused, setSessionPaused] = useState(false);
 
+  // Initialize session ID from URL
   useEffect(() => {
-    cleanupOldSessions();
-  }, []);
-
-  useEffect(() => {
-    if (sessionId) {
-      try {
-        const persistedCurrentItem = loadSessionData(sessionId, "currentItem");
-        const persistedFormData = loadSessionData(sessionId, "formData");
-
-        if (persistedCurrentItem) {
-          setCurrentItem(persistedCurrentItem);
-        }
-        if (persistedFormData) {
-          setFormData(persistedFormData);
-        }
-      } catch (error) {
-        console.error("Error loading persisted session data:", error);
-      }
+    if (id && typeof id === 'string') {
+      setSessionId(id);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [id]);
 
+  // Update connection status
   useEffect(() => {
-    if (!isConnected) {
-      setHasJoinedRoom(false);
+    if (isConnected) {
+      setConnectionStatus('connected');
+    } else {
+      setConnectionStatus('disconnected');
     }
   }, [isConnected]);
 
+  // Load user from localStorage on mount
   useEffect(() => {
-    if (id) {
-      setSessionId(id as string);
+    const storedUser = localStorage.getItem('auth_user');
+    if (storedUser) {
+      try {
+        const userData = JSON.parse(storedUser);
+        setUser(userData);
+        setIsAuthenticated(true);
+      } catch (error) {
+        console.error('Failed to parse stored user data:', error);
+        localStorage.removeItem('auth_user');
+      }
     }
-  }, [id]);
+  }, []);
 
   // Central message handling
   useEffect(() => {
@@ -94,216 +179,395 @@ export default function SocketProvider({
     const handleMessage = (event: MessageEvent) => {
       try {
         const data = JSON.parse(event.data);
+        console.log('Received WebSocket message:', data);
+
         switch (data.type) {
-          case "sendQrData":
-            setQrData({qrData: data.qrData, sessionId: data.sessionId});
-            break;
-          case "changeAssessmentItem":
-            setCurrentItem(data.item);
-            break;
-          case "updateFormData":
-            setFormData(data.formData || {});
-            break;
-          case "updatePatientList":
-            if (data.patientList && typeof data.patientList === "object") {
-              setPatientList(data.patientList);
+          case 'connected':
+            setConnectionStatus('connected');
+            // Authenticate if user is logged in
+            if (user) {
+              socket.send(JSON.stringify({
+                type: 'authenticate',
+                userId: user.clinician_id,
+                userType: 'clinician'
+              }));
             }
             break;
-          case "joinedRoom":
+
+          case 'authenticated':
+            console.log('WebSocket authenticated for user:', data.userId);
+            break;
+
+          case 'sendQrData':
+            setQrData({ qrData: data.qrData, sessionId: data.sessionId });
+            break;
+
+          case 'changeAssessmentItem':
+            setCurrentItem(data.item);
+            if (sessionInfo) {
+              setSessionInfo({
+                ...sessionInfo,
+                current_item_id: data.item.item_id,
+                completed_items: data.item.item_number - 1
+              });
+            }
+            break;
+
+          case 'joinedRoom':
             setHasJoinedRoom(true);
-            socket.send(
-              JSON.stringify({
-                type: "requestRoomState",
-                roomId: sessionId,
-              })
-            );
+            setRoomParticipants(data.participantCount || 1);
             break;
+
+          case 'participantJoined':
+            setRoomParticipants(prev => prev + 1);
+            break;
+
+          case 'participantLeft':
+            setRoomParticipants(prev => Math.max(0, prev - 1));
+            break;
+
+          case 'sessionStarted':
+            setSessionStarted(true);
+            setSessionPaused(false);
+            if (sessionInfo) {
+              setSessionInfo({
+                ...sessionInfo,
+                status: 'In Progress'
+              });
+            }
+            break;
+
+          case 'sessionPaused':
+            setSessionPaused(true);
+            if (sessionInfo) {
+              setSessionInfo({
+                ...sessionInfo,
+                status: 'Paused'
+              });
+            }
+            break;
+
+          case 'sessionResumed':
+            setSessionPaused(false);
+            if (sessionInfo) {
+              setSessionInfo({
+                ...sessionInfo,
+                status: 'In Progress'
+              });
+            }
+            break;
+
+          case 'sessionEnded':
+            setSessionStarted(false);
+            setSessionPaused(false);
+            if (sessionInfo) {
+              setSessionInfo({
+                ...sessionInfo,
+                status: 'Completed'
+              });
+            }
+            // Navigate to session summary or dashboard
+            setTimeout(() => {
+              router.push('/dashboard');
+            }, 3000);
+            break;
+
+          case 'sessionSettingsUpdated':
+            setIsKidsMode(data.settings.isKidsMode || false);
+            if (sessionInfo) {
+              setSessionInfo({
+                ...sessionInfo,
+                session_name: data.settings.sessionName,
+                session_mode: data.settings.isKidsMode ? 'Kids' : 'Standard'
+              });
+            }
+            break;
+
+          case 'responseSubmitted':
+            console.log('Response submitted for item:', data.itemId);
+            break;
+
+          case 'error':
+            console.error('WebSocket error:', data.message);
+            setConnectionStatus('error');
+            break;
+
+          case 'heartbeatResponse':
+            // Connection is alive
+            break;
+
           default:
-            console.warn("Unhandled message type:", data.type);
-            break;
+            console.warn('Unhandled WebSocket message type:', data.type);
         }
       } catch (error) {
-        console.error(
-          "Error parsing WebSocket message from SocketProvider:",
-          error
-        );
+        console.error('Error parsing WebSocket message:', error);
+        setConnectionStatus('error');
       }
     };
 
-    socket.addEventListener("message", handleMessage);
+    const handleError = () => {
+      setConnectionStatus('error');
+    };
+
+    const handleClose = () => {
+      setConnectionStatus('disconnected');
+      setHasJoinedRoom(false);
+      setRoomParticipants(0);
+    };
+
+    socket.addEventListener('message', handleMessage);
+    socket.addEventListener('error', handleError);
+    socket.addEventListener('close', handleClose);
 
     return () => {
-      socket.removeEventListener("message", handleMessage);
+      socket.removeEventListener('message', handleMessage);
+      socket.removeEventListener('error', handleError);
+      socket.removeEventListener('close', handleClose);
     };
-  }, [socket, sessionId]);
+  }, [socket, user, sessionInfo, router]);
 
+  // Auto-join room when session ID is available and user is authenticated
   useEffect(() => {
-    const interval = setInterval(() => {
-      if (pendingFormData || pendingItem) {
-        setIsPersisting(true);
-        try {
-          if (sessionId && pendingFormData) {
-            persistSessionData(sessionId, "formData", pendingFormData);
-            setPendingFormData(null);
-          }
-          if (sessionId && pendingItem) {
-            persistSessionData(sessionId, "currentItem", pendingItem);
-            setPendingItem(null);
-          }
-        } finally {
-          setTimeout(() => setIsPersisting(false), 500);
-        }
-      }
-    }, 5 * 60 * 1000);
+    if (socket && sessionId && isAuthenticated && !hasJoinedRoom && isConnected) {
+      joinRoom(sessionId);
+    }
+  }, [socket, sessionId, isAuthenticated, hasJoinedRoom, isConnected]);
 
-    return () => clearInterval(interval);
-  }, [sessionId, pendingFormData, pendingItem]);
-
+  // Send heartbeat every 30 seconds
   useEffect(() => {
-    if (isConnected && hasJoinedRoom && sessionId) {
-      const timeoutId = setTimeout(() => {
-        if (socket && sessionId && socket.readyState === WebSocket.OPEN) {
-          if (currentItem) {
-            socket.send(
-              JSON.stringify({
-                type: "changeAssessmentItem",
-                item: currentItem,
-                sessionId,
-              })
-            );
-          }
+    if (!socket || !isConnected) return;
 
-          if (Object.keys(formData).length > 0) {
-            socket.send(
-              JSON.stringify({
-                type: "updateFormData",
-                formData,
-                sessionId,
-              })
-            );
-          }
-        }
-      }, 500);
+    const heartbeatInterval = setInterval(() => {
+      socket.send(JSON.stringify({ type: 'heartbeat' }));
+    }, 30000);
 
-      return () => clearTimeout(timeoutId);
-    }
-  }, [isConnected, hasJoinedRoom, sessionId, socket, currentItem, formData]);
+    return () => clearInterval(heartbeatInterval);
+  }, [socket, isConnected]);
 
-  // auto-join room
-  useEffect(() => {
-    if (socket && sessionId && isConnected && !hasJoinedRoom) {
-      if (socket.readyState === WebSocket.OPEN) {
-        socket.send(
-          JSON.stringify({
-            type: "joinRoom",
-            roomId: sessionId,
-          })
-        );
-      }
-    }
-  }, [socket, sessionId, isConnected, hasJoinedRoom]);
-
-  const updateFormData = (newFormData: Record<string, unknown>) => {
-    setFormData(newFormData);
-    setPendingFormData(newFormData);
-
-    if (socket && sessionId && socket.readyState === WebSocket.OPEN) {
-      socket.send(
-        JSON.stringify({
-          type: "updateFormData",
-          formData: newFormData,
-          sessionId,
-        })
-      );
-    }
-  };
-
-  const updateCurrentItem = (newItem: AssessmentItem) => {
-    setCurrentItem(newItem);
-    setPendingItem(newItem);
-
-    if (socket && sessionId && socket.readyState === WebSocket.OPEN) {
-      socket.send(
-        JSON.stringify({
-          type: "changeAssessmentItem",
-          item: newItem,
-          sessionId,
-        })
-      );
-    }
-  };
-
-  // Manual save function for user-triggered saves
-  const saveSessionManually = () => {
-    if (!sessionId) return;
-
-    setIsPersisting(true);
+  // Authentication functions
+  const authenticate = async (username: string, password: string): Promise<boolean> => {
     try {
-      // Save current item if exists
-      if (currentItem) {
-        persistSessionData(sessionId, "currentItem", currentItem);
-      }
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ username, password })
+      });
 
-      // Save form data if exists
-      if (formData && Object.keys(formData).length > 0) {
-        persistSessionData(sessionId, "formData", formData);
-      }
+      const data = await response.json();
 
-      // Clear any pending data since we just saved everything
-      setPendingFormData(null);
-      setPendingItem(null);
-    } finally {
-      // Small delay to show the save indicator
-      setTimeout(() => setIsPersisting(false), 1000);
+      if (response.ok && data.user) {
+        setUser(data.user);
+        setIsAuthenticated(true);
+        localStorage.setItem('auth_user', JSON.stringify(data.user));
+        
+        // Authenticate WebSocket connection
+        if (socket) {
+          socket.send(JSON.stringify({
+            type: 'authenticate',
+            userId: data.user.clinician_id,
+            userType: 'clinician'
+          }));
+        }
+        
+        return true;
+      } else {
+        console.error('Authentication failed:', data.error);
+        return false;
+      }
+    } catch (error) {
+      console.error('Authentication error:', error);
+      return false;
     }
   };
 
-  const sendMessage = (message: string) => {
-    socket?.send(message);
+  const logout = () => {
+    setUser(null);
+    setIsAuthenticated(false);
+    localStorage.removeItem('auth_user');
+    
+    if (hasJoinedRoom && sessionId) {
+      leaveRoom();
+    }
+    
+    router.push('/login');
+  };
+
+  // Room management functions
+  const joinRoom = (roomId: string, role = 'participant') => {
+    if (socket && socket.readyState === WebSocket.OPEN && !hasJoinedRoom) {
+      socket.send(JSON.stringify({
+        type: 'joinRoom',
+        roomId,
+        role,
+        clinicianId: user?.clinician_id,
+        isKidsMode
+      }));
+    }
+  };
+
+  const leaveRoom = () => {
+    if (socket && sessionId && hasJoinedRoom) {
+      socket.send(JSON.stringify({
+        type: 'leaveRoom',
+        roomId: sessionId
+      }));
+      setHasJoinedRoom(false);
+    }
+  };
+
+  const sendMessage = (message: any) => {
+    if (socket && socket.readyState === WebSocket.OPEN) {
+      socket.send(JSON.stringify({
+        ...message,
+        userId: user?.clinician_id,
+        sessionId: sessionId,
+        timestamp: new Date().toISOString()
+      }));
+    }
+  };
+
+  // Session control functions
+  const startSession = () => {
+    if (sessionInfo) {
+      sendMessage({
+        type: 'startSession',
+        sessionId: sessionInfo.session_uuid
+      });
+    }
+  };
+
+  const pauseSession = () => {
+    if (sessionInfo) {
+      sendMessage({
+        type: 'pauseSession',
+        sessionId: sessionInfo.session_uuid
+      });
+    }
+  };
+
+  const resumeSession = () => {
+    if (sessionInfo) {
+      sendMessage({
+        type: 'resumeSession',
+        sessionId: sessionInfo.session_uuid
+      });
+    }
+  };
+
+  const endSession = (summary?: string, notes?: string) => {
+    if (sessionInfo) {
+      sendMessage({
+        type: 'endSession',
+        sessionId: sessionInfo.session_uuid,
+        summary,
+        notes
+      });
+    }
+  };
+
+  const updateSessionSettings = (settings: any) => {
+    if (sessionInfo) {
+      sendMessage({
+        type: 'updateSessionSettings',
+        sessionId: sessionInfo.session_uuid,
+        settings
+      });
+    }
+  };
+
+  // Response functions
+  const submitResponse = (response: any) => {
+    if (sessionInfo && currentItem) {
+      sendMessage({
+        type: 'submitResponse',
+        sessionId: sessionInfo.session_uuid,
+        item: currentItem,
+        response: {
+          ...response,
+          timestamp: new Date().toISOString()
+        }
+      });
+    }
+  };
+
+  // UI functions
+  const toggleKidsMode = () => {
+    const newKidsMode = !isKidsMode;
+    setIsKidsMode(newKidsMode);
+    
+    updateSessionSettings({
+      isKidsMode: newKidsMode,
+      sessionName: sessionInfo?.session_name
+    });
+  };
+
+  const updatePatientInfo = (newPatientInfo: PatientInfo) => {
+    setPatientInfo(newPatientInfo);
+  };
+
+  const contextValue: SocketContextType = {
+    // WebSocket connection
+    socket,
+    isConnected,
+    connectionStatus,
+    
+    // Authentication
+    user,
+    isAuthenticated,
+    
+    // Session management
+    sessionId,
+    sessionInfo,
+    currentItem,
+    patientInfo,
+    
+    // QR functionality
+    qrData,
+    
+    // Room management
+    hasJoinedRoom,
+    roomParticipants,
+    
+    // Session state
+    isKidsMode,
+    sessionStarted,
+    sessionPaused,
+    
+    // Functions
+    authenticate,
+    logout,
+    joinRoom,
+    leaveRoom,
+    sendMessage,
+    
+    // Session functions
+    startSession,
+    pauseSession,
+    resumeSession,
+    endSession,
+    updateSessionSettings,
+    
+    // Response functions
+    submitResponse,
+    
+    // UI functions
+    toggleKidsMode,
+    updatePatientInfo,
   };
 
   return (
-    <SocketStateContext.Provider
-      value={{
-        socket,
-        isConnected,
-        sessionId,
-        currentItem,
-        formData,
-        qrData,
-        patientList: patientList as Record<
-          string,
-          {patientId: string; patientName: string}
-        >,
-        isPersisting,
-      }}
-    >
-      <SocketDispatchContext.Provider
-        value={{
-          updateFormData,
-          updateCurrentItem,
-          saveSessionManually,
-          sendMessage,
-        }}
-      >
-        {!isConnected && <AlertFail isConnected={!isConnected} />}
-
-        {children}
-      </SocketDispatchContext.Provider>
-    </SocketStateContext.Provider>
+    <SocketContext.Provider value={contextValue}>
+      {children}
+    </SocketContext.Provider>
   );
 }
 
-export function useSocketState() {
-  const ctx = useContext(SocketStateContext);
-  if (!ctx)
-    throw new Error("useSocketState must be used within SocketProvider");
-  return ctx;
-}
-
-export function useSocketDispatch() {
-  const ctx = useContext(SocketDispatchContext);
-  if (!ctx)
-    throw new Error("useSocketDispatch must be used within SocketProvider");
-  return ctx;
+export function useSocketContext() {
+  const context = useContext(SocketContext);
+  if (!context) {
+    throw new Error('useSocketContext must be used within a SocketProvider');
+  }
+  return context;
 }
