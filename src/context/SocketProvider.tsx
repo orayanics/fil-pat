@@ -1,175 +1,52 @@
 "use client";
-import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from "react";
+import { createContext, useContext, useEffect, useCallback, ReactNode } from "react";
+import { useSocketStore } from "./socketStore";
+import type { WebSocketMessage, SessionSettings, SessionResponsePayload, SocketContextType, PatientInfo } from "./socketStore";
 import { useParams, useRouter } from "next/navigation";
 import useWebSocket from "@/lib/useWebSocket";
-
-// Enhanced types
-// Message types for WebSocket
-export type WebSocketMessage =
-  | { type: 'startSession'; sessionId: string }
-  | { type: 'pauseSession'; sessionId: string }
-  | { type: 'resumeSession'; sessionId: string }
-  | { type: 'endSession'; sessionId: string; summary?: string; notes?: string }
-  | { type: 'updateSessionSettings'; sessionId: string; settings: SessionSettings }
-  | { type: 'submitResponse'; sessionId: string; item: AssessmentItem; response: SessionResponsePayload }
-  | { type: string; [key: string]: unknown };
-
-export interface SessionSettings {
-  [key: string]: string | number | boolean | undefined;
-}
-
-export interface SessionResponsePayload {
-  [key: string]: string | number | boolean | undefined;
-  timestamp?: string;
-}
-export interface AuthUser {
-  clinician_id: number;
-  username: string;
-  email: string;
-  first_name: string;
-  last_name: string;
-  is_admin: boolean;
-  is_active: boolean;
-}
-
-export interface AssessmentItem {
-  item_id: number;
-  item_number: number;
-  question: string;
-  sound?: string;
-  ipa_key?: string;
-  consonant_group?: string;
-  consonants_count: number;
-  vowels_count: number;
-  image_url?: string;
-  image_alt_text?: string;
-  difficulty_level: string;
-  expected_response?: string;
-  max_score: number;
-  time_limit_seconds?: number;
-  background_color?: string;
-  text_size: string;
-}
-
-export interface PatientInfo {
-  patient_id: number;
-  first_name: string;
-  last_name: string;
-  age?: number;
-  gender?: string;
-  guardian_name?: string;
-  guardian_phone?: string;
-}
-
-export interface SessionInfo {
-  session_id: number;
-  session_uuid: string;
-  session_name?: string;
-  session_mode: 'Standard' | 'Kids';
-  status: string;
-  total_items: number;
-  completed_items: number;
-  current_item_id?: number;
-  start_time?: Date;
-  template_name: string;
-  is_practice_session: boolean;
-}
-
-export interface SocketContextType {
-  // WebSocket connection
-  socket: WebSocket | null;
-  isConnected: boolean;
-  connectionStatus: 'connecting' | 'connected' | 'disconnected' | 'error';
-  
-  // Authentication
-  user: AuthUser | null;
-  isAuthenticated: boolean;
-  
-  // Session management
-  sessionId: string | null;
-  sessionInfo: SessionInfo | null;
-  currentItem: AssessmentItem | null;
-  patientInfo: PatientInfo | null;
-  
-  // QR Code functionality
-  qrData: {
-    qrData: string;
-    sessionId: string;
-  } | null;
-  
-  // Room management
-  hasJoinedRoom: boolean;
-  roomParticipants: number;
-  patientList: Record<string, { patientId: string; patientName: string }>;
-  
-  // Session state
-  isKidsMode: boolean;
-  sessionStarted: boolean;
-  sessionPaused: boolean;
-  
-  // Functions
-  authenticate: (username: string, password: string) => Promise<boolean>;
-  logout: () => void;
-  joinRoom: (roomId: string, role?: string) => void;
-  leaveRoom: () => void;
-  sendMessage: (message: WebSocketMessage) => void;
-  
-  // Session functions
-  startSession: () => void;
-  pauseSession: () => void;
-  resumeSession: () => void;
-  endSession: (summary?: string, notes?: string) => void;
-  updateSessionSettings: (settings: SessionSettings) => void;
-  
-  // Response functions
-  submitResponse: (response: SessionResponsePayload) => void;
-  
-  // UI functions
-  toggleKidsMode: () => void;
-  updatePatientInfo: (patientInfo: PatientInfo) => void;
-}
 
 const SocketContext = createContext<SocketContextType | undefined>(undefined);
 
 export default function SocketProvider({ children }: { children: ReactNode }) {
   const { socket, isConnected } = useWebSocket();
-  const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'disconnected' | 'error'>('connecting');
   const router = useRouter();
   const params = useParams();
   const id = params && typeof params === 'object' && 'id' in params ? params.id : null;
-
-  // Authentication state
-  const [user, setUser] = useState<AuthUser | null>(null);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-
-  // Session state
-  const [sessionId, setSessionId] = useState<string | null>(null);
-  const [sessionInfo, setSessionInfo] = useState<SessionInfo | null>(null);
-  const [currentItem, setCurrentItem] = useState<AssessmentItem | null>(null);
-  const [patientInfo, setPatientInfo] = useState<PatientInfo | null>(null);
-  const [hasJoinedRoom, setHasJoinedRoom] = useState(false);
-  const [roomParticipants, setRoomParticipants] = useState(0);
-
-  // QR functionality
-  const [qrData, setQrData] = useState<{
-    qrData: string;
-    sessionId: string;
-  } | null>(null);
-
-  // Session control
-  const [isKidsMode, setIsKidsMode] = useState(false);
-  const [sessionStarted, setSessionStarted] = useState(false);
-  const [sessionPaused, setSessionPaused] = useState(false);
-
-  // Patient list state
-  const [patientList, setPatientList] = useState<Record<string, { patientId: string; patientName: string }> >({});
+  const connectionStatus = useSocketStore((state) => state.connectionStatus);
+  const setConnectionStatus = useSocketStore((state) => state.setConnectionStatus);
+  const user = useSocketStore((state) => state.user);
+  const setUser = useSocketStore((state) => state.setUser);
+  const isAuthenticated = useSocketStore((state) => state.isAuthenticated);
+  const setIsAuthenticated = useSocketStore((state) => state.setIsAuthenticated);
+  const sessionId = useSocketStore((state) => state.sessionId);
+  const setSessionId = useSocketStore((state) => state.setSessionId);
+  const sessionInfo = useSocketStore((state) => state.sessionInfo);
+  const setSessionInfo = useSocketStore((state) => state.setSessionInfo);
+  const currentItem = useSocketStore((state) => state.currentItem);
+  const setCurrentItem = useSocketStore((state) => state.setCurrentItem);
+  const patientInfo = useSocketStore((state) => state.patientInfo);
+  const setPatientInfo = useSocketStore((state) => state.setPatientInfo);
+  const hasJoinedRoom = useSocketStore((state) => state.hasJoinedRoom);
+  const setHasJoinedRoom = useSocketStore((state) => state.setHasJoinedRoom);
+  const roomParticipants = useSocketStore((state) => state.roomParticipants);
+  const setRoomParticipants = useSocketStore((state) => state.setRoomParticipants);
+  const qrData = useSocketStore((state) => state.qrData);
+  const setQrData = useSocketStore((state) => state.setQrData);
+  const isKidsMode = useSocketStore((state) => state.isKidsMode);
+  const setIsKidsMode = useSocketStore((state) => state.setIsKidsMode);
+  const sessionStarted = useSocketStore((state) => state.sessionStarted);
+  const setSessionStarted = useSocketStore((state) => state.setSessionStarted);
+  const sessionPaused = useSocketStore((state) => state.sessionPaused);
+  const setSessionPaused = useSocketStore((state) => state.setSessionPaused);
+  const patientList = useSocketStore((state) => state.patientList);
+  const setPatientList = useSocketStore((state) => state.setPatientList);
 
   // Initialize session ID from URL
   useEffect(() => {
     if (id && typeof id === 'string') {
       setSessionId(id);
     }
-  }, [id]);
+  }, [id, setSessionId]);
 
   // Update connection status
   useEffect(() => {
@@ -178,7 +55,7 @@ export default function SocketProvider({ children }: { children: ReactNode }) {
     } else {
       setConnectionStatus('disconnected');
     }
-  }, [isConnected]);
+  }, [isConnected, setConnectionStatus]);
 
   // Load user from localStorage on mount
   useEffect(() => {
@@ -193,7 +70,7 @@ export default function SocketProvider({ children }: { children: ReactNode }) {
         localStorage.removeItem('auth_user');
       }
     }
-  }, []);
+  }, [setUser, setIsAuthenticated]);
 
   // Central message handling
   useEffect(() => {
@@ -205,11 +82,11 @@ export default function SocketProvider({ children }: { children: ReactNode }) {
         console.log('Received WebSocket message:', data);
 
         switch (data.type) {
-      case 'patientList':
-        if (data.patientList && typeof data.patientList === 'object') {
-          setPatientList(data.patientList);
-        }
-        break;
+          case 'patientList':
+            if (data.patientList && typeof data.patientList === 'object') {
+              setPatientList(data.patientList);
+            }
+            break;
           case 'connected':
             setConnectionStatus('connected');
             // Authenticate if user is logged in
@@ -221,15 +98,12 @@ export default function SocketProvider({ children }: { children: ReactNode }) {
               }));
             }
             break;
-
           case 'authenticated':
             console.log('WebSocket authenticated for user:', data.userId);
             break;
-
           case 'sendQrData':
             setQrData({ qrData: data.qrData, sessionId: data.sessionId });
             break;
-
           case 'changeAssessmentItem':
             setCurrentItem(data.item);
             if (sessionInfo) {
@@ -240,20 +114,16 @@ export default function SocketProvider({ children }: { children: ReactNode }) {
               });
             }
             break;
-
           case 'joinedRoom':
             setHasJoinedRoom(true);
             setRoomParticipants(data.participantCount || 1);
             break;
-
           case 'participantJoined':
-            setRoomParticipants(prev => prev + 1);
+            setRoomParticipants(roomParticipants + 1);
             break;
-
           case 'participantLeft':
-            setRoomParticipants(prev => Math.max(0, prev - 1));
+            setRoomParticipants(Math.max(0, roomParticipants - 1));
             break;
-
           case 'sessionStarted':
             setSessionStarted(true);
             setSessionPaused(false);
@@ -264,7 +134,6 @@ export default function SocketProvider({ children }: { children: ReactNode }) {
               });
             }
             break;
-
           case 'sessionPaused':
             setSessionPaused(true);
             if (sessionInfo) {
@@ -274,7 +143,6 @@ export default function SocketProvider({ children }: { children: ReactNode }) {
               });
             }
             break;
-
           case 'sessionResumed':
             setSessionPaused(false);
             if (sessionInfo) {
@@ -284,7 +152,6 @@ export default function SocketProvider({ children }: { children: ReactNode }) {
               });
             }
             break;
-
           case 'sessionEnded':
             setSessionStarted(false);
             setSessionPaused(false);
@@ -294,12 +161,10 @@ export default function SocketProvider({ children }: { children: ReactNode }) {
                 status: 'Completed'
               });
             }
-            // Navigate to session summary or dashboard
             setTimeout(() => {
               router.push('/clinician-dashboard');
             }, 3000);
             break;
-
           case 'sessionSettingsUpdated':
             setIsKidsMode(data.settings.isKidsMode || false);
             if (sessionInfo) {
@@ -310,20 +175,16 @@ export default function SocketProvider({ children }: { children: ReactNode }) {
               });
             }
             break;
-
           case 'responseSubmitted':
             console.log('Response submitted for item:', data.itemId);
             break;
-
           case 'error':
             console.error('WebSocket error:', data.message);
             setConnectionStatus('error');
             break;
-
           case 'heartbeatResponse':
             // Connection is alive
             break;
-
           default:
             console.warn('Unhandled WebSocket message type:', data.type);
         }
@@ -352,21 +213,14 @@ export default function SocketProvider({ children }: { children: ReactNode }) {
       socket.removeEventListener('error', handleError);
       socket.removeEventListener('close', handleClose);
     };
-  }, [socket, user, sessionInfo, router]);
-
-  // ...existing code...
-  // Room management functions
-
-  // ...existing code...
+  }, [socket, user, sessionInfo, router, setConnectionStatus, setHasJoinedRoom, setRoomParticipants, setCurrentItem, setSessionInfo, setSessionStarted, setSessionPaused, setIsKidsMode, setQrData, setPatientList, roomParticipants]);
 
   // Send heartbeat every 30 seconds
   useEffect(() => {
     if (!socket || !isConnected) return;
-
     const heartbeatInterval = setInterval(() => {
       socket.send(JSON.stringify({ type: 'heartbeat' }));
     }, 30000);
-
     return () => clearInterval(heartbeatInterval);
   }, [socket, isConnected]);
 
@@ -380,14 +234,11 @@ export default function SocketProvider({ children }: { children: ReactNode }) {
         },
         body: JSON.stringify({ username, password })
       });
-
       const data = await response.json();
-
       if (response.ok && data.user) {
         setUser(data.user);
         setIsAuthenticated(true);
         localStorage.setItem('auth_user', JSON.stringify(data.user));
-        
         // Authenticate WebSocket connection
         if (socket) {
           socket.send(JSON.stringify({
@@ -396,7 +247,6 @@ export default function SocketProvider({ children }: { children: ReactNode }) {
             userType: 'clinician'
           }));
         }
-        
         return true;
       } else {
         console.error('Authentication failed:', data.error);
@@ -412,11 +262,12 @@ export default function SocketProvider({ children }: { children: ReactNode }) {
     setUser(null);
     setIsAuthenticated(false);
     localStorage.removeItem('auth_user');
-    
+    localStorage.removeItem('clinician');
+    localStorage.removeItem('clinicianLoggedIn');
+    localStorage.removeItem('sidebarHome');
     if (hasJoinedRoom && sessionId) {
       leaveRoom();
     }
-    
     router.push('/login');
   };
 
@@ -433,7 +284,6 @@ export default function SocketProvider({ children }: { children: ReactNode }) {
     }
   }, [socket, hasJoinedRoom, user?.clinician_id, isKidsMode]);
 
-  // Auto-join room when session ID is available and user is authenticated
   useEffect(() => {
     if (socket && sessionId && isAuthenticated && !hasJoinedRoom && isConnected) {
       joinRoom(sessionId);
@@ -529,7 +379,6 @@ export default function SocketProvider({ children }: { children: ReactNode }) {
   const toggleKidsMode = () => {
     const newKidsMode = !isKidsMode;
     setIsKidsMode(newKidsMode);
-    
     updateSessionSettings({
       isKidsMode: newKidsMode,
       sessionName: sessionInfo?.session_name
@@ -540,55 +389,37 @@ export default function SocketProvider({ children }: { children: ReactNode }) {
     setPatientInfo(newPatientInfo);
   };
 
-  const contextValue: SocketContextType = {
-    // WebSocket connection
+  const contextValue: SocketContextType & { setSessionId: (id: string | null) => void } = {
     socket,
     isConnected,
     connectionStatus,
-    
-    // Authentication
     user,
     isAuthenticated,
-    
-    // Session management
     sessionId,
     sessionInfo,
     currentItem,
     patientInfo,
-    
-    // QR functionality
     qrData,
-    
-    // Room management
     hasJoinedRoom,
     roomParticipants,
     patientList,
-    
-    // Session state
     isKidsMode,
     sessionStarted,
     sessionPaused,
-    
-    // Functions
     authenticate,
     logout,
     joinRoom,
     leaveRoom,
     sendMessage,
-    
-    // Session functions
     startSession,
     pauseSession,
     resumeSession,
     endSession,
     updateSessionSettings,
-    
-    // Response functions
     submitResponse,
-    
-    // UI functions
     toggleKidsMode,
     updatePatientInfo,
+    setSessionId,
   };
 
   return (

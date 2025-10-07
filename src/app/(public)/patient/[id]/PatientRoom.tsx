@@ -1,17 +1,16 @@
 "use client";
 
-import {usePatient} from "@/context/PatientProvider";
 
+import { useSocketStore } from "@/context/socketStore";
 import PatientStatus from "./PatientStatus";
-
 import Image from "next/image";
-import {Box} from "@mui/joy";
+import { Box } from "@mui/joy";
 
 export default function PatientRoom() {
-  const {qrData} = usePatient();
+  const qrData = useSocketStore((state) => state.patientQrData);
   return (
     <Box
-      style={{padding: 6, textAlign: "center"}}
+      style={{ padding: 6, textAlign: "center" }}
       display={"flex"}
       flexDirection="column"
       justifyContent="center"

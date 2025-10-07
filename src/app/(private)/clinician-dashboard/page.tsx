@@ -24,7 +24,6 @@ export default function ClinicianDashboardPage() {
       <Box sx={{ display: "flex", minHeight: "100vh" }}>
         <PrivateSidebar />
         <Box sx={{ flex: 1, p: 4 }}>
-          {/* DashboardRooms now expects qrGenerateQrData and sendingQr as props */}
           <DashboardRooms qrGenerateQrData={qrGenerateQrData} sendingQr={sendingQr} setSendingQr={setSendingQr} />
         </Box>
       </Box>

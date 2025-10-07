@@ -26,23 +26,41 @@ export default function AuthGuard({ children, adminOnly = false }: AuthGuardProp
     }
 
     // Admin route protection
-    if (adminOnly && !user.is_admin) {
-      router.push('/clinician-dashboard');
-      return;
-    }
+    const adminRoutes = [
+      '/admin-dashboard',
+      '/admin-dashboard/',
+      '/admin-dashboard/clinicians',
+      '/admin-dashboard/patients',
+      '/admin-dashboard/reports',
+      '/admin-dashboard/activity-logs',
+      '/users',
+    ];
+    const clinicianRoutes = [
+      '/clinician-dashboard',
+      '/clinician-dashboard/',
+      '/clinician-dashboard/patients',
+      '/session',
+      '/session/clinician',
+      '/session/clinician/',
+    ];
 
-    // Clinician route protection
-    if (!user.is_admin) {
-      // Only allow clinician-dashboard and session routes for clinicians
-      const allowedClinicianRoutes = [
-        '/clinician-dashboard',
-        '/session',
-        '/session/clinician',
-        '/session/clinician/',
-      ];
-      const isAllowed = allowedClinicianRoutes.some((route) => pathname.startsWith(route));
-      if (!isAllowed) {
-        router.push('/clinician-dashboard');
+    if (user.is_admin) {
+      // If admin tries to access clinician-only route, redirect to admin-dashboard
+      const isAdminAllowed = adminRoutes.some((route) => pathname.startsWith(route));
+      if (!isAdminAllowed) {
+        router.replace('/admin-dashboard');
+        return;
+      }
+    } else {
+      // If clinician tries to access admin-only route, redirect to clinician-dashboard
+      const isClinicianAllowed = clinicianRoutes.some((route) => pathname.startsWith(route));
+      if (!isClinicianAllowed) {
+        router.replace('/clinician-dashboard');
+        return;
+      }
+      // If adminOnly prop is set, block clinicians
+      if (adminOnly) {
+        router.replace('/clinician-dashboard');
         return;
       }
     }

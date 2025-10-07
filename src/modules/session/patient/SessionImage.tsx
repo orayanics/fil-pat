@@ -1,10 +1,12 @@
+
 "use client";
-import {usePatient} from "@/context/PatientProvider";
+import { useSocketStore } from "@/context/socketStore";
 import Image from "next/image";
 
 export default function SessionImage() {
-  const {currentItem} = usePatient();
-  const url = currentItem?.item?.image;
+  const currentItem = useSocketStore((state) => state.currentItem);
+
+  const url = currentItem?.image_url;
 
   const isUrl = url
     ? url
@@ -26,7 +28,7 @@ export default function SessionImage() {
           width={600}
           height={400}
           loading="lazy"
-          style={{objectFit: "contain", margin: "auto"}}
+          style={{ objectFit: "contain", margin: "auto" }}
         />
       )}
     </div>

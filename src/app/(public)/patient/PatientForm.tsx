@@ -13,27 +13,17 @@ import {
 } from "@mui/joy";
 import {InfoRounded} from "@mui/icons-material";
 
-import {usePatient} from "@/context/PatientProvider";
+import { useSocketStore } from "@/context/socketStore";
 
 export default function PatientForm() {
-  const {socket, patient, setPatient} = usePatient();
+  const patient = useSocketStore((state) => state.patient);
+  const setPatient = useSocketStore((state) => state.setPatient);
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = () => {
     if (!patient.trim()) return;
     setLoading(true);
     const patientId = Math.random().toString(36).substring(2, 15);
-
-    if (socket) {
-      socket.send(
-        JSON.stringify({
-          type: "addPatient",
-          patientName: patient,
-          patientId,
-        })
-      );
-    }
-
     setLoading(true);
   };
 
