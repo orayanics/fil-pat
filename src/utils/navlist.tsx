@@ -25,6 +25,11 @@ export function usePrivateList() {
             icon: <GroupRounded />,
             href: "/clinician-dashboard/patients",
           },
+          {
+            title: "Templates",
+            icon: <HomeRounded />,
+            href: "/clinician-dashboard/templates",
+          },
         ]),
   ];
 }

@@ -523,6 +523,67 @@ wss.on("connection", async (ws, request) => {
           });
           break;
 
+        case "createSession": {
+          // Require clinicianId, sessionId, templateId. If patientId is missing, create a temporary patient.
+          if (!data.clinicianId || !data.sessionId || !data.templateId) {
+            ws.send(JSON.stringify({
+              type: "error",
+              message: "Missing clinicianId, sessionId, or templateId for createSession"
+            }));
+            break;
+          }
+          let patientId = data.patientId;
+          try {
+            if (!patientId) {
+              // Create a temporary patient
+              const tempPatient = await prisma.patient.create({
+                data: {
+                  first_name: "Unregistered",
+                  last_name: "Patient",
+                  date_of_birth: new Date(2000, 0, 1),
+                  is_active: false,
+                  // Optionally, add a flag or note for cleanup
+                  notes: `Temporary patient for session ${data.sessionId}`,
+                  assigned_clinician_id: data.clinicianId
+                }
+              });
+              patientId = tempPatient.patient_id;
+            }
+            const session = await prisma.assessmentSession.create({
+              data: {
+                session_uuid: data.sessionId,
+                clinician_id: data.clinicianId,
+                patient_id: patientId,
+                template_id: data.templateId,
+                session_date: new Date(),
+                status: 'Scheduled',
+                session_mode: data.isKidsMode ? 'Kids' : 'Standard',
+                is_practice_session: false
+              }
+            });
+            ws.send(JSON.stringify({
+              type: "sessionCreated",
+              sessionId: session.session_uuid,
+              sessionInfo: session,
+              tempPatientId: !data.patientId ? patientId : undefined
+            }));
+            await logActivity({
+              user_id: data.clinicianId,
+              action: 'create_assessment_session',
+              entity_type: 'assessment_session',
+              entity_id: session.session_id,
+              description: `Created assessment session: ${session.session_uuid}`,
+              new_values: data
+            });
+          } catch (error) {
+            console.error('Failed to create session:', error);
+            ws.send(JSON.stringify({
+              type: "error",
+              message: "Failed to create session"
+            }));
+          }
+          break;
+        }
         case "joinRoom":
           await joinRoom(ws, data.roomId, {
             clinicianId: data.clinicianId,

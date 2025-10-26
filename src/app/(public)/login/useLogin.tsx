@@ -27,6 +27,10 @@ export default function useLogin() {
       if (!res.ok || !data.user) {
         throw new Error(data.error || "Invalid credentials");
       }
+      // Set auth_token cookie for backend authentication
+      if (data.token) {
+        document.cookie = `auth_token=${data.token}; path=/; SameSite=Lax`;
+      }
       localStorage.setItem("clinicianLoggedIn", "true");
       localStorage.setItem("clinician", JSON.stringify(data.user));
       localStorage.setItem("auth_user", JSON.stringify(data.user));
