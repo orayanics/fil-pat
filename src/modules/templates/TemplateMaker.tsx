@@ -1,11 +1,13 @@
 "use client";
 
 import React, { useState } from "react";
+import { useRouter } from 'next/navigation';
 import { Box, Button, Typography, Input, Switch, Textarea, IconButton, Divider, Grid, Sheet, Tooltip } from "@mui/joy";
+import AlertSuccess from '@/components/Alert/AlertSuccess';
+import AlertError from '@/components/Alert/AlertError';
 import { useSocketStore } from "@/context/socketStore";
 import DeleteIcon from "@mui/icons-material/Delete";
 import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline";
-import PrivateSidebar from "@/components/Layout/PrivateSidebar";
 
 type TemplateItem = {
   question: string;
@@ -33,6 +35,9 @@ type TemplateInput = {
   template_id?: number;
   name?: string;
   description?: string;
+  is_for_kids?: boolean;
+  difficulty_level?: string;
+  estimated_duration_minutes?: number;
   session_items?: SessionItemInput[];
 };
 
@@ -41,12 +46,16 @@ interface TemplateMakerProps {
 }
 
 export default function TemplateMaker({ template }: TemplateMakerProps) {
-  const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
-  const [isForKids, setIsForKids] = useState(false);
-  const [difficulty, setDifficulty] = useState("Standard");
-  const [estimatedDuration, setEstimatedDuration] = useState<number | "">("");
+  const router = useRouter();
+
+  const [name, setName] = useState(template?.name ?? "");
+  const [description, setDescription] = useState(template?.description ?? "");
+  const [isForKids, setIsForKids] = useState<boolean>(template?.is_for_kids ?? false);
+  const [difficulty, setDifficulty] = useState<string>(template?.difficulty_level ?? "Standard");
+  const [estimatedDuration, setEstimatedDuration] = useState<number | "">(template?.estimated_duration_minutes ?? "");
   const [message, setMessage] = useState("");
+  const [successOpen, setSuccessOpen] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const user = useSocketStore((state) => state.user);
   const [items, setItems] = useState<TemplateItem[]>(
     template?.session_items?.length ? template.session_items.map((it: SessionItemInput) => ({
@@ -65,11 +74,11 @@ export default function TemplateMaker({ template }: TemplateMakerProps) {
     e.preventDefault();
     setMessage("");
     if (!user) {
-      setMessage("You must be logged in to create a template.");
+      setErrorMsg("You must be logged in to create a template.");
       return;
     }
     if (!items.length || items.some(item => !item.question)) {
-      setMessage("Each template must have at least one item/question, and all questions must be filled.");
+      setErrorMsg("Each template must have at least one item/question, and all questions must be filled.");
       return;
     }
     try {
@@ -99,24 +108,44 @@ export default function TemplateMaker({ template }: TemplateMakerProps) {
         credentials: "include",
       });
       if (res.ok) {
-        setMessage(template ? 'Template updated successfully!' : "Template created successfully!");
-        setName("");
-        setDescription("");
-        setIsForKids(false);
-        setDifficulty("Standard");
-        setEstimatedDuration("");
-        setItems([{ question: "", sound: "", ipa_key: "", group: "", consonants: 0, vowel: 0, image: "" }]);
+        const successText = template ? 'Template updated successfully!' : "Template created successfully!";
+        setMessage(successText);
+        setSuccessOpen(true);
+        // On create, clear the form. On update, keep fields and show success then navigate back to list.
+        if (!template) {
+          setName("");
+          setDescription("");
+          setIsForKids(false);
+          setDifficulty("Standard");
+          setEstimatedDuration("");
+          setItems([{ question: "", sound: "", ipa_key: "", group: "", consonants: 0, vowel: 0, image: "" }]);
+        } else {
+          // small delay then redirect to templates list so the user sees update message
+          setTimeout(() => router.push('/clinician-dashboard/templates'), 900);
+        }
       } else {
         const data = await res.json();
-        setMessage(data.error || "Failed to create template.");
+        setErrorMsg(data.error || "Failed to create template.");
       }
     } catch {
-      setMessage("Error connecting to server.");
+      setErrorMsg("Error connecting to server.");
     }
   };
 
   const handleItemChange = <K extends keyof TemplateItem>(idx: number, field: K, value: TemplateItem[K]) => {
     setItems(items => items.map((item, i) => i === idx ? { ...item, [field]: value } : item));
+  };
+  const handleImageFile = (idx: number, file?: File) => {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string | null;
+      if (result) {
+        // store base64 data URL in item.image
+        handleItemChange(idx, 'image', result);
+      }
+    };
+    reader.readAsDataURL(file);
   };
   const handleAddItem = () => {
     setItems(items => [...items, { question: "", sound: "", ipa_key: "", group: "", consonants: 0, vowel: 0, image: "" }]);
@@ -126,11 +155,9 @@ export default function TemplateMaker({ template }: TemplateMakerProps) {
   };
 
   return (
-    <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: 'background.body' }}>
-      <PrivateSidebar />
-      <Box sx={{ flex: 1, p: { xs: 1, sm: 3 }, maxWidth: 900, mx: 'auto', width: '100%' }}>
-        <Sheet sx={{ p: { xs: 2, sm: 4 }, borderRadius: 4, boxShadow: 3, bgcolor: 'background.surface', mt: 3 }}>
-          <Typography level="h2" sx={{ mb: 1, fontWeight: 700 }}>Create Assessment Template</Typography>
+    <Box sx={{ flex: 1, p: { xs: 1, sm: 3 }, maxWidth: 900, mx: 'auto', width: '100%', minHeight: '100vh' }}>
+      <Sheet sx={{ p: { xs: 2, sm: 4 }, borderRadius: 4, boxShadow: 3, bgcolor: 'background.surface', mt: 3 }}>
+          <Typography level="h2" sx={{ mb: 1, fontWeight: 700 }}>{template ? 'Edit Assessment Template' : 'Create Assessment Template'}</Typography>
           <Typography level="body-md" sx={{ mb: 3, color: 'neutral.600' }}>
             Define a new assessment template. Add questions/items that will appear in the session. All fields can be edited later.
           </Typography>
@@ -197,7 +224,31 @@ export default function TemplateMaker({ template }: TemplateMakerProps) {
                   </Grid>
                   <Grid xs={12}>
                     <Typography level="title-sm">Image URL</Typography>
-                    <Input fullWidth placeholder="Image URL (optional)" value={item.image} onChange={e => handleItemChange(idx, "image", e.target.value)} sx={{ mb: 1 }} />
+                      <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                        <Input fullWidth placeholder="Image URL or uploaded image" value={item.image} onChange={e => handleItemChange(idx, "image", e.target.value)} sx={{ mb: 1 }} />
+                        <input
+                          id={`template-item-image-${idx}`}
+                          type="file"
+                          accept="image/*"
+                          style={{ display: 'none' }}
+                          onChange={(e) => {
+                            const file = e.target.files ? e.target.files[0] : undefined;
+                            if (file) handleImageFile(idx, file);
+                          }}
+                        />
+                        <label htmlFor={`template-item-image-${idx}`}>
+                          <Button component="span" size="sm">Upload</Button>
+                        </label>
+                        {item.image ? (
+                          <Button size="sm" color="neutral" variant="outlined" onClick={() => handleItemChange(idx, 'image', '')}>Clear</Button>
+                        ) : null}
+                      </Box>
+                      {item.image ? (
+                        <Box sx={{ mt: 1 }}>
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={item.image} alt={`item-${idx}-preview`} style={{ maxHeight: 120, maxWidth: '100%', borderRadius: 6 }} />
+                        </Box>
+                      ) : null}
                   </Grid>
                 </Grid>
               </Sheet>
@@ -205,11 +256,12 @@ export default function TemplateMaker({ template }: TemplateMakerProps) {
             <Button type="button" variant="soft" color="primary" onClick={handleAddItem} startDecorator={<AddCircleOutlineIcon />} sx={{ mb: 3 }}>
               Add Item / Question
             </Button>
-            <Button type="submit" fullWidth size="lg" variant="solid">Create Template</Button>
+            <Button type="submit" fullWidth size="lg" variant="solid">{template ? 'Update Template' : 'Create Template'}</Button>
           </form>
-          {message && <Typography color={message.includes("success") ? "success" : "danger"} mt={3}>{message}</Typography>}
+          {message && <Typography color={message.includes("success") ? "success" : "neutral"} mt={3}>{message}</Typography>}
         </Sheet>
-      </Box>
+      <AlertSuccess isOpen={successOpen} message={message} onClose={() => setSuccessOpen(false)} />
+      <AlertError isOpen={!!errorMsg} message={errorMsg ?? ''} onClose={() => setErrorMsg(null)} />
     </Box>
   );
 }

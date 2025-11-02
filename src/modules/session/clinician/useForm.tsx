@@ -11,6 +11,8 @@ export interface ItemFormData {
   consonantsCorrect: number;
   vowelsCorrect: number;
   score: number;
+  clinicianNotes?: string;
+  [key: string]: string | number | undefined;
 }
 
 const createDefaultFormData = (): ItemFormData => ({
@@ -20,6 +22,7 @@ const createDefaultFormData = (): ItemFormData => ({
   consonantsCorrect: 0,
   vowelsCorrect: 0,
   score: 0,
+  clinicianNotes: "",
 });
 
 export function useSessionForm(currentItemId?: number) {
@@ -59,18 +62,20 @@ export function useSessionForm(currentItemId?: number) {
       }
       needsContextUpdate = true;
     }
+    // Build a fresh map with updated data for this item and update local state
+    const newMap = new Map<number, ItemFormData>();
+    // copy previous entries into new map
+    formDataMap.forEach((v, k) => newMap.set(k, v));
+    newMap.set(currentItemId as number, updatedData);
+    setFormDataMap(() => newMap);
 
-    setFormDataMap((prev) => {
-      const newMap = new Map(prev);
-      newMap.set(currentItemId as number, updatedData);
-      return newMap;
-    });
-
+    // Only update context if we actually need to seed defaults
     if (needsContextUpdate) {
-      // update context after local state update
-      const newMap = new Map(formDataMap);
-      newMap.set(currentItemId as number, updatedData);
-      updateContextFormData(Object.fromEntries(newMap));
+      try {
+        updateContextFormData(Object.fromEntries(newMap));
+      } catch (err) {
+        console.error('Failed to update context form data:', err);
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentItemId, contextFormData, sampleData, updateContextFormData]);
@@ -159,6 +164,13 @@ export function useSessionForm(currentItemId?: number) {
   const updateChildResponse = useCallback(
     (response: string) => {
       updateFormData("childResponse", response);
+    },
+    [updateFormData]
+  );
+
+  const updateClinicianNotes = useCallback(
+    (notes: string) => {
+      updateFormData("clinicianNotes", notes);
     },
     [updateFormData]
   );
@@ -283,6 +295,7 @@ export function useSessionForm(currentItemId?: number) {
 
     // Update functions
     updateChildResponse,
+  updateClinicianNotes,
     updateConsonantsCorrect,
     updateVowelsCorrect,
     updateScore,

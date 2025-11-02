@@ -15,7 +15,7 @@ export default function SocketProvider({ children }: { children: ReactNode }) {
   const connectionStatus = useSocketStore((state) => state.connectionStatus);
   const setConnectionStatus = useSocketStore((state) => state.setConnectionStatus);
   const user = useSocketStore((state) => state.user);
-  const setUser = useSocketStore((state) => state.setUser);
+  const setUser = useSocketStore((state) => state.setUser);                                                                                                                                                                                                                                                                         
   const isAuthenticated = useSocketStore((state) => state.isAuthenticated);
   const setIsAuthenticated = useSocketStore((state) => state.setIsAuthenticated);
   const sessionId = useSocketStore((state) => state.sessionId);
@@ -40,6 +40,8 @@ export default function SocketProvider({ children }: { children: ReactNode }) {
   const setSessionPaused = useSocketStore((state) => state.setSessionPaused);
   const patientList = useSocketStore((state) => state.patientList);
   const setPatientList = useSocketStore((state) => state.setPatientList);
+  const setTemplateItems = useSocketStore((state) => state.setTemplateItems);
+  const setPatientConnected = useSocketStore((state) => state.setPatientConnected);
 
   // Initialize session ID from URL
   useEffect(() => {
@@ -104,6 +106,102 @@ export default function SocketProvider({ children }: { children: ReactNode }) {
           case 'sendQrData':
             setQrData({ qrData: data.qrData, sessionId: data.sessionId });
             break;
+          case 'sessionCreated':
+            // Server created a session (either via clinician action or auto-created when both parties present)
+            if (data.sessionId) {
+              setSessionId(data.sessionId);
+            }
+            if (data.sessionInfo) {
+              setSessionInfo(data.sessionInfo);
+            }
+            // if a patient is already present, mark connected
+            if (!patientInfo) {
+              setPatientInfo({ patient_id: data.tempPatientId ?? 0, first_name: 'Patient', last_name: 'Connected' });
+            }
+            setPatientConnected(true);
+            break;
+          case 'patientConnected':
+            // Mark that a patient has connected to the current session
+            setPatientConnected(true);
+            // Optionally set minimal patient info
+            setPatientInfo({
+              patient_id: 0,
+              first_name: 'Patient',
+              last_name: 'Connected'
+            });
+            // Prompt the clinician visually: try Notification API first, fallback to alert
+            try {
+              if (typeof window !== 'undefined' && 'Notification' in window) {
+                if (Notification.permission === 'granted') {
+                  new Notification('Patient connected', { body: `A patient connected to session ${data.sessionId || sessionId}` });
+                } else if (Notification.permission !== 'denied') {
+                  Notification.requestPermission().then((perm) => {
+                    if (perm === 'granted') {
+                      new Notification('Patient connected', { body: `A patient connected to session ${data.sessionId || sessionId}` });
+                    } else {
+                      alert(`Patient connected to session ${data.sessionId || sessionId}`);
+                    }
+                  });
+                } else {
+                  alert(`Patient connected to session ${data.sessionId || sessionId}`);
+                }
+              } else {
+                alert(`Patient connected to session ${data.sessionId || sessionId}`);
+              }
+            } catch {
+              // Best-effort: don't break message handling
+              try { alert(`Patient connected to session ${data.sessionId || sessionId}`); } catch {}
+            }
+            break;
+          case 'patientRejected':
+            // Patient could not join because another patient is already connected
+            // No direct action for clinician UI, but could be used in patient client
+            console.warn('Patient rejected from room:', data.message);
+            break;
+          case 'participantCount':
+            // Update UI participant count and if two or more present, treat as patient connected
+            if (typeof data.count === 'number') {
+              setRoomParticipants(data.count);
+              if (data.count >= 2 && isAuthenticated) {
+                setPatientConnected(true);
+                // set minimal patient info if none
+                if (!patientInfo) {
+                  setPatientInfo({ patient_id: 0, first_name: 'Patient', last_name: 'Connected' });
+                }
+              } else if (data.count < 2) {
+                setPatientConnected(false);
+              }
+            }
+            break;
+          case 'patientLeft':
+            setPatientConnected(false);
+            setPatientInfo(null);
+            break;
+          case 'templateAssigned':
+            // Clinician assigned a template for the session; update sessionInfo if available
+            // Prefer server-sent templateName if available, otherwise fall back to the templateId
+            const templateName = data.templateName ?? (data.templateId ? `Template ${data.templateId}` : undefined);
+            if (sessionInfo) {
+              setSessionInfo({
+                ...sessionInfo,
+                template_name: templateName ?? sessionInfo.template_name
+              });
+            } else if (templateName && sessionId) {
+              // If we don't have sessionInfo yet, create a minimal one so patient UI can show assigned template
+              setSessionInfo({
+                session_id: 0,
+                session_uuid: sessionId,
+                session_mode: 'Standard',
+                status: 'Scheduled',
+                total_items: data.templateItems ? data.templateItems.length : 0,
+                completed_items: 0,
+                template_name: templateName,
+                is_practice_session: false
+              });
+              // store template items for client-side mapping
+              setTemplateItems(data.templateItems ?? null);
+            }
+            break;
           case 'changeAssessmentItem':
             setCurrentItem(data.item);
             if (sessionInfo) {
@@ -132,6 +230,14 @@ export default function SocketProvider({ children }: { children: ReactNode }) {
                 ...sessionInfo,
                 status: 'In Progress'
               });
+            }
+            // If this client is a clinician, navigate to the clinician session page
+            try {
+              if (isAuthenticated && data.sessionId) {
+                router.push(`/clinician-dashboard/session/${data.sessionId}`);
+              }
+            } catch {
+              // ignore navigation errors
             }
             break;
           case 'sessionPaused':
@@ -179,8 +285,14 @@ export default function SocketProvider({ children }: { children: ReactNode }) {
             console.log('Response submitted for item:', data.itemId);
             break;
           case 'error':
-            console.error('WebSocket error:', data.message);
-            setConnectionStatus('error');
+            // Server may send validation errors for certain actions (eg. missing fields)
+            // Treat known validation messages as warnings instead of a connection-level error.
+            if (typeof data.message === 'string' && data.message.includes('Missing clinicianId')) {
+              console.warn('WebSocket server validation:', data.message);
+            } else {
+              console.error('WebSocket error:', data.message);
+              setConnectionStatus('error');
+            }
             break;
           case 'heartbeatResponse':
             // Connection is alive
@@ -213,7 +325,8 @@ export default function SocketProvider({ children }: { children: ReactNode }) {
       socket.removeEventListener('error', handleError);
       socket.removeEventListener('close', handleClose);
     };
-  }, [socket, user, sessionInfo, router, setConnectionStatus, setHasJoinedRoom, setRoomParticipants, setCurrentItem, setSessionInfo, setSessionStarted, setSessionPaused, setIsKidsMode, setQrData, setPatientList, roomParticipants]);
+  }, [socket, user, sessionInfo, router, setConnectionStatus, setHasJoinedRoom, setRoomParticipants, setCurrentItem, setSessionInfo, setSessionStarted, setSessionPaused, setIsKidsMode, setQrData, setPatientList, setPatientInfo, setPatientConnected, roomParticipants, sessionId, isAuthenticated, patientInfo, setSessionId, setTemplateItems]);
+  // Note: setTemplateItems intentionally not included previously; include it to satisfy hook deps
 
   // Send heartbeat every 30 seconds
   useEffect(() => {
@@ -285,8 +398,9 @@ export default function SocketProvider({ children }: { children: ReactNode }) {
   }, [socket, hasJoinedRoom, user?.clinician_id, isKidsMode]);
 
   useEffect(() => {
-    if (socket && sessionId && isAuthenticated && !hasJoinedRoom && isConnected) {
-      joinRoom(sessionId);
+    if (socket && sessionId && !hasJoinedRoom && isConnected) {
+      const role = isAuthenticated ? 'clinician' : 'patient';
+      joinRoom(sessionId, role);
     }
   }, [socket, sessionId, isAuthenticated, hasJoinedRoom, isConnected, joinRoom]);
 
@@ -402,6 +516,7 @@ export default function SocketProvider({ children }: { children: ReactNode }) {
     qrData,
     hasJoinedRoom,
     roomParticipants,
+    patientConnected: useSocketStore((s) => s.patientConnected),
     patientList,
     isKidsMode,
     sessionStarted,
@@ -419,6 +534,7 @@ export default function SocketProvider({ children }: { children: ReactNode }) {
     submitResponse,
     toggleKidsMode,
     updatePatientInfo,
+    setPatientConnected: useSocketStore((s) => s.setPatientConnected),
     setSessionId,
   };
 
@@ -435,4 +551,81 @@ export function useSocketContext() {
     throw new Error('useSocketContext must be used within a SocketProvider');
   }
   return context;
+}
+
+// Convenience hooks used by legacy clinician components
+export function useSocketState() {
+  const ctx = useSocketContext();
+  const formData = useSocketStore((s) => s.formData);
+  const isPersisting = useSocketStore((s) => s.isPersisting);
+
+  return {
+    socket: ctx.socket,
+    isConnected: ctx.isConnected,
+    sessionId: ctx.sessionId,
+    sessionInfo: ctx.sessionInfo,
+    currentItem: ctx.currentItem,
+    formData,
+    isPersisting,
+  };
+}
+
+export function useSocketDispatch() {
+  const ctx = useSocketContext();
+  const setCurrentItem = useSocketStore((s) => s.setCurrentItem);
+  const setFormData = useSocketStore((s) => s.setFormData);
+  const setIsPersisting = useSocketStore((s) => s.setIsPersisting);
+
+  const updateFormData = (data: Record<string, unknown>) => {
+    try {
+      const current = useSocketStore.getState().formData || {};
+      const merged = { ...(current as Record<string, unknown>), ...(data || {}) };
+      setFormData(merged);
+    } catch (err) {
+      console.error('Failed to update formData in store:', err);
+    }
+  };
+
+  const updateCurrentItem = (item: Record<string, unknown>) => {
+    setCurrentItem(item);
+    // Broadcast to others that current item changed
+    if (ctx.socket && ctx.socket.readyState === WebSocket.OPEN && ctx.sessionId) {
+      ctx.sendMessage({ type: 'changeAssessmentItem', item, sessionId: ctx.sessionId });
+    }
+  };
+
+  const saveSessionManually = async () => {
+    // Persist formData by sending submitResponse messages for each answered item
+    const state = useSocketStore.getState();
+    const form = state.formData || {};
+    const sid = ctx.sessionId;
+    if (!sid) return;
+    setIsPersisting(true);
+    try {
+      for (const [key, val] of Object.entries(form)) {
+        const itemNum = Number(key);
+        const entry = val as Record<string, unknown>;
+        const responsePayload: Record<string, unknown> = {
+          response: (entry['childResponse'] as string) ?? null,
+          score: (entry['score'] as number) ?? null,
+          isCorrect: typeof entry['score'] === 'number' ? ((entry['score'] as number) > 0) : null,
+          timestamp: new Date().toISOString(),
+          clinician_notes: (entry['clinicianNotes'] as string) ?? null
+        };
+
+        ctx.sendMessage({ type: 'submitResponse', sessionId: sid, item: { item: itemNum }, response: responsePayload });
+      }
+    } catch (err) {
+      console.error('Failed to save session manually:', err);
+    } finally {
+      setIsPersisting(false);
+    }
+  };
+
+  return {
+    updateFormData,
+    updateCurrentItem,
+    saveSessionManually,
+    sendMessage: ctx.sendMessage,
+  };
 }

@@ -34,7 +34,7 @@ export default function PatientsPage() {
     <AuthGuard>
       <Box sx={{ display: "flex", minHeight: "100vh" }}>
         <PrivateSidebar />
-        <Box sx={{ p: 4, flex: 1 }}>
+  <Box sx={{ p: { xs: 3, sm: 4 }, flex: 1, '@media (max-width: 900px)': { pt: '80px' } }}>
           <Typography level="h2" sx={{ mb: 2 }}>
             My Patients
           </Typography>

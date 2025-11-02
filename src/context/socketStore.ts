@@ -82,7 +82,9 @@ export interface SocketContextType {
   qrData: { qrData: string; sessionId: string } | null;
   hasJoinedRoom: boolean;
   roomParticipants: number;
+  patientConnected: boolean;
   patientList: Record<string, { patientId: string; patientName: string }>;
+  setPatientConnected: (connected: boolean) => void;
   isKidsMode: boolean;
   sessionStarted: boolean;
   sessionPaused: boolean;
@@ -108,14 +110,21 @@ export interface SocketState {
   sessionId: string | null;
   sessionInfo: SessionInfo | null;
   currentItem: AssessmentItem | null;
+  // form data collected by clinician during session; keyed by item number
+  formData: Record<string, unknown> | null;
   patientInfo: PatientInfo | null;
   hasJoinedRoom: boolean;
   roomParticipants: number;
+  patientConnected: boolean;
   patientList: Record<string, { patientId: string; patientName: string }>;
   isKidsMode: boolean;
   sessionStarted: boolean;
   sessionPaused: boolean;
+  // persisting flag while saving session responses
+  isPersisting: boolean;
   qrData: { qrData: string; sessionId: string } | null;
+  // current template items for the active session (if any)
+  templateItems?: Array<Record<string, unknown>> | null;
   connectionStatus: ConnectionStatus;
   // Patient context additions
   patient: string;
@@ -128,15 +137,19 @@ export interface SocketState {
   setIsAuthenticated: (auth: boolean) => void;
   setSessionId: (id: string | null) => void;
   setSessionInfo: (info: SessionInfo | null) => void;
+  setFormData: (data: Record<string, unknown> | null) => void;
   setCurrentItem: (item: AssessmentItem | null) => void;
   setPatientInfo: (info: PatientInfo | null) => void;
   setHasJoinedRoom: (joined: boolean) => void;
   setRoomParticipants: (count: number) => void;
   setPatientList: (list: Record<string, { patientId: string; patientName: string }>) => void;
+  setPatientConnected: (connected: boolean) => void;
   setIsKidsMode: (mode: boolean) => void;
   setSessionStarted: (started: boolean) => void;
   setSessionPaused: (paused: boolean) => void;
   setQrData: (data: { qrData: string; sessionId: string } | null) => void;
+  setTemplateItems: (items: Array<Record<string, unknown>> | null) => void;
+  setIsPersisting: (persisting: boolean) => void;
   setConnectionStatus: (status: ConnectionStatus) => void;
 }
 
@@ -149,16 +162,22 @@ export const useSocketStore = create<SocketState>((set) => ({
   patientInfo: null,
   hasJoinedRoom: false,
   roomParticipants: 0,
+  patientConnected: false,
   patientList: {},
   isKidsMode: false,
   sessionStarted: false,
   sessionPaused: false,
   qrData: null,
+  templateItems: null,
   connectionStatus: 'connecting',
   patient: '',
   setPatient: (name: string) => set({ patient: name }),
   patientQrData: null,
+  formData: null,
   setPatientQrData: (data: { qrData: string; sessionId: string } | null) => set({ patientQrData: data }),
+  isPersisting: false,
+  setFormData: (data: Record<string, unknown> | null) => set({ formData: data }),
+  setTemplateItems: (items: Array<Record<string, unknown>> | null) => set({ templateItems: items }),
   setUser: (user: AuthUser | null) => set({ user }),
   setIsAuthenticated: (auth: boolean) => set({ isAuthenticated: auth }),
   setSessionId: (id: string | null) => set({ sessionId: id }),
@@ -167,10 +186,12 @@ export const useSocketStore = create<SocketState>((set) => ({
   setPatientInfo: (info: PatientInfo | null) => set({ patientInfo: info }),
   setHasJoinedRoom: (joined: boolean) => set({ hasJoinedRoom: joined }),
   setRoomParticipants: (count: number) => set({ roomParticipants: count }),
+  setPatientConnected: (connected: boolean) => set({ patientConnected: connected }),
   setPatientList: (list: Record<string, { patientId: string; patientName: string }>) => set({ patientList: list }),
   setIsKidsMode: (mode: boolean) => set({ isKidsMode: mode }),
   setSessionStarted: (started: boolean) => set({ sessionStarted: started }),
   setSessionPaused: (paused: boolean) => set({ sessionPaused: paused }),
   setQrData: (data: { qrData: string; sessionId: string } | null) => set({ qrData: data }),
   setConnectionStatus: (status: ConnectionStatus) => set({ connectionStatus: status }),
+  setIsPersisting: (persisting: boolean) => set({ isPersisting: persisting }),
 }));

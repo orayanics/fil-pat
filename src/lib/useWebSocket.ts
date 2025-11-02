@@ -21,9 +21,14 @@ export default function useWebSocket(options: UseWebSocketOptions = {}) {
 
   const getWebSocketUrl = () => {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const host = process.env.NEXT_PUBLIC_WEBSOCKET_HOST || 'localhost';
-    const port = process.env.NEXT_PUBLIC_WEBSOCKET_PORT || '8080';
-    return `${protocol}//${host}:${port}`;
+  // Prefer an explicit environment override, otherwise connect back to the current page host
+  const envHost = process.env.NEXT_PUBLIC_WEBSOCKET_HOST;
+  const envPort = process.env.NEXT_PUBLIC_WEBSOCKET_PORT;
+  const host = envHost || window.location.hostname || 'localhost';
+  // The WebSocket server typically runs on a dedicated port (default 8080).
+  // Always prefer the explicit websocket port (env) or default to 8080.
+  const port = envPort || '8080';
+  return `${protocol}//${host}:${port}`;
   };
 
   const connect = useCallback(() => {

@@ -36,6 +36,7 @@ export default function SessionForm() {
     formData,
     hasData,
     updateChildResponse,
+    updateClinicianNotes,
     updateConsonantsCorrect,
     updateVowelsCorrect,
     updateScore,
@@ -148,6 +149,17 @@ export default function SessionForm() {
                 showOutput={false}
               />
             </Box>
+            <div>
+              <Typography fontWeight={800} gutterBottom={false}>
+                Clinician notes
+              </Typography>
+              <Textarea
+                minRows={2}
+                placeholder="Add notes or observations for this item"
+                value={(formData as any).clinicianNotes ?? ''}
+                onChange={(e) => updateClinicianNotes(e.target.value)}
+              />
+            </div>
           </div>
 
           <Table>

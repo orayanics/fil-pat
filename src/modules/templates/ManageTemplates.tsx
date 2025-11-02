@@ -1,21 +1,25 @@
 "use client";
 
 import React, { useEffect, useState } from 'react';
-import { Box, Button, Typography, Card, CardContent, IconButton } from '@mui/joy';
-import DeleteIcon from '@mui/icons-material/Delete';
-import EditIcon from '@mui/icons-material/Edit';
-import { useRouter } from 'next/navigation';
+import { Box, Button, Typography } from '@mui/joy';
+import AlertSuccess from '@/components/Alert/AlertSuccess';
+import TemplatesTable from '@/modules/templates/TemplatesTable';
+import AlertError from '@/components/Alert/AlertError';
 
 type TemplateSummary = {
   template_id: number;
   name: string;
   description?: string;
+  session_items?: Array<Record<string, unknown>>;
+  created_at?: string;
 };
 
-export default function ManageTemplates() {
-  const [templates, setTemplates] = useState<TemplateSummary[]>([]);
+export default function ManageTemplates({ initialTemplates }: { initialTemplates?: TemplateSummary[] }) {
+  const [templates, setTemplates] = useState<TemplateSummary[]>(initialTemplates ?? []);
   const [loading, setLoading] = useState(false);
-  const router = useRouter();
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  // router no longer needed; table actions handle navigation and deletion
 
   const fetchTemplates = async () => {
     setLoading(true);
@@ -30,39 +34,24 @@ export default function ManageTemplates() {
     } finally { setLoading(false); }
   };
 
-  useEffect(() => { fetchTemplates(); }, []);
+  // Only fetch on the client if the server didn't provide initial templates
+  useEffect(() => { if (!initialTemplates) fetchTemplates(); }, [initialTemplates]);
 
-  const handleDelete = async (id: number) => {
-    if (!confirm('Delete this template?')) return;
-    try {
-      const res = await fetch(`/api/templates/${id}`, { method: 'DELETE', credentials: 'include' });
-      if (res.status === 204) {
-        setTemplates(t => t.filter(x => x.template_id !== id));
-      } else {
-        const data = await res.json();
-        alert(data.error || 'Delete failed');
-      }
-    } catch (err) { console.error(err); alert('Delete failed'); }
-  };
+  // deletion is handled by TemplateActions in the shared table; keep fetch/refresh support here
 
   return (
     <Box>
-      <Typography level="h3" sx={{ mb: 2 }}>Manage Templates</Typography>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+        <Typography level="h3">Manage Templates</Typography>
+        <Box>
+          <Button size="sm" variant="outlined" onClick={() => fetchTemplates()} disabled={loading} sx={{ mr: 1 }}>Refresh</Button>
+        </Box>
+      </Box>
       {loading && <Typography>Loading...</Typography>}
-      {templates.map(t => (
-        <Card key={t.template_id} variant="outlined" sx={{ mb: 2 }}>
-          <CardContent>
-            <Typography level="title-lg">{t.name}</Typography>
-            <Typography level="body-sm" sx={{ color: 'neutral.600' }}>{t.description}</Typography>
-            <Box sx={{ mt: 1 }}>
-              <Button size="sm" startDecorator={<EditIcon />} onClick={() => router.push(`/templates/edit/${t.template_id}`)}>Edit</Button>
-              <IconButton color="danger" onClick={() => handleDelete(t.template_id)} sx={{ ml: 1 }}>
-                <DeleteIcon />
-              </IconButton>
-            </Box>
-          </CardContent>
-        </Card>
-      ))}
+
+      <TemplatesTable templates={templates} />
+      <AlertSuccess isOpen={!!successMsg} message={successMsg ?? ''} onClose={() => setSuccessMsg(null)} />
+      <AlertError isOpen={!!errorMsg} message={errorMsg ?? ''} onClose={() => setErrorMsg(null)} />
     </Box>
   );
 }
