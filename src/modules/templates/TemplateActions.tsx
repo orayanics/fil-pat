@@ -44,7 +44,7 @@ export default function TemplateActions({ templateId }: { templateId: number }) 
 
       <Modal open={open} onClose={() => setOpen(false)}>
         <ModalDialog>
-          <Typography level="h6">Delete Template</Typography>
+          <Typography component="h6" sx={{ fontWeight: 700 }}>Delete Template</Typography>
           <Typography level="body-sm" sx={{ mb: 2 }}>Are you sure you want to delete this template? This action cannot be undone.</Typography>
           <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
             <Button variant="outlined" color="neutral" onClick={() => setOpen(false)}>Cancel</Button>

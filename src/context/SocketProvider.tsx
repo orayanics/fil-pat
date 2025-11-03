@@ -1,7 +1,7 @@
 "use client";
-import { createContext, useContext, useEffect, useCallback, ReactNode } from "react";
+import { createContext, useContext, useEffect, useCallback, useState, ReactNode } from "react";
 import { useSocketStore } from "./socketStore";
-import type { WebSocketMessage, SessionSettings, SessionResponsePayload, SocketContextType, PatientInfo } from "./socketStore";
+import type { WebSocketMessage, SessionSettings, SessionResponsePayload, SocketContextType, PatientInfo, AssessmentItem } from "./socketStore";
 import { useParams, useRouter } from "next/navigation";
 import useWebSocket from "@/lib/useWebSocket";
 
@@ -42,6 +42,7 @@ export default function SocketProvider({ children }: { children: ReactNode }) {
   const setPatientList = useSocketStore((state) => state.setPatientList);
   const setTemplateItems = useSocketStore((state) => state.setTemplateItems);
   const setPatientConnected = useSocketStore((state) => state.setPatientConnected);
+  const [toast, setToast] = useState<{ open: boolean; message: string }>({ open: false, message: '' });
 
   // Initialize session ID from URL
   useEffect(() => {
@@ -129,7 +130,17 @@ export default function SocketProvider({ children }: { children: ReactNode }) {
               first_name: 'Patient',
               last_name: 'Connected'
             });
-            // Prompt the clinician visually: try Notification API first, fallback to alert
+            // show a short, non-blocking in-app toast for clinician UX
+            try {
+              setToast({ open: true, message: `Patient connected to session ${data.sessionId || sessionId}` });
+              setTimeout(() => setToast({ open: false, message: '' }), 4000);
+            } catch (e) {
+              console.warn('Toast failed', e);
+            }
+            // Prompt the clinician visually: try Notification API first. If not
+            // available or denied, fall back to an in-app UI update (no blocking
+            // alert) — we avoid native alert() because browsers sometimes prefix
+            // it with the origin (eg. "localhost says:") which is noisy.
             try {
               if (typeof window !== 'undefined' && 'Notification' in window) {
                 if (Notification.permission === 'granted') {
@@ -139,18 +150,21 @@ export default function SocketProvider({ children }: { children: ReactNode }) {
                     if (perm === 'granted') {
                       new Notification('Patient connected', { body: `A patient connected to session ${data.sessionId || sessionId}` });
                     } else {
-                      alert(`Patient connected to session ${data.sessionId || sessionId}`);
+                      // Permission denied — rely on visible UI state (patientConnected)
+                      console.log(`Patient connected to session ${data.sessionId || sessionId}`);
                     }
                   });
                 } else {
-                  alert(`Patient connected to session ${data.sessionId || sessionId}`);
+                  // Permission already denied — rely on UI state instead of alert
+                  console.log(`Patient connected to session ${data.sessionId || sessionId}`);
                 }
               } else {
-                alert(`Patient connected to session ${data.sessionId || sessionId}`);
+                // Notifications not available; rely on UI state (no native alert)
+                console.log(`Patient connected to session ${data.sessionId || sessionId}`);
               }
-            } catch {
+            } catch (e) {
               // Best-effort: don't break message handling
-              try { alert(`Patient connected to session ${data.sessionId || sessionId}`); } catch {}
+              console.warn('Notification error', e);
             }
             break;
           case 'patientRejected':
@@ -203,7 +217,8 @@ export default function SocketProvider({ children }: { children: ReactNode }) {
             }
             break;
           case 'changeAssessmentItem':
-            setCurrentItem(data.item);
+            // Ensure the raw payload is treated as an AssessmentItem for the store
+            setCurrentItem(data.item as unknown as AssessmentItem);
             if (sessionInfo) {
               setSessionInfo({
                 ...sessionInfo,
@@ -541,6 +556,13 @@ export default function SocketProvider({ children }: { children: ReactNode }) {
   return (
     <SocketContext.Provider value={contextValue}>
       {children}
+      {toast.open && (
+        <div style={{ position: 'fixed', right: 16, bottom: 16, zIndex: 9999 }}>
+          <div style={{ background: '#0b84ff', color: '#fff', padding: '10px 14px', borderRadius: 8, boxShadow: '0 8px 24px rgba(2,6,23,0.2)', fontWeight: 600 }}>
+            {toast.message}
+          </div>
+        </div>
+      )}
     </SocketContext.Provider>
   );
 }
@@ -587,7 +609,7 @@ export function useSocketDispatch() {
   };
 
   const updateCurrentItem = (item: Record<string, unknown>) => {
-    setCurrentItem(item);
+  setCurrentItem(item as unknown as AssessmentItem);
     // Broadcast to others that current item changed
     if (ctx.socket && ctx.socket.readyState === WebSocket.OPEN && ctx.sessionId) {
       ctx.sendMessage({ type: 'changeAssessmentItem', item, sessionId: ctx.sessionId });

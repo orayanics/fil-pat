@@ -14,23 +14,28 @@ import {
 import Ipa from "@/components/Keyboard/Ipa";
 
 import useData from "../useData";
-import {useSessionForm} from "./useForm";
+import {useSessionForm, ItemFormData} from "./useForm";
 import {useSocketState, useSocketDispatch} from "@/context/SocketProvider";
+import type { AssessmentItem } from '@/context/socketStore';
 import {useEffect} from "react";
 
 export default function SessionForm() {
   const {socket, sessionId, currentItem} = useSocketState();
-  const {updateCurrentItem, saveSessionManually} = useSocketDispatch();
+  const { saveSessionManually } = useSocketDispatch();
 
   const {item, length} = useData({
     socket,
     sessionId,
     currentItem,
-    updateCurrentItem,
   });
 
-  const currentData = currentItem?.item || item;
-  const {item: itemNumber, ipa_key, consonants, vowel} = currentData || {};
+  // Prefer the normalized `item` object from useData; otherwise use the currentItem
+  const currentData: AssessmentItem | null = (item as AssessmentItem) ?? currentItem;
+
+  const itemNumber = currentData?.item ?? currentData?.item_number ?? currentData?.item_id;
+  const ipa_key = currentData?.ipa_key;
+  const consonants = currentData?.consonants_count ?? 0;
+  const vowel = currentData?.vowels_count ?? 0;
 
   const {
     formData,
@@ -153,10 +158,10 @@ export default function SessionForm() {
               <Typography fontWeight={800} gutterBottom={false}>
                 Clinician notes
               </Typography>
-              <Textarea
+                <Textarea
                 minRows={2}
                 placeholder="Add notes or observations for this item"
-                value={(formData as any).clinicianNotes ?? ''}
+                value={(formData as ItemFormData).clinicianNotes ?? ''}
                 onChange={(e) => updateClinicianNotes(e.target.value)}
               />
             </div>

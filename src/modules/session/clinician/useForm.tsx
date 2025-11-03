@@ -141,7 +141,8 @@ export function useSessionForm(currentItemId?: number) {
         if (
           field === "childResponse" ||
           field === "ipa_key" ||
-          field === "group"
+          field === "group" ||
+          field === "clinicianNotes"
         ) {
           updatedData[field] = String(value);
         } else {

@@ -1,337 +1,345 @@
 "use client";
-import React from "react";
-import { useSocketContext } from "@/context/SocketProvider";
-import { useState, useEffect } from "react";
-import {Box, Button, Modal, Typography, Select, Option, FormControl, FormLabel} from "@mui/joy";
+import React, { useState, useEffect } from "react";
+import {
+  Box,
+  Button,
+  Modal,
+  Typography,
+  Card,
+  Select,
+  Option,
+  Sheet,
+  Stack,
+  Chip,
+  Divider,
+} from "@mui/joy";
 import getLocalIp from "@/utils/getLocalIp";
-import Image from "next/image";
-import SessionStatus from "@/components/Status/SessionStatus";
+import QRCodeLib from "qrcode";
+import { useSocketContext } from "@/context/SocketProvider";
+import RoomsList from "./RoomsList";
 
-export default function DashboardRooms() {
-  const socketContext = useSocketContext();
-  const { socket, sendMessage, sessionId, user, setSessionId, connectionStatus, patientConnected } = socketContext;
+type DashboardRoomsProps = {
+  qrGenerateQrData?: (url: string) => Promise<string>;
+};
+
+export default function DashboardRooms({ qrGenerateQrData }: DashboardRoomsProps) {
+  const {
+    sendMessage,
+    socket,
+    sessionId,
+    setSessionId,
+    connectionStatus,
+    patientConnected,
+    user,
+    patientList,
+    joinRoom,
+  } = useSocketContext();
+
   const [sessionLoading, setSessionLoading] = useState(false);
-  const [templates, setTemplates] = useState<Array<{template_id: number; name: string}>>([]);
+  const [qrModalOpen, setQrModalOpen] = useState(false);
+  const [qrData, setQrData] = useState<string | null>(null);
+  const [qrLoading, setQrLoading] = useState(false);
+  const [templates, setTemplates] = useState<Array<{ template_id: number; name: string }>>([]);
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
-  // For demo: use default patient/template (should be selected in real app)
-  const defaultTemplateId = 1;
 
-  useEffect(() => {
-    let mounted = true;
-    const fetchTemplates = async () => {
-      try {
-        const res = await fetch('/api/templates');
-        if (!res.ok) return;
-        const data = await res.json();
-        if (!mounted) return;
-        // API returns array of templates
-        setTemplates(Array.isArray(data) ? data : (data?.templates ?? []));
-      } catch {
-        // ignore
-      }
-    };
-    fetchTemplates();
-    return () => { mounted = false; };
-  }, []);
-  // Listen for sessionCreated response
-  React.useEffect(() => {
-    if (!socket) return;
-    const handler = (event: MessageEvent) => {
-      try {
-        const data = JSON.parse(event.data);
-        if (data.type === "sessionCreated" && data.sessionId) {
-          setSessionId(data.sessionId);
-          // store server-provided clinician_ip if available for more reliable QR links
-          if (data.sessionInfo && data.sessionInfo.clinician_ip) {
-            setServerHostIp(data.sessionInfo.clinician_ip as string);
-          }
-        }
-      } catch {}
-    };
-    socket.addEventListener("message", handler);
-    return () => socket.removeEventListener("message", handler);
-  }, [socket, setSessionId]);
-  const [serverHostIp, setServerHostIp] = useState<string | null>(null);
-
-  // Create session handler
   const handleCreateSession = async () => {
     setSessionLoading(true);
-    // Reset sessionId if session failed
-    if (connectionStatus === "error") {
-      setSessionId(null);
-    }
+    if (connectionStatus === "error") setSessionId(null);
     if (socket && socket.readyState === WebSocket.OPEN && user) {
       const tempSessionId = Math.random().toString(36).substring(2, 15);
-      const templateIdToUse = selectedTemplate ? Number(selectedTemplate) : defaultTemplateId;
-      // detect local host IP to pass to server for QR usage
-      let hostIp: string | null = null;
-      try {
-        const detected = await getLocalIp();
-        try {
-          const u = new URL(detected);
-          hostIp = u.hostname;
-        } catch {
-          hostIp = detected;
-        }
-      } catch {}
-
-      sendMessage({
-        type: "createSession",
-        clinicianId: user.clinician_id,
-        sessionId: tempSessionId,
-        // Do not pass a hardcoded patientId here — let server create a temporary patient if needed
-        templateId: templateIdToUse,
-        isKidsMode: false,
-        hostIp
-      });
-      // Set sessionId immediately so UI can use it; backend will confirm when ready
+      sendMessage({ type: "createSession", clinicianId: user.clinician_id, sessionId: tempSessionId });
       setSessionId(tempSessionId);
     }
     setSessionLoading(false);
   };
-  const [qrModal, setQrModal] = useState(false);
-  const [qrData, setQrData] = useState<string | null>(null);
-  const [qrLoading, setQrLoading] = useState(false);
 
-
-
-
-
-  const createAndSetSession = async () => {
-    if (!socket || socket.readyState !== WebSocket.OPEN || !user) return null;
-    const tempSessionId = Math.random().toString(36).substring(2, 15);
-    const templateIdToUse = selectedTemplate ? Number(selectedTemplate) : defaultTemplateId;
-    // detect local host IP to pass to server
-    let hostIp: string | null = null;
-    try {
-      const detected = await getLocalIp();
-      try {
-        const u = new URL(detected);
-        hostIp = u.hostname;
-      } catch {
-        hostIp = detected;
+  const handleGenerateQr = async () => {
+    setQrLoading(true);
+    let useSession = sessionId;
+    if (!useSession) {
+      if (!socket || !user) {
+        setQrLoading(false);
+        return;
       }
-    } catch {}
+      const createdId = Math.random().toString(36).substring(2, 15);
+      sendMessage({ type: "createSession", clinicianId: user.clinician_id, sessionId: createdId });
+      setSessionId(createdId);
+      useSession = createdId;
+    }
 
-    sendMessage({
-      type: 'createSession',
-      clinicianId: user.clinician_id,
-      sessionId: tempSessionId,
-      // omit patientId so server will create a temporary patient if none exists
-      templateId: templateIdToUse,
-      isKidsMode: false,
-      hostIp
-    });
-    // wait for server confirmation (sessionCreated) to obtain server-provided clinician_ip
-    return await new Promise<string | null>((resolve) => {
-      let resolved = false;
-      const onMessage = (ev: MessageEvent) => {
-        try {
-          const d = JSON.parse(ev.data);
-          if (d.type === 'sessionCreated' && d.sessionId === tempSessionId) {
-            // store server-provided ip if present
-            if (d.sessionInfo && d.sessionInfo.clinician_ip) {
-              setServerHostIp(d.sessionInfo.clinician_ip as string);
-            }
-            resolved = true;
-            socket.removeEventListener('message', onMessage);
-            setSessionId(tempSessionId);
-            resolve(tempSessionId);
-          }
-        } catch {}
-      };
-      socket.addEventListener('message', onMessage);
-      // fallback: resolve after timeout even if server didn't respond
-      setTimeout(() => {
-        if (!resolved) {
-          try { socket.removeEventListener('message', onMessage); } catch {}
-          setSessionId(tempSessionId);
-          resolve(tempSessionId);
-        }
-      }, 3000);
-    });
+    try {
+      const localIp = await getLocalIp();
+      const protocol = window.location.protocol;
+      const port = window.location.port ? `:${window.location.port}` : "";
+      const hostToUse = window.location.hostname || localIp || "localhost";
+      const url = `${protocol}//${hostToUse}${port}/session/patient/${useSession}`;
+      const dataUrl = qrGenerateQrData
+        ? await qrGenerateQrData(url)
+        : await QRCodeLib.toDataURL(url, { width: 240, margin: 1 });
+      setQrData(dataUrl);
+      setQrModalOpen(true);
+      if (socket && socket.readyState === WebSocket.OPEN) {
+        sendMessage({ type: "sendQrData", qrData: dataUrl, sessionId: useSession, qrUrl: url });
+      }
+    } catch (err) {
+      console.error("Failed to create QR", err);
+    } finally {
+      setQrLoading(false);
+    }
   };
 
-  const handleGenerateSessionQr = async ({ regenerate = false }: { regenerate?: boolean } = {}) => {
-    setQrLoading(true);
-    // create new session if none exists or if regenerating
-    let useSession = sessionId;
-    if (!useSession || regenerate) {
-      const created = await createAndSetSession();
-      if (created) useSession = created;
-    }
-    if (!useSession) {
-      setQrLoading(false);
-      return;
-    }
+  useEffect(() => {
+    if (patientConnected) setQrModalOpen(false);
+  }, [patientConnected]);
 
-    try {
-      // Get the local IP that other devices on the same network can use
-      const localIp = await getLocalIp();
-
-      // Construct the URL that the phone will use to connect
-      const protocol = window.location.protocol;
-      const port = window.location.port ? `:${window.location.port}` : '';
-
-      // Use server-provided IP if available (more reliable), otherwise fallback to detected local IP
-      const hostToUse = serverHostIp || localIp || window.location.hostname;
-
-      const url = `${protocol}//${hostToUse}${port}/session/patient/${useSession}`;
-
-      console.log('QR Code URL:', url);
-      const QRCode = (await import("qrcode")).default;
-      const qrDataUri = await QRCode.toDataURL(url, {
-        width: 240,
-        margin: 1,
-        errorCorrectionLevel: "H",
-      });
-      setQrData(qrDataUri);
-      setQrModal(true);
-      // Send QR data via websocket for patient connection
-      if (socket && socket.readyState === WebSocket.OPEN) {
-        sendMessage({ type: "sendQrData", qrData: qrDataUri, sessionId: useSession, qrUrl: url });
+  // Fetch templates
+  useEffect(() => {
+    let mounted = true;
+    const fetchTemplates = async () => {
+      try {
+        const res = await fetch("/api/templates", { credentials: "include" });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!mounted) return;
+        if (Array.isArray(data)) {
+              const mapped = (data as unknown[])
+                .map((t) => (typeof t === "object" && t !== null ? (t as Record<string, unknown>) : null))
+                .filter(Boolean)
+                .map((t) => ({
+                  template_id: Number((t as Record<string, unknown>)["template_id"]),
+                  name: String((t as Record<string, unknown>)["name"] || "Untitled"),
+                }));
+              setTemplates(mapped);
+              if (mapped.length > 0) setSelectedTemplate(String(mapped[0].template_id));
+            }
+      } catch (err) {
+        console.error("Failed to fetch templates", err);
       }
-    } catch (error) {
-      console.error('Failed to generate QR code:', error);
-      setQrData(null);
-      setQrModal(true);
+    };
+    fetchTemplates();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const handleJoinRoom = (patientId: string) => {
+    try {
+      if (joinRoom) joinRoom(patientId, "clinician");
+      else if (socket && socket.readyState === WebSocket.OPEN) {
+        sendMessage({ type: "joinRoom", roomId: patientId, role: "clinician" });
+      }
+    } catch (err) {
+      console.error("Failed to join room", err);
     }
-    setQrLoading(false);
+  };
+
+  const handleAssignTemplate = async () => {
+    if (!sessionId || selectedTemplate == null) return;
+    try {
+      const templateIdNum = Number(selectedTemplate);
+      if (Number.isNaN(templateIdNum)) return;
+      sendMessage({ type: "assignTemplate", sessionId, templateId: templateIdNum });
+    } catch (err) {
+      console.error("Failed to assign template", err);
+    }
   };
 
   return (
-    <Box>
-      <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
-        <Button
-          size="sm"
+    <Box sx={{ width: "100%", display: "flex", flexDirection: "column", gap: 3 }}>
+      {/* Connected Patients Section */}
+      <Card
+        variant="outlined"
+        sx={{
+          p: 3,
+          borderRadius: "lg",
+          boxShadow: "sm",
+        }}
+      >
+        <Stack direction="row" justifyContent="space-between" alignItems="center" mb={1.5}>
+          <Typography level="title-md">Connected Patients</Typography>
+          <Chip
+            size="sm"
+            color={connectionStatus === "connected" ? "success" : "neutral"}
+            variant="soft"
+          >
+            {connectionStatus === "connected" ? "Online" : "Offline"}
+          </Chip>
+        </Stack>
+        <Divider sx={{ mb: 2 }} />
+        <Box sx={{ overflowX: "auto" }}>
+          <table
+            style={{
+              width: "100%",
+              borderCollapse: "collapse",
+              fontSize: "0.9rem",
+            }}
+          >
+            <thead>
+              <tr style={{ background: "#f8fafc" }}>
+                <th style={{ textAlign: "left", padding: "10px" }}>Name</th>
+                <th style={{ textAlign: "left", padding: "10px" }}>Patient ID</th>
+                <th style={{ textAlign: "left", padding: "10px" }}>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <RoomsList patientList={patientList || {}} handleJoinRoom={handleJoinRoom} />
+            </tbody>
+          </table>
+        </Box>
+      </Card>
+
+      {/* Controls */}
+      <Card variant="outlined" sx={{ p: 3, borderRadius: "lg", boxShadow: "sm" }}>
+        <Stack spacing={2}>
+          <Stack direction={{ xs: "column", sm: "row" }} spacing={2} alignItems="center">
+            <Button
+              size="md"
+              variant="solid"
+              color="primary"
+              onClick={handleCreateSession}
+              disabled={sessionLoading || (!!sessionId && connectionStatus !== "error")}
+            >
+              {sessionLoading ? "Creating..." : "Create Session"}
+            </Button>
+
+            <Button
+              size="md"
+              variant="outlined"
+              color="neutral"
+              onClick={handleGenerateQr}
+              disabled={qrLoading || connectionStatus === "error"}
+            >
+              {qrLoading ? "Generating QR..." : "Generate Session QR"}
+            </Button>
+          </Stack>
+
+          <Stack
+            direction={{ xs: "column", sm: "row" }}
+            spacing={2}
+            alignItems="center"
+            justifyContent="flex-start"
+          >
+            <Typography level="title-sm" sx={{ minWidth: 80 }}>
+              Template
+            </Typography>
+            <Select
+              size="sm"
+              value={selectedTemplate ?? ""}
+              onChange={(e, v) => setSelectedTemplate(v || null)}
+              sx={{ minWidth: 220 }}
+            >
+              {templates.map((t) => (
+                <Option key={t.template_id} value={String(t.template_id)}>
+                  {t.name}
+                </Option>
+              ))}
+            </Select>
+            <Button
+              size="sm"
+              variant="soft"
+              color="primary"
+              onClick={handleAssignTemplate}
+              disabled={!sessionId || selectedTemplate == null}
+            >
+              Assign
+            </Button>
+            <Button
+              size="sm"
+              variant="solid"
+              color="primary"
+              sx={{ fontWeight: 600 }}
+              onClick={() => {
+                if (!sessionId) return;
+                sendMessage({ type: "startSession", sessionId });
+              }}
+            >
+              Start Session
+            </Button>
+          </Stack>
+        </Stack>
+      </Card>
+
+      {/* QR Modal */}
+      <Modal open={qrModalOpen} onClose={() => setQrModalOpen(false)}>
+        <Sheet
           variant="outlined"
-          color="success"
-          onClick={handleCreateSession}
-          disabled={Boolean(sessionLoading || (sessionId && connectionStatus !== "error"))}
-        >
-          {sessionLoading ? "Creating Session..." : "Create Session"}
-        </Button>
-              {patientConnected ? (
-                <FormControl sx={{ minWidth: 200 }}>
-                  <FormLabel>Template</FormLabel>
-                  <Select size="sm" value={selectedTemplate ?? ''} onChange={(_e, value) => setSelectedTemplate(value ?? '')}>
-                    <Option value="">Select template (optional)</Option>
-                    {templates.map(t => <Option key={t.template_id} value={String(t.template_id)}>{t.name}</Option>)}
-                  </Select>
-                </FormControl>
-              ) : null}
-
-              {patientConnected && selectedTemplate ? (
-                <Button
-                  size="sm"
-                  variant="soft"
-                  color="neutral"
-                  onClick={() => {
-                    if (!sessionId) return;
-                    sendMessage({ type: 'assignTemplate', sessionId, templateId: Number(selectedTemplate) });
-                  }}
-                  sx={{ ml: 1 }}
-                >
-                  Assign Template
-                </Button>
-              ) : null}
-              {patientConnected ? (
-                <Button
-                  size="sm"
-                  variant="solid"
-                  color="success"
-                  onClick={() => {
-                    if (!sessionId) return;
-                    sendMessage({ type: 'startSession', sessionId });
-                  }}
-                  sx={{ ml: 1 }}
-                >
-                  Start Session
-                </Button>
-              ) : null}
-
-              <Button
-                size="sm"
-                variant="solid"
-                color="primary"
-                onClick={() => handleGenerateSessionQr()}
-                disabled={Boolean(qrLoading || connectionStatus === "error")}
-                sx={{ ml: 1 }}
-              >
-                {qrLoading ? "Generating QR..." : "Generate Session QR"}
-              </Button>
-      </Box>
-      <SessionStatus />
-
-      {/* QR Modal (closable, regeneratable) */}
-      <Modal open={qrModal} onClose={() => setQrModal(false)}>
-        <Box
           sx={{
-            mt: 4,
-            mx: 'auto',
             maxWidth: 420,
-            width: '100%',
-            p: { xs: 2, sm: 4 },
-            bgcolor: 'linear-gradient(135deg, #e0e7ff 0%, #f0fdfa 100%)',
-            borderRadius: 4,
-            boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
-            textAlign: 'center',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
+            mx: "auto",
+            mt: "10vh",
+            p: 4,
+            borderRadius: "xl",
+            textAlign: "center",
+            boxShadow: "lg",
+            bgcolor: "background.surface",
           }}
         >
-          <h2 style={{ fontWeight: 700, fontSize: '1.5rem', marginBottom: 8, color: '#1e293b' }}>Session QR Code</h2>
+          <Typography level="title-md" mb={1}>
+            Session QR Code
+          </Typography>
+          <Divider sx={{ mb: 2 }} />
           <Box
             sx={{
               width: { xs: 180, sm: 240 },
               height: { xs: 180, sm: 240 },
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              bgcolor: '#fff',
-              borderRadius: 3,
-              boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+              mx: "auto",
               mb: 2,
-              mx: 'auto',
               p: 1,
+              bgcolor: "#fff",
+              borderRadius: "md",
             }}
           >
             {qrData ? (
-              <Image
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
                 src={qrData}
                 alt="Session QR Code"
-                width={240}
-                height={240}
-                style={{ objectFit: 'contain', borderRadius: 'inherit' }}
+                style={{ width: "100%", height: "100%", objectFit: "contain" }}
               />
             ) : (
-              <Typography color="danger">QR generation failed.</Typography>
+              <Typography level="body-sm">QR generation failed.</Typography>
             )}
           </Box>
           {sessionId && (
-            <Box sx={{ mt: 1, mb: 2, fontSize: '0.95rem', color: '#334155', wordBreak: 'break-all' }}>
+            <Typography
+              level="body-sm"
+              sx={{
+                wordBreak: "break-all",
+                mb: 2,
+              }}
+            >
               <strong>Session ID:</strong> {sessionId}
               <Button
                 size="sm"
-                variant="soft"
+                variant="plain"
                 color="neutral"
-                sx={{ ml: 1, fontSize: '0.8rem', px: 1.5, py: 0.5 }}
-                onClick={() => navigator.clipboard.writeText(sessionId)}
+                sx={{ ml: 1 }}
+                onClick={() => navigator.clipboard.writeText(String(sessionId))}
               >
                 Copy
               </Button>
-            </Box>
+            </Typography>
           )}
-          <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center', mt: 2 }}>
-            <Button size="sm" variant="outlined" color="neutral" onClick={() => setQrModal(false)}>
+          <Stack direction="row" spacing={2} justifyContent="center" mt={1}>
+            <Button
+              size="sm"
+              variant="outlined"
+              color="neutral"
+              onClick={() => setQrModalOpen(false)}
+            >
               Close
             </Button>
-            <Button size="sm" variant="solid" color="primary" onClick={() => handleGenerateSessionQr({ regenerate: true })} disabled={qrLoading || !sessionId}>
-              {qrLoading ? "Regenerating..." : "Regenerate QR"}
+            <Button
+              size="sm"
+              variant="solid"
+              color="primary"
+              onClick={handleGenerateQr}
+              disabled={qrLoading}
+            >
+              {qrLoading ? "Regenerating..." : "Regenerate"}
             </Button>
-          </Box>
-        </Box>
+          </Stack>
+        </Sheet>
       </Modal>
     </Box>
   );

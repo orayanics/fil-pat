@@ -51,6 +51,9 @@ export interface AssessmentItem {
   time_limit_seconds?: number;
   background_color?: string;
   text_size: string;
+  // Convenience aliases used in UI components
+  item?: number; // alias for item_number
+  image?: string; // alias for image_url
 }
 
 export interface SessionSettings {
@@ -148,6 +151,9 @@ export interface SocketState {
   setSessionStarted: (started: boolean) => void;
   setSessionPaused: (paused: boolean) => void;
   setQrData: (data: { qrData: string; sessionId: string } | null) => void;
+  // End session modal control
+  showEndModal: boolean;
+  setShowEndModal: (open: boolean) => void;
   setTemplateItems: (items: Array<Record<string, unknown>> | null) => void;
   setIsPersisting: (persisting: boolean) => void;
   setConnectionStatus: (status: ConnectionStatus) => void;
@@ -192,6 +198,9 @@ export const useSocketStore = create<SocketState>((set) => ({
   setSessionStarted: (started: boolean) => set({ sessionStarted: started }),
   setSessionPaused: (paused: boolean) => set({ sessionPaused: paused }),
   setQrData: (data: { qrData: string; sessionId: string } | null) => set({ qrData: data }),
+  // End session modal control (global so different components can request it)
+  showEndModal: false,
+  setShowEndModal: (open: boolean) => set({ showEndModal: open }),
   setConnectionStatus: (status: ConnectionStatus) => set({ connectionStatus: status }),
   setIsPersisting: (persisting: boolean) => set({ isPersisting: persisting }),
 }));

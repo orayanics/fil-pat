@@ -62,6 +62,7 @@ export default function RoomsList({
       <Modal open={qrModal.open} onClose={() => setQrModal({ open: false, qrData: null })}>
         <Box sx={{ p: 4, bgcolor: 'background.body', borderRadius: 2, minWidth: 240, textAlign: 'center' }}>
           {qrModal.qrData ? (
+            // eslint-disable-next-line @next/next/no-img-element
             <img src={qrModal.qrData} alt="Patient QR Code" style={{ width: 200, height: 200 }} />
           ) : (
             <span>Failed to generate QR code.</span>

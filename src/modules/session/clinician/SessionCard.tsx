@@ -14,6 +14,7 @@ import {
 } from "@mui/icons-material";
 import useData from "../useData";
 import {useSocketState, useSocketDispatch} from "@/context/SocketProvider";
+import { useSocketStore } from '@/context/socketStore';
 
 export default function SessionCard() {
   const {socket, sessionId, currentItem} = useSocketState();
@@ -25,6 +26,12 @@ export default function SessionCard() {
     currentItem,
     updateCurrentItem,
   });
+  // actions will be handled by the global modal
+  const setShowEndModal = useSocketStore((s) => s.setShowEndModal);
+
+  if (!item) {
+    return null;
+  }
 
   return (
     <Card sx={{width: "100%", padding: 2}}>
@@ -35,9 +42,9 @@ export default function SessionCard() {
       >
         <Image
           src={
-            item.image || "https://placehold.co/600x400/png?text=Filipino+PAT"
+            (item.image as string) || "https://placehold.co/600x400/png?text=Filipino+PAT"
           }
-          alt={item.question}
+          alt={(item.question as string) ?? `Item ${item.item}`}
           width={800}
           height={450}
           style={{objectFit: "cover"}}
@@ -70,10 +77,18 @@ export default function SessionCard() {
             endDecorator={<KeyboardArrowRightRounded />}
             variant="solid"
             color="primary"
-            onClick={() => changeItem(+1)}
-            disabled={item.item === length}
+            onClick={async () => {
+              // If this is the last item, prompt to end session instead of simply advancing
+              if (item.item === length) {
+                // Open the global End Session modal which will handle saving and ending
+                setShowEndModal(true);
+                return;
+              }
+
+              changeItem(+1);
+            }}
           >
-            Next
+            {item.item === length ? 'End Session' : 'Next'}
           </Button>
         </CardActions>
       </CardContent>
