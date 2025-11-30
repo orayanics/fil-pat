@@ -47,48 +47,53 @@ export default function SessionActions() {
         variant="outlined"
         sx={{
           display: "flex",
+          flexDirection: { xs: "column", sm: "row" },
           flexWrap: "wrap",
-          gap: 1.5,
+          gap: 2,
           justifyContent: "center",
-          alignItems: "center",
-          p: 2.5,
-          borderRadius: "xl",
-          boxShadow: "sm",
-          background: "rgba(255,255,255,0.6)",
-          backdropFilter: "blur(6px)",
+          alignItems: "stretch",
+          p: 3,
+          borderRadius: "lg",
+          boxShadow: "md",
         }}
       >
-        <Tooltip title="The system also auto-saves every 5 minutes.">
+        <Tooltip title="The system also auto-saves every 5 minutes." placement="top">
           <Button
             startDecorator={<SaveRounded />}
-            variant="outlined"
+            variant="soft"
             color="success"
             onClick={saveSessionManually}
+            size="lg"
+            sx={{ flex: { xs: "1", sm: "0 1 auto" }, minWidth: { sm: "160px" } }}
           >
             Save Session
           </Button>
         </Tooltip>
 
-        <Tooltip title="Open a preview of the session PDF.">
+        <Tooltip title="Open a preview of the session PDF." placement="top">
           <Button
             startDecorator={<PictureAsPdfRounded />}
-            variant="outlined"
+            variant="soft"
             color="neutral"
             onClick={() => {
               saveSessionManually();
               window.open(`/pdf/${sessionId}`, "_blank", "noopener,noreferrer");
             }}
+            size="lg"
+            sx={{ flex: { xs: "1", sm: "0 1 auto" }, minWidth: { sm: "160px" } }}
           >
             View PDF
           </Button>
         </Tooltip>
 
-        <Tooltip title="End the session and add your final notes.">
+        <Tooltip title="End the session and add your final notes." placement="top">
           <Button
             startDecorator={<StopCircleRounded />}
             variant="solid"
             color="danger"
             onClick={() => setShowEndModal(true)}
+            size="lg"
+            sx={{ flex: { xs: "1", sm: "0 1 auto" }, minWidth: { sm: "160px" } }}
           >
             End Session
           </Button>

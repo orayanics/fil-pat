@@ -19,7 +19,11 @@ import {useSocketState, useSocketDispatch} from "@/context/SocketProvider";
 import type { AssessmentItem } from '@/context/socketStore';
 import {useEffect} from "react";
 
-export default function SessionForm() {
+interface SessionFormProps {
+  isKidsMode?: boolean;
+}
+
+export default function SessionForm({ isKidsMode = false }: SessionFormProps) {
   const {socket, sessionId, currentItem} = useSocketState();
   const { saveSessionManually } = useSocketDispatch();
 
@@ -112,7 +116,7 @@ export default function SessionForm() {
             }}
           >
             <Typography level="h3">
-              No. {itemNumber} of {length}
+              {isKidsMode ? `Sound ${itemNumber} of ${length}` : `No. ${itemNumber} of ${length}`}
             </Typography>
             <Box sx={{display: "flex", alignItems: "center", gap: 2}}>
               {hasData && (
@@ -132,10 +136,10 @@ export default function SessionForm() {
 
           <div>
             <Typography fontWeight={800} gutterBottom={false}>
-              Tugon ng Bata
+              {isKidsMode ? "What the Child Said" : "Tugon ng Bata"}
             </Typography>
             <Typography gutterBottom level="body-sm" sx={{fontStyle: "italic"}}>
-              Child&#39;s Response
+              {isKidsMode ? "Child's Sound Production" : "Child&#39;s Response"}
             </Typography>
             <Box sx={{marginBottom: 2}}>
               <Textarea

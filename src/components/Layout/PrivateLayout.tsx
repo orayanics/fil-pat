@@ -21,10 +21,11 @@ export default function PrivateLayout({children}: {children: React.ReactNode}) {
         sx={{
           px: {xs: 2, md: 6},
           pb: {xs: 2, sm: 2, md: 3},
+          pt: {xs: "80px", md: 2},
           flex: 1,
           display: "flex",
           flexDirection: "column",
-          height: "100dvh",
+          minHeight: "100dvh",
           gap: 1,
         }}
       >

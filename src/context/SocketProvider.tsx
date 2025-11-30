@@ -60,20 +60,59 @@ export default function SocketProvider({ children }: { children: ReactNode }) {
     }
   }, [isConnected, setConnectionStatus]);
 
-  // Load user from localStorage on mount
+  // Load user from cookie via API (durable session) then fallback to localStorage
   useEffect(() => {
-    const storedUser = localStorage.getItem('auth_user');
-    if (storedUser) {
+    let cancelled = false;
+    const bootstrapAuth = async () => {
       try {
-        const userData = JSON.parse(storedUser);
-        setUser(userData);
-        setIsAuthenticated(true);
-      } catch (error) {
-        console.error('Failed to parse stored user data:', error);
-        localStorage.removeItem('auth_user');
+        const res = await fetch('/api/auth/me', { method: 'GET', credentials: 'include' });
+        if (res.ok) {
+          const data = await res.json();
+          if (!cancelled && data?.user) {
+            setUser(data.user);
+            setIsAuthenticated(true);
+            localStorage.setItem('auth_user', JSON.stringify(data.user));
+            return;
+          }
+        }
+      } catch (e) {
+        console.warn('Auth bootstrap via /api/auth/me failed, falling back to localStorage', e);
+      }
+      const storedUser = localStorage.getItem('auth_user');
+      if (storedUser && !cancelled) {
+        try {
+          const userData = JSON.parse(storedUser);
+          setUser(userData);
+          setIsAuthenticated(true);
+        } catch {
+          localStorage.removeItem('auth_user');
+        }
+      }
+    };
+    bootstrapAuth();
+    return () => { cancelled = true; };
+  }, [setUser, setIsAuthenticated]);
+
+  // Load existing session when sessionId is set and socket is connected
+  // Only load on session pages to prevent "Session not found" errors on other pages
+  useEffect(() => {
+    if (sessionId && socket && isConnected && user && !sessionInfo) {
+      // Check if we're on a session page before loading
+      if (typeof window !== 'undefined') {
+        const path = window.location.pathname;
+        const isSessionPage = path.includes('/session/') || path.includes('/dashboard');
+        
+        if (isSessionPage) {
+          console.log('Loading existing session:', sessionId);
+          socket.send(JSON.stringify({
+            type: 'loadSession',
+            sessionId,
+            clinicianId: user.clinician_id
+          }));
+        }
       }
     }
-  }, [setUser, setIsAuthenticated]);
+  }, [sessionId, socket, isConnected, user, sessionInfo]);
 
   // Central message handling
   useEffect(() => {
@@ -114,12 +153,32 @@ export default function SocketProvider({ children }: { children: ReactNode }) {
             }
             if (data.sessionInfo) {
               setSessionInfo(data.sessionInfo);
+              // Log patient URL if provided
+              if (data.sessionInfo.patientUrl) {
+                console.log('Patient URL stored:', data.sessionInfo.patientUrl);
+              }
             }
             // if a patient is already present, mark connected
             if (!patientInfo) {
               setPatientInfo({ patient_id: data.tempPatientId ?? 0, first_name: 'Patient', last_name: 'Connected' });
             }
             setPatientConnected(true);
+            break;
+          case 'sessionLoaded':
+            // Handle loaded existing session
+            if (data.sessionId) {
+              setSessionId(data.sessionId);
+            }
+            if (data.sessionInfo) {
+              setSessionInfo(data.sessionInfo);
+            }
+            if (data.templateItems) {
+              setTemplateItems(data.templateItems);
+            }
+            if (data.currentItem) {
+              setCurrentItem(data.currentItem as unknown as AssessmentItem);
+            }
+            console.log('Session loaded from database:', data.sessionInfo);
             break;
           case 'patientConnected':
             // Mark that a patient has connected to the current session
@@ -192,32 +251,62 @@ export default function SocketProvider({ children }: { children: ReactNode }) {
             setPatientInfo(null);
             break;
           case 'templateAssigned':
-            // Clinician assigned a template for the session; update sessionInfo if available
-            // Prefer server-sent templateName if available, otherwise fall back to the templateId
+            // Update template info and always store items
             const templateName = data.templateName ?? (data.templateId ? `Template ${data.templateId}` : undefined);
+            const totalItems = Array.isArray(data.templateItems) ? data.templateItems.length : (sessionInfo?.total_items ?? 0);
+            const isForKids = data.is_for_kids ?? false;
             if (sessionInfo) {
               setSessionInfo({
                 ...sessionInfo,
-                template_name: templateName ?? sessionInfo.template_name
+                template_name: templateName ?? sessionInfo.template_name,
+                total_items: totalItems,
+                is_for_kids: isForKids
               });
             } else if (templateName && sessionId) {
-              // If we don't have sessionInfo yet, create a minimal one so patient UI can show assigned template
               setSessionInfo({
                 session_id: 0,
                 session_uuid: sessionId,
                 session_mode: 'Standard',
                 status: 'Scheduled',
-                total_items: data.templateItems ? data.templateItems.length : 0,
+                total_items: totalItems,
                 completed_items: 0,
                 template_name: templateName,
-                is_practice_session: false
+                is_practice_session: false,
+                is_for_kids: isForKids
               });
-              // store template items for client-side mapping
-              setTemplateItems(data.templateItems ?? null);
+            }
+            setTemplateItems(data.templateItems ?? null);
+            break;
+          case 'sessionLinkGenerated':
+            // New link generated for patient reconnection
+            if (data.sessionInfo && data.patientUrl) {
+              setSessionInfo({
+                ...sessionInfo,
+                ...data.sessionInfo,
+                patientUrl: data.patientUrl
+              });
+              // Show notification
+              setToast({ open: true, message: `New patient link generated successfully!` });
+              setTimeout(() => setToast({ open: false, message: '' }), 3000);
+            }
+            break;
+          case 'sessionLoaded':
+            // Existing session loaded from database
+            if (data.sessionInfo) {
+              setSessionInfo(data.sessionInfo);
+            }
+            if (data.templateItems) {
+              setTemplateItems(data.templateItems);
+            }
+            if (data.currentItem) {
+              setCurrentItem(data.currentItem as unknown as AssessmentItem);
             }
             break;
           case 'changeAssessmentItem':
             // Ensure the raw payload is treated as an AssessmentItem for the store
+            console.log('SocketProvider - received changeAssessmentItem:', data);
+            console.log('SocketProvider - data.item:', data.item);
+            console.log('SocketProvider - data.item.image_url:', data.item?.image_url);
             setCurrentItem(data.item as unknown as AssessmentItem);
             if (sessionInfo) {
               setSessionInfo({
@@ -246,13 +335,28 @@ export default function SocketProvider({ children }: { children: ReactNode }) {
                 status: 'In Progress'
               });
             }
-            // If this client is a clinician, navigate to the clinician session page
+            // Navigate clinician to session page
             try {
               if (isAuthenticated && data.sessionId) {
                 router.push(`/clinician-dashboard/session/${data.sessionId}`);
               }
-            } catch {
-              // ignore navigation errors
+            } catch (e) {
+              console.warn('Navigation error:', e);
+            }
+            break;
+          case 'sessionCompleted':
+            // Mark completion, stop session, enable patient finalize prompt
+            if (sessionInfo) {
+              setSessionInfo({ ...sessionInfo, status: 'Completed' });
+            }
+            try {
+              useSocketStore.getState().setSessionCompleted(true);
+            } catch (e) { console.warn('Failed to set sessionCompleted', e); }
+            break;
+          case 'patientFinalized':
+            try { useSocketStore.getState().setPatientFinalized(true); } catch (e) { console.warn('Failed to set patientFinalized', e); }
+            if (data.patientInfo && typeof data.patientInfo === 'object') {
+              setPatientInfo(data.patientInfo as PatientInfo);
             }
             break;
           case 'sessionPaused':
@@ -282,9 +386,18 @@ export default function SocketProvider({ children }: { children: ReactNode }) {
                 status: 'Completed'
               });
             }
-            setTimeout(() => {
-              router.push('/clinician-dashboard');
-            }, 3000);
+            // Set sessionCompleted flag for patient finalization
+            try {
+              useSocketStore.getState().setSessionCompleted(true);
+            } catch (e) {
+              console.warn('Failed to set sessionCompleted', e);
+            }
+            // Redirect clinician to dashboard after delay
+            if (isAuthenticated) {
+              setTimeout(() => {
+                router.push('/clinician-dashboard');
+              }, 3000);
+            }
             break;
           case 'sessionSettingsUpdated':
             setIsKidsMode(data.settings.isKidsMode || false);
@@ -431,12 +544,14 @@ export default function SocketProvider({ children }: { children: ReactNode }) {
 
   const sendMessage = (message: WebSocketMessage) => {
     if (socket && socket.readyState === WebSocket.OPEN) {
-      socket.send(JSON.stringify({
+      // Only add sessionId from store if not already present in the message
+      const payload: WebSocketMessage = {
         ...message,
         userId: user?.clinician_id,
-        sessionId: sessionId,
+        sessionId: message.sessionId || sessionId,
         timestamp: new Date().toISOString()
-      }));
+      };
+      socket.send(JSON.stringify(payload));
     }
   };
 
@@ -632,7 +747,9 @@ export function useSocketDispatch() {
           score: (entry['score'] as number) ?? null,
           isCorrect: typeof entry['score'] === 'number' ? ((entry['score'] as number) > 0) : null,
           timestamp: new Date().toISOString(),
-          clinician_notes: (entry['clinicianNotes'] as string) ?? null
+          notes: (entry['clinicianNotes'] as string) ?? null,
+          consonantsCorrect: (entry['consonantsCorrect'] as number) ?? null,
+          vowelsCorrect: (entry['vowelsCorrect'] as number) ?? null
         };
 
         ctx.sendMessage({ type: 'submitResponse', sessionId: sid, item: { item: itemNum }, response: responsePayload });

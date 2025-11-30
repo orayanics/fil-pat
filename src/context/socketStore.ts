@@ -22,6 +22,8 @@ export interface SessionInfo {
   start_time?: Date;
   template_name: string;
   is_practice_session: boolean;
+  is_for_kids?: boolean;
+  patientUrl?: string;
 }
 
 export interface PatientInfo {
@@ -154,6 +156,11 @@ export interface SocketState {
   // End session modal control
   showEndModal: boolean;
   setShowEndModal: (open: boolean) => void;
+  // Session completion & patient finalization
+  sessionCompleted: boolean;
+  patientFinalized: boolean;
+  setSessionCompleted: (completed: boolean) => void;
+  setPatientFinalized: (finalized: boolean) => void;
   setTemplateItems: (items: Array<Record<string, unknown>> | null) => void;
   setIsPersisting: (persisting: boolean) => void;
   setConnectionStatus: (status: ConnectionStatus) => void;
@@ -201,6 +208,11 @@ export const useSocketStore = create<SocketState>((set) => ({
   // End session modal control (global so different components can request it)
   showEndModal: false,
   setShowEndModal: (open: boolean) => set({ showEndModal: open }),
+  // Session completion & patient finalization
+  sessionCompleted: false,
+  patientFinalized: false,
+  setSessionCompleted: (completed: boolean) => set({ sessionCompleted: completed }),
+  setPatientFinalized: (finalized: boolean) => set({ patientFinalized: finalized }),
   setConnectionStatus: (status: ConnectionStatus) => set({ connectionStatus: status }),
   setIsPersisting: (persisting: boolean) => set({ isPersisting: persisting }),
 }));

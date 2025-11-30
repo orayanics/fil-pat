@@ -31,6 +31,19 @@ export function useSessionForm(currentItemId?: number) {
   const [formDataMap, setFormDataMap] = useState<Map<number, ItemFormData>>(
     new Map()
   );
+  const [pendingUpdate, setPendingUpdate] = useState<Map<number, ItemFormData> | null>(null);
+
+  // Separate effect to handle context updates (prevents setState during render)
+  useEffect(() => {
+    if (pendingUpdate) {
+      try {
+        updateContextFormData(Object.fromEntries(pendingUpdate));
+      } catch (err) {
+        console.error('Failed to update context form data:', err);
+      }
+      setPendingUpdate(null);
+    }
+  }, [pendingUpdate, updateContextFormData]);
 
   useEffect(() => {
     if (!currentItemId) return;
@@ -62,23 +75,21 @@ export function useSessionForm(currentItemId?: number) {
       }
       needsContextUpdate = true;
     }
-    // Build a fresh map with updated data for this item and update local state
-    const newMap = new Map<number, ItemFormData>();
-    // copy previous entries into new map
-    formDataMap.forEach((v, k) => newMap.set(k, v));
-    newMap.set(currentItemId as number, updatedData);
-    setFormDataMap(() => newMap);
 
-    // Only update context if we actually need to seed defaults
-    if (needsContextUpdate) {
-      try {
-        updateContextFormData(Object.fromEntries(newMap));
-      } catch (err) {
-        console.error('Failed to update context form data:', err);
+    // Update local state
+    setFormDataMap((prevMap) => {
+      const newMap = new Map(prevMap);
+      newMap.set(currentItemId as number, updatedData);
+      
+      // Schedule context update separately to avoid setState during render
+      if (needsContextUpdate) {
+        setPendingUpdate(newMap);
       }
-    }
+      
+      return newMap;
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentItemId, contextFormData, sampleData, updateContextFormData]);
+  }, [currentItemId]);
 
   // sync: formdata from context to localstorage
   // this happens on mount and when formdata from context changes
@@ -136,7 +147,7 @@ export function useSessionForm(currentItemId?: number) {
         const currentData =
           newMap.get(currentItemId) || createDefaultFormData();
 
-        const updatedData = {...currentData};
+        const updatedData = { ...currentData };
         // treat text fields as strings, numeric fields as numbers
         if (
           field === "childResponse" ||
@@ -151,14 +162,13 @@ export function useSessionForm(currentItemId?: number) {
 
         newMap.set(currentItemId, updatedData);
 
-        // sync to context from local
-        const formDataObj = Object.fromEntries(newMap);
-        updateContextFormData(formDataObj);
+        // schedule context sync after render to avoid setState-in-render warnings
+        setPendingUpdate(newMap);
 
         return newMap;
       });
     },
-    [currentItemId, updateContextFormData]
+    [currentItemId]
   );
 
   // child response, consonant, vowel, score update helpers for form

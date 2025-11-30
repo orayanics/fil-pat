@@ -145,6 +145,7 @@ export default function PrivateSidebar() {
         display: "flex",
         flexDirection: "column",
         zIndex: 1100,
+        flexShrink: 0,
       }}
     >
       <GlobalStyles

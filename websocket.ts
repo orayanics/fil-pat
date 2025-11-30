@@ -288,6 +288,8 @@ interface ResponseData {
   score?: number;
   timeTaken?: number;
   notes?: string;
+  consonantsCorrect?: number;
+  vowelsCorrect?: number;
 }
 
 async function saveSessionResponse(
@@ -326,6 +328,8 @@ async function saveSessionResponse(
           max_possible_score: itemData.max_score ?? 1.0,
           time_taken_seconds: responseData.timeTaken ?? null,
           clinician_notes: responseData.notes ?? null,
+          consonants_correct: responseData.consonantsCorrect ?? null,
+          vowels_correct: responseData.vowelsCorrect ?? null,
         },
       });
 
@@ -352,6 +356,8 @@ async function saveSessionResponse(
           max_possible_score: itemData.max_score ?? 1.0,
           time_taken_seconds: responseData.timeTaken ?? null,
           clinician_notes: responseData.notes ?? null,
+          consonants_correct: responseData.consonantsCorrect ?? null,
+          vowels_correct: responseData.vowelsCorrect ?? null,
         },
       });
 
@@ -635,6 +641,58 @@ const joinRoom = async (ws: WebSocket, roomId: string, userData?: UserData) => {
   if (role === 'patient') {
     const conn = connectionMap.get(ws);
     const ip = conn?.ipAddress ?? null;
+    
+    // Send session info to the patient including is_resumed flag
+    try {
+      const sessionInfo = await prisma.assessmentSession.findUnique({
+        where: { session_uuid: roomId },
+        include: {
+          template: {
+            include: {
+              session_items: {
+                where: { is_active: true },
+                orderBy: { display_order: 'asc' }
+              }
+            }
+          },
+          patient: true
+        }
+      });
+      
+      if (sessionInfo && ws.readyState === WebSocket.OPEN) {
+        // Generate patient URL
+        const protocol = "http";
+        const host = sessionInfo.clinician_ip || SERVER_LOCAL_IP || "localhost";
+        const port = process.env.NEXT_PUBLIC_PORT || "3000";
+        const patientUrl = `${protocol}://${host}:${port}/session/patient/${roomId}`;
+        
+        // Log session info
+        console.log('Sending session info to patient:', {
+          session_uuid: sessionInfo.session_uuid,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          is_resumed: (sessionInfo as any).is_resumed,
+          template_name: sessionInfo.template?.name,
+          session_name: sessionInfo.session_name
+        });
+        
+        ws.send(JSON.stringify({
+          type: 'sessionLoaded',
+          sessionId: roomId,
+          sessionInfo: {
+            ...sessionInfo,
+            template_name: sessionInfo.template?.name,
+            is_for_kids: sessionInfo.template?.is_for_kids,
+            patientUrl
+          },
+          templateItems: sessionInfo.template?.session_items || [],
+          currentItem: roomCurrentItems[roomId] || null,
+          timestamp: new Date().toISOString()
+        }));
+      }
+    } catch (err) {
+      console.error('Failed to send session info to patient:', err);
+    }
+    
     try {
       await prisma.assessmentSession.updateMany({
         where: { session_uuid: roomId },
@@ -751,38 +809,43 @@ wss.on("connection", async (ws, request) => {
           break;
 
         case "createSession": {
-          // Require clinicianId, sessionId, templateId. If patientId is missing, create a temporary patient.
-          if (!data.clinicianId || !data.sessionId || !data.templateId) {
+          // Allow templateId to be optional; fallback to default template if not provided.
+          if (!data.clinicianId || !data.sessionId) {
             ws.send(JSON.stringify({
               type: "error",
-              message: "Missing clinicianId, sessionId, or templateId for createSession"
+              message: "Missing clinicianId or sessionId for createSession"
             }));
             break;
           }
-          let patientId = data.patientId;
+          const sessionName = data.sessionName || null;
+          const patientId = data.patientId || null;
           try {
-            if (!patientId) {
-              // Create a temporary patient
-              const tempPatient = await prisma.patient.create({
-                data: {
-                  first_name: "Unregistered",
-                  last_name: "Patient",
-                  date_of_birth: new Date(2000, 0, 1),
-                  is_active: false,
-                  // Optionally, add a flag or note for cleanup
-                  notes: `Temporary patient for session ${data.sessionId}`,
-                  assigned_clinician_id: data.clinicianId
-                }
-              });
-              patientId = tempPatient.patient_id;
+            // Don't create temp patient - will be set later via setSessionPatient
+            // Resolve template ID: use provided templateId or fall back to default template
+            let templateIdToUse: number | null = null;
+            if (data.templateId) {
+              templateIdToUse = Number(data.templateId);
+            } else {
+              const defaultTemplate = await prisma.assessmentTemplate.findFirst({ where: { is_default: true } });
+              if (defaultTemplate) templateIdToUse = defaultTemplate.template_id; else {
+                // fallback: pick ANY template if no default
+                const anyTemplate = await prisma.assessmentTemplate.findFirst();
+                if (anyTemplate) templateIdToUse = anyTemplate.template_id;
+              }
             }
+            if (!templateIdToUse) {
+              ws.send(JSON.stringify({ type: 'error', message: 'No template available to create session' }));
+              break;
+            }
+
             const clinicianIpToUse = data.hostIp ?? connectionData?.ipAddress ?? SERVER_LOCAL_IP ?? null;
             const session = await prisma.assessmentSession.create({
               data: {
                 session_uuid: data.sessionId,
+                session_name: sessionName,
                 clinician_id: data.clinicianId,
                 patient_id: patientId,
-                template_id: data.templateId,
+                template_id: templateIdToUse,
                 clinician_ip: clinicianIpToUse,
                 session_date: new Date(),
                 status: 'Scheduled',
@@ -790,14 +853,22 @@ wss.on("connection", async (ws, request) => {
                 is_practice_session: false
               }
             });
+            
+            // Generate patient URL using actual IP
+            const protocol = "http";
+            // Use the clinician's IP if available, otherwise use server IP or localhost
+            const host = clinicianIpToUse || SERVER_LOCAL_IP || "localhost";
+            const port = process.env.NEXT_PUBLIC_PORT || "3000";
+            const patientUrl = `${protocol}://${host}:${port}/session/patient/${session.session_uuid}`;
+            
             ws.send(JSON.stringify({
               type: "sessionCreated",
               sessionId: session.session_uuid,
               sessionInfo: {
                 ...session,
-                clinician_ip: clinicianIpToUse
-              },
-              tempPatientId: !data.patientId ? patientId : undefined
+                clinician_ip: clinicianIpToUse,
+                patientUrl
+              }
             }));
             await logActivity({
               user_id: data.clinicianId,
@@ -805,7 +876,7 @@ wss.on("connection", async (ws, request) => {
               entity_type: 'assessment_session',
               entity_id: session.session_id,
               description: `Created assessment session: ${session.session_uuid}`,
-              new_values: data
+              new_values: { ...data, template_id: templateIdToUse }
             });
           } catch (error) {
             console.error('Failed to create session:', error);
@@ -813,6 +884,288 @@ wss.on("connection", async (ws, request) => {
               type: "error",
               message: "Failed to create session"
             }));
+          }
+          break;
+        }
+        case "loadSession": {
+          try {
+            if (!data.sessionId) {
+              ws.send(JSON.stringify({ type: "error", message: "Missing sessionId" }));
+              break;
+            }
+
+            const session = await prisma.assessmentSession.findUnique({
+              where: { session_uuid: data.sessionId },
+              include: {
+                template: {
+                  include: { session_items: { orderBy: { item_number: 'asc' } } }
+                },
+                patient: true,
+                responses: {
+                  include: {
+                    session_item: true
+                  },
+                  orderBy: { response_id: 'asc' }
+                }
+              }
+            });
+
+            if (!session) {
+              console.error(`Session not found for UUID: ${data.sessionId}`);
+              ws.send(JSON.stringify({ type: "error", message: "Session not found", details: `No session found with UUID: ${data.sessionId}`, keepAlive: true }));
+              // Don't break - keep connection alive
+              break;
+            }
+
+            // Initialize room with session items
+            const roomId = data.sessionId;
+            const items = session.template?.session_items || [];
+            roomItemsList[roomId] = items;
+
+            // Calculate completion
+            const totalItems = items.length;
+            const completedItems = session.responses?.length || 0;
+            const completionPercentage = totalItems > 0 ? Math.round((completedItems / totalItems) * 100) : 0;
+
+            // Find current item (last completed + 1, or first item)
+            const currentItemIndex = Math.min(completedItems, items.length - 1);
+            if (items.length > 0) {
+              const currentItemData = items[currentItemIndex] as Record<string, unknown>;
+              roomCurrentItems[roomId] = {
+                ...currentItemData,
+                item: Number(String(currentItemData['item_number'] ?? currentItemData['item_id'] ?? 1)),
+                question: String(currentItemData['question'] ?? '')
+              };
+            }
+
+            // Generate patient URL for session
+            const protocol = "http";
+            const connectionData = connectionMap.get(ws);
+            const clinicianIpToUse = session.clinician_ip || connectionData?.ipAddress || SERVER_LOCAL_IP || "localhost";
+            const port = process.env.NEXT_PUBLIC_PORT || "3000";
+            const patientUrl = `${protocol}://${clinicianIpToUse}:${port}/session/patient/${roomId}`;
+
+            // Send session info to client
+            ws.send(JSON.stringify({
+              type: 'sessionLoaded',
+              sessionId: roomId,
+              sessionInfo: {
+                ...session,
+                total_items: totalItems,
+                completed_items: completedItems,
+                completion_percentage: completionPercentage,
+                patientUrl
+              },
+              templateItems: items,
+              currentItem: roomCurrentItems[roomId],
+              timestamp: new Date().toISOString()
+            }));
+
+            await logActivity({
+              user_id: session.clinician_id,
+              action: 'load_assessment_session',
+              entity_type: 'assessment_session',
+              entity_id: session.session_id,
+              description: `Loaded assessment session: ${data.sessionId}`
+            });
+          } catch (error) {
+            console.error('Failed to load session:', error);
+            ws.send(JSON.stringify({ type: "error", message: "Failed to load session" }));
+          }
+          break;
+        }
+        case "generateSessionLink": {
+          try {
+            if (!data.sessionId) {
+              ws.send(JSON.stringify({ type: "error", message: "Missing sessionId" }));
+              break;
+            }
+
+            // Find the existing session
+            const existingSession = await prisma.assessmentSession.findFirst({
+              where: { session_uuid: data.sessionId },
+              include: { template: true }
+            });
+
+            if (!existingSession) {
+              ws.send(JSON.stringify({ type: "error", message: "Session not found" }));
+              break;
+            }
+
+            // Generate new session UUID for patient reconnection
+            const newSessionUuid = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+            
+            // Get clinician IP
+            const connectionData = connectionMap.get(ws);
+            const clinicianIpToUse = data.hostIp ?? connectionData?.ipAddress ?? SERVER_LOCAL_IP ?? null;
+            
+            // Create new session linked to same patient and template
+            const newSession = await prisma.assessmentSession.create({
+              data: {
+                session_uuid: newSessionUuid,
+                session_name: existingSession.session_name || `Continuation of ${data.sessionId}`,
+                clinician_id: existingSession.clinician_id,
+                patient_id: existingSession.patient_id,
+                template_id: existingSession.template_id,
+                clinician_ip: clinicianIpToUse,
+                session_date: new Date(),
+                status: 'Scheduled',
+                session_mode: existingSession.session_mode,
+                is_practice_session: existingSession.is_practice_session,
+                is_resumed: true // Added in recent schema update
+              }
+            });
+
+            // Generate patient URL
+            const protocol = "http";
+            const host = clinicianIpToUse || SERVER_LOCAL_IP || "localhost";
+            const port = process.env.NEXT_PUBLIC_PORT || "3000";
+            const patientUrl = `${protocol}://${host}:${port}/session/patient/${newSessionUuid}`;
+
+            ws.send(JSON.stringify({
+              type: "sessionLinkGenerated",
+              originalSessionId: data.sessionId,
+              newSessionId: newSessionUuid,
+              patientUrl,
+              sessionInfo: newSession,
+              timestamp: new Date().toISOString()
+            }));
+
+            await logActivity({
+              user_id: existingSession.clinician_id,
+              action: 'generate_session_link',
+              entity_type: 'assessment_session',
+              entity_id: newSession.session_id,
+              description: `Generated new session link for ${data.sessionId}: ${newSessionUuid}`
+            });
+          } catch (error) {
+            console.error('Failed to generate session link:', error);
+            ws.send(JSON.stringify({ type: "error", message: "Failed to generate session link" }));
+          }
+          break;
+        }
+        case "setSessionPatient": {
+          try {
+            if (!data.sessionId) {
+              ws.send(JSON.stringify({ type: "error", message: "Missing sessionId" }));
+              break;
+            }
+
+            const session = await prisma.assessmentSession.findFirst({
+              where: { session_uuid: data.sessionId }
+            });
+
+            if (!session) {
+              ws.send(JSON.stringify({ type: "error", message: "Session not found" }));
+              break;
+            }
+
+            let patientId = data.patient_id;
+
+            // If patient_id not provided, create new patient
+            if (!patientId && data.first_name && data.last_name) {
+              const newPatient = await prisma.patient.create({
+                data: {
+                  first_name: data.first_name,
+                  last_name: data.last_name,
+                  date_of_birth: new Date(2000, 0, 1), // Default date
+                  is_active: true,
+                  assigned_clinician_id: session.clinician_id
+                }
+              });
+              patientId = newPatient.patient_id;
+            }
+
+            // Update session with patient
+            if (patientId) {
+              await prisma.assessmentSession.update({
+                where: { session_id: session.session_id },
+                data: { patient_id: patientId }
+              });
+
+              ws.send(JSON.stringify({
+                type: "patientSet",
+                sessionId: data.sessionId,
+                patientId
+              }));
+
+              await logActivity({
+                user_id: session.clinician_id,
+                action: 'set_session_patient',
+                entity_type: 'assessment_session',
+                entity_id: session.session_id,
+                description: `Set patient ${patientId} for session ${data.sessionId}`
+              });
+            }
+          } catch (error) {
+            console.error('Failed to set session patient:', error);
+            ws.send(JSON.stringify({ type: "error", message: "Failed to set session patient" }));
+          }
+          break;
+        }
+        case "startSession": {
+          try {
+            if (!data.sessionId) {
+              ws.send(JSON.stringify({ type: "error", message: "Missing sessionId" }));
+              break;
+            }
+
+            const session = await prisma.assessmentSession.findFirst({
+              where: { session_uuid: data.sessionId },
+              include: {
+                template: {
+                  include: { session_items: { orderBy: { item_number: 'asc' } } }
+                },
+                patient: true
+              }
+            });
+
+            if (!session) {
+              ws.send(JSON.stringify({ type: "error", message: "Session not found" }));
+              break;
+            }
+
+            // Update session status to In Progress
+            await prisma.assessmentSession.update({
+              where: { session_id: session.session_id },
+              data: { status: 'In Progress' }
+            });
+
+            // Initialize room with session items
+            const roomId = data.sessionId;
+            const items = session.template?.session_items || [];
+            roomItemsList[roomId] = items;
+
+            // Set first item as current
+            if (items.length > 0) {
+              const firstItem = items[0] as Record<string, unknown>;
+              roomCurrentItems[roomId] = {
+                ...firstItem,
+                item: Number(String(firstItem['item_number'] ?? firstItem['item_id'] ?? 1)),
+                question: String(firstItem['question'] ?? '')
+              };
+            }
+
+            // Broadcast session started to room
+            const msg = JSON.stringify({
+              type: 'sessionStarted',
+              sessionId: roomId,
+              sessionInfo: session,
+              currentItem: roomCurrentItems[roomId],
+              timestamp: new Date().toISOString()
+            });
+            broadcastToRoom(roomId, msg);
+
+            await logActivity({
+              user_id: session.clinician_id,
+              action: 'start_assessment_session',
+              entity_type: 'assessment_session',
+              entity_id: session.session_id,
+              description: `Started assessment session: ${data.sessionId}`
+            });
+          } catch (error) {
+            console.error('Failed to start session:', error);
+            ws.send(JSON.stringify({ type: "error", message: "Failed to start session" }));
           }
           break;
         }
@@ -832,8 +1185,13 @@ wss.on("connection", async (ws, request) => {
             const nextItemRecord = nextItem as Record<string, unknown>;
             const nextItemId = Number(String(nextItemRecord['item_number'] ?? nextItemRecord['item_id'] ?? 0));
             const nextQuestion = String(nextItemRecord['question'] ?? '');
-            roomCurrentItems[roomId] = { item: nextItemId, question: nextQuestion };
-            // Broadcast the new item
+            // Store full item data including image_url and all properties
+            roomCurrentItems[roomId] = {
+              ...nextItemRecord,
+              item: nextItemId,
+              question: nextQuestion
+            };
+            // Broadcast the full item object with all properties
             const msg = JSON.stringify({ type: 'changeAssessmentItem', item: roomCurrentItems[roomId], sessionId: roomId, timestamp: new Date().toISOString() });
             broadcastToRoom(roomId, msg);
             // Persist progress
@@ -859,7 +1217,13 @@ wss.on("connection", async (ws, request) => {
             const prevItemRecord = prevItem as Record<string, unknown>;
             const prevItemId = Number(String(prevItemRecord['item_number'] ?? prevItemRecord['item_id'] ?? 0));
             const prevQuestion = String(prevItemRecord['question'] ?? '');
-            roomCurrentItems[roomId] = { item: prevItemId, question: prevQuestion };
+            // Store full item data including image_url and all properties
+            roomCurrentItems[roomId] = {
+              ...prevItemRecord,
+              item: prevItemId,
+              question: prevQuestion
+            };
+            // Broadcast the full item object with all properties
             const msg = JSON.stringify({ type: 'changeAssessmentItem', item: roomCurrentItems[roomId], sessionId: roomId, timestamp: new Date().toISOString() });
             broadcastToRoom(roomId, msg);
             await updateSessionProgress(roomId, { item: prevItemId });
@@ -933,14 +1297,119 @@ wss.on("connection", async (ws, request) => {
               sessionId: data.sessionId,
               templateId: data.templateId,
               templateName: template?.name ?? null,
-              templateItems: template?.session_items ?? null
+              templateItems: template?.session_items ?? null,
+              is_for_kids: template?.is_for_kids ?? false
             });
 
             // Notify room participants (clinician + patient)
             broadcastToRoom(data.sessionId, msg);
+
+            // Immediately broadcast the first item so the client can render image_url before session start
+            if (roomCurrentItems[data.sessionId]) {
+              try {
+                const initialItemMsg = JSON.stringify({
+                  type: 'changeAssessmentItem',
+                  item: roomCurrentItems[data.sessionId],
+                  sessionId: data.sessionId,
+                  timestamp: new Date().toISOString()
+                });
+                broadcastToRoom(data.sessionId, initialItemMsg);
+              } catch (err) {
+                console.warn('Failed to broadcast initial item after template assignment:', err);
+              }
+            }
           } catch (err) {
             console.error('Failed to assign template:', err);
             ws.send(JSON.stringify({ type: 'error', message: 'Failed to assign template' }));
+          }
+          break;
+
+        case 'setSessionPatient':
+          try {
+            if (!data.sessionId || !data.first_name || !data.last_name) {
+              ws.send(JSON.stringify({ type: 'error', message: 'Missing required fields for setSessionPatient' }));
+              break;
+            }
+
+            const session = await prisma.assessmentSession.findUnique({ 
+              where: { session_uuid: data.sessionId } 
+            });
+
+            if (!session) {
+              ws.send(JSON.stringify({ type: 'error', message: 'Session not found' }));
+              break;
+            }
+
+            let patientId = data.patient_id ? Number(data.patient_id) : null;
+
+            // If patient_id provided and it's an existing patient, just link it
+            if (patientId && data.is_existing) {
+              await prisma.assessmentSession.updateMany({
+                where: { session_uuid: data.sessionId },
+                data: { patient_id: patientId }
+              });
+
+              const patient = await prisma.patient.findUnique({ 
+                where: { patient_id: patientId } 
+              });
+
+              if (patient) {
+                broadcastToRoom(data.sessionId, JSON.stringify({
+                  type: 'patientSet',
+                  sessionId: data.sessionId,
+                  patient: {
+                    patient_id: patient.patient_id,
+                    first_name: patient.first_name,
+                    last_name: patient.last_name,
+                    age: patient.age,
+                    gender: patient.gender,
+                  },
+                }));
+              }
+            } else {
+              // Create a temporary patient record (will be updated after session completion)
+              const dob = new Date();
+              dob.setFullYear(dob.getFullYear() - 30); // Default age
+
+              const newPatient = await prisma.patient.create({
+                data: {
+                  first_name: String(data.first_name),
+                  last_name: String(data.last_name),
+                  date_of_birth: dob,
+                  assigned_clinician_id: session.clinician_id,
+                  is_active: true,
+                  notes: `Temp record - Session ${data.sessionId}`,
+                }
+              });
+
+              patientId = newPatient.patient_id;
+
+              await prisma.assessmentSession.updateMany({
+                where: { session_uuid: data.sessionId },
+                data: { patient_id: patientId }
+              });
+
+              broadcastToRoom(data.sessionId, JSON.stringify({
+                type: 'patientSet',
+                sessionId: data.sessionId,
+                patient: {
+                  patient_id: newPatient.patient_id,
+                  first_name: newPatient.first_name,
+                  last_name: newPatient.last_name,
+                },
+              }));
+            }
+
+            await logActivity({
+              user_id: session.clinician_id,
+              action: 'set_session_patient',
+              entity_type: 'session',
+              entity_id: session.session_id,
+              description: `Patient ${data.first_name} ${data.last_name} associated with session ${data.sessionId}`,
+            });
+          } catch (err) {
+            console.error('Failed to set session patient:', err);
+            ws.send(JSON.stringify({ type: 'error', message: 'Failed to set session patient' }));
           }
           break;
 
@@ -997,6 +1466,137 @@ wss.on("connection", async (ws, request) => {
           }
           break;
 
+        case 'completeSession': {
+          try {
+            if (!data.sessionId) {
+              ws.send(JSON.stringify({ type: 'error', message: 'Missing sessionId for completeSession' }));
+              break;
+            }
+            await prisma.assessmentSession.updateMany({
+              where: { session_uuid: data.sessionId },
+              data: { status: 'Completed', end_time: new Date() }
+            });
+            const msg = JSON.stringify({ type: 'sessionCompleted', sessionId: data.sessionId, timestamp: new Date().toISOString() });
+            broadcastToRoom(data.sessionId, msg);
+          } catch (err) {
+            console.error('Failed to complete session:', err);
+            ws.send(JSON.stringify({ type: 'error', message: 'Failed to complete session' }));
+          }
+          break;
+        }
+        case 'finalizePatient': {
+          try {
+            console.log('[finalizePatient] Received data:', { 
+              sessionId: data.sessionId, 
+              first_name: data.first_name, 
+              last_name: data.last_name,
+              age: data.age,
+              gender: data.gender
+            });
+            
+            if (!data.sessionId || !data.first_name || !data.last_name) {
+              console.log('[finalizePatient] Missing required fields');
+              ws.send(JSON.stringify({ type: 'error', message: 'Missing fields for finalizePatient' }));
+              break;
+            }
+            
+            const session = await prisma.assessmentSession.findUnique({ where: { session_uuid: data.sessionId } });
+            if (!session) { 
+              console.log('[finalizePatient] Session not found:', data.sessionId);
+              ws.send(JSON.stringify({ type: 'error', message: 'Session not found' })); 
+              break; 
+            }
+            
+            console.log('[finalizePatient] Found session:', { 
+              session_id: session.session_id, 
+              clinician_id: session.clinician_id,
+              existing_patient_id: session.patient_id 
+            });
+            
+            let patientId = session.patient_id;
+            
+            // Calculate date_of_birth from age if provided, otherwise use a reasonable default
+            let dob = new Date();
+            if (data.age && Number(data.age) > 0) {
+              const age = Number(data.age);
+              dob = new Date();
+              dob.setFullYear(dob.getFullYear() - age);
+            } else {
+              // Default to 30 years ago if no age provided
+              dob.setFullYear(dob.getFullYear() - 30);
+            }
+            
+            if (!patientId) {
+              console.log('[finalizePatient] Creating new patient record');
+              // create new patient record
+              const newPatient = await prisma.patient.create({
+                data: {
+                  first_name: String(data.first_name),
+                  last_name: String(data.last_name),
+                  date_of_birth: dob,
+                  age: data.age ? Number(data.age) : null,
+                  gender: data.gender ? String(data.gender) : null,
+                  notes: data.notes ? String(data.notes) : null,
+                  assigned_clinician_id: session.clinician_id,
+                  is_active: true
+                }
+              });
+              patientId = newPatient.patient_id;
+              console.log('[finalizePatient] Created patient:', { patient_id: patientId });
+              
+              await prisma.assessmentSession.update({
+                where: { session_uuid: data.sessionId },
+                data: { patient_id: patientId }
+              });
+              console.log('[finalizePatient] Updated session with patient_id');
+            } else {
+              console.log('[finalizePatient] Updating existing patient:', patientId);
+              // update existing temp patient
+              await prisma.patient.update({
+                where: { patient_id: patientId },
+                data: {
+                  first_name: String(data.first_name),
+                  last_name: String(data.last_name),
+                  date_of_birth: dob,
+                  age: data.age ? Number(data.age) : null,
+                  gender: data.gender ? String(data.gender) : null,
+                  notes: data.notes ? String(data.notes) : null,
+                  assigned_clinician_id: session.clinician_id,
+                  is_active: true
+                }
+              });
+              console.log('[finalizePatient] Patient updated successfully');
+            }
+            
+            const patientInfo = await prisma.patient.findUnique({ where: { patient_id: patientId } });
+            console.log('[finalizePatient] Final patient info:', { 
+              patient_id: patientInfo?.patient_id,
+              name: `${patientInfo?.first_name} ${patientInfo?.last_name}`,
+              assigned_clinician_id: patientInfo?.assigned_clinician_id
+            });
+            
+            // Broadcast to entire room so clinician also receives the update
+            const finalizeMessage = JSON.stringify({ 
+              type: 'patientFinalized', 
+              patientInfo,
+              sessionId: data.sessionId
+            });
+            broadcastToRoom(data.sessionId, finalizeMessage);
+            console.log('[finalizePatient] Broadcasted patientFinalized message');
+            
+            await logActivity({
+              user_id: session.clinician_id,
+              action: 'finalize_patient',
+              entity_type: 'patient',
+              entity_id: patientId,
+              description: `Patient finalized: ${data.first_name} ${data.last_name} for session ${data.sessionId}`
+            });
+          } catch (err) {
+            console.error('[finalizePatient] ERROR:', err);
+            ws.send(JSON.stringify({ type: 'error', message: 'Failed to finalize patient' }));
+          }
+          break;
+        }
         case "leaveRoom":
           await leaveRoom(ws, data.roomId);
           ws.send(JSON.stringify({ 
@@ -1016,18 +1616,40 @@ wss.on("connection", async (ws, request) => {
 
         case "submitResponse":
           // Save response to database
-          await saveSessionResponse(data.sessionId, data.item, data.response);
-          
-          // Notify clinician of response submission
-          const responseMessage = JSON.stringify({
-            type: "responseSubmitted",
-            sessionId: data.sessionId,
-            itemId: data.item.item,
-            response: data.response,
-            timestamp: new Date().toISOString()
-          });
-          
-          broadcastToRoom(data.sessionId, responseMessage, ws);
+          try {
+            const session = await prisma.assessmentSession.findUnique({
+              where: { session_uuid: data.sessionId }
+            });
+            
+            if (!session) {
+              ws.send(JSON.stringify({ 
+                type: 'error', 
+                message: 'Session not found',
+                details: 'Cannot save response - session does not exist'
+              }));
+              break;
+            }
+            
+            await saveSessionResponse(data.sessionId, data.item, data.response);
+            
+            // Notify clinician of response submission
+            const responseMessage = JSON.stringify({
+              type: "responseSubmitted",
+              sessionId: data.sessionId,
+              itemId: data.item.item,
+              response: data.response,
+              timestamp: new Date().toISOString()
+            });
+            
+            broadcastToRoom(data.sessionId, responseMessage, ws);
+          } catch (error) {
+            console.error('Failed to submit response:', error);
+            ws.send(JSON.stringify({
+              type: 'error',
+              message: 'Failed to save response',
+              details: error instanceof Error ? error.message : 'Unknown error'
+            }));
+          }
           break;
 
         case "updateSessionSettings":
@@ -1116,6 +1738,7 @@ wss.on("connection", async (ws, request) => {
               }
             });
 
+            // Broadcast both sessionEnded (for clinician) and sessionCompleted (for patient)
             const endMessage = JSON.stringify({
               type: "sessionEnded",
               sessionId: data.sessionId,
@@ -1123,7 +1746,14 @@ wss.on("connection", async (ws, request) => {
               timestamp: new Date().toISOString()
             });
             
+            const completedMessage = JSON.stringify({
+              type: "sessionCompleted",
+              sessionId: data.sessionId,
+              timestamp: new Date().toISOString()
+            });
+            
             broadcastToRoom(data.sessionId, endMessage);
+            broadcastToRoom(data.sessionId, completedMessage);
 
             await logActivity({
               user_id: session.clinician_id,

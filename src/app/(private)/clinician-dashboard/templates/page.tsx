@@ -1,11 +1,10 @@
-import Link from 'next/link';
-import { Box, Button, Typography } from '@mui/joy';
-import TemplatesTable from '@/modules/templates/TemplatesTable';
+import { Box } from '@mui/joy';
 import PrivateSidebar from '@/components/Layout/PrivateSidebar';
 import { cookies } from 'next/headers';
 import { verifyToken } from '@/lib/auth/auth';
 import { prisma } from '@/lib/database/client';
 import { redirect } from 'next/navigation';
+import TemplatesClient from './TemplatesClient';
 
 export default async function ClinicianTemplatesPage() {
   const cookieStore = await cookies();
@@ -31,6 +30,9 @@ export default async function ClinicianTemplatesPage() {
     template_id: t.template_id,
     name: t.name,
     description: t.description ?? undefined,
+    is_for_kids: t.is_for_kids ?? false,
+    difficulty_level: t.difficulty_level ?? undefined,
+    estimated_duration_minutes: t.estimated_duration_minutes ?? undefined,
     session_items: t.session_items ?? [],
     created_at: t.created_at ? t.created_at.toISOString() : undefined,
   }));
@@ -39,23 +41,8 @@ export default async function ClinicianTemplatesPage() {
     <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: 'background.body' }}>
       <PrivateSidebar />
 
-      <Box sx={{ flex: 1, p: 2 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-          <Typography level="h2">Templates</Typography>
-          <Button component={Link} href="/clinician-dashboard/templates/new" size="sm" variant="solid">New Template</Button>
-        </Box>
-
-        {initialTemplates.length === 0 ? (
-          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', mt: 6, gap: 2 }}>
-            <Typography level="h4">No templates yet</Typography>
-            <Typography level="body-md" sx={{ color: 'neutral.600', textAlign: 'center', maxWidth: 540 }}>
-              You haven&apos;t created any assessment templates. Templates let you quickly run standardized sessions for patients.
-            </Typography>
-            <Button component={Link} href="/clinician-dashboard/templates/new" size="md" variant="solid">Create your first template</Button>
-          </Box>
-        ) : (
-          <TemplatesTable templates={initialTemplates} />
-        )}
+      <Box sx={{ flex: 1, p: { xs: 2, sm: 3, md: 4 }, maxWidth: 1400, mx: 'auto', width: '100%' }}>
+        <TemplatesClient templates={initialTemplates} />
       </Box>
     </Box>
   );

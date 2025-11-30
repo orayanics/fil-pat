@@ -7,6 +7,10 @@ export function createAuthMiddleware() {
     
     // Public routes that don't require authentication
     const publicRoutes = ['/', '/login', '/api/auth/login'];
+    // Allow unauthenticated access to patient session join pages
+    if (pathname.startsWith('/session/patient')) {
+      return NextResponse.next();
+    }
     
     if (publicRoutes.includes(pathname)) {
       return NextResponse.next();

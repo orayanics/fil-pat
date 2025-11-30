@@ -18,6 +18,7 @@ export default function useWebSocket(options: UseWebSocketOptions = {}) {
   const socketRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const mountedRef = useRef(true);
+  const baseDelay = Math.max(500, reconnectInterval);
 
   const getWebSocketUrl = () => {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -56,19 +57,27 @@ export default function useWebSocket(options: UseWebSocketOptions = {}) {
         if (mountedRef.current) {
           setIsConnected(false);
           
-          // Auto-reconnect if enabled and not a normal closure
+          // Auto-reconnect with exponential backoff + jitter if enabled and not a normal closure
           if (autoReconnect && event.code !== 1000 && reconnectAttempts < maxReconnectAttempts) {
-            console.log(`Attempting to reconnect (${reconnectAttempts + 1}/${maxReconnectAttempts})...`);
+            const expBackoff = baseDelay * Math.pow(2, reconnectAttempts);
+            const jitter = Math.floor(Math.random() * 300);
+            const delay = Math.min(expBackoff + jitter, 15000);
+            console.log(`Reconnecting in ${delay}ms (${reconnectAttempts + 1}/${maxReconnectAttempts})...`);
             reconnectTimeoutRef.current = setTimeout(() => {
               setReconnectAttempts(prev => prev + 1);
               connect();
-            }, reconnectInterval);
+            }, delay);
           }
         }
       };
 
       webSocket.onerror = (error) => {
-        console.error('WebSocket error:', error);
+        console.error('WebSocket error:', {
+          type: error.type,
+          message: error instanceof ErrorEvent ? error.message : 'Connection error',
+          readyState: webSocket.readyState,
+          url: wsUrl
+        });
         if (mountedRef.current) {
           setIsConnected(false);
         }
@@ -80,7 +89,7 @@ export default function useWebSocket(options: UseWebSocketOptions = {}) {
         setIsConnected(false);
       }
     }
-  }, [autoReconnect, maxReconnectAttempts, reconnectInterval, reconnectAttempts]);
+  }, [autoReconnect, maxReconnectAttempts, reconnectAttempts, baseDelay]);
 
   const disconnect = useCallback(() => {
     if (reconnectTimeoutRef.current) {
@@ -106,6 +115,20 @@ export default function useWebSocket(options: UseWebSocketOptions = {}) {
       disconnect();
     };
   }, [connect, disconnect]);
+
+  // Reconnect when page becomes visible (e.g., after sleep/offline)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && !isConnected && mountedRef.current) {
+        console.log('Page visible and disconnected, attempting reconnect...');
+        setReconnectAttempts(0);
+        connect();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [isConnected, connect]);
 
   // Cleanup on unmount
   useEffect(() => {

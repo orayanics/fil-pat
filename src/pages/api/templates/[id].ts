@@ -82,9 +82,51 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       if (!existing) return res.status(404).json({ error: 'Template not found' });
       if (existing.created_by !== user.clinician_id) return res.status(403).json({ error: 'Forbidden' });
 
+      // Check for force delete flag
+      const forceDelete = req.query.force === 'true' || req.body?.force === true;
+
+      // Check if template is being used in sessions
+      const sessionsCount = await prisma.assessmentSession.count({
+        where: { template_id: templateId }
+      });
+
+      if (sessionsCount > 0 && !forceDelete) {
+        return res.status(400).json({ 
+          error: 'Cannot delete template',
+          message: `This template is being used in ${sessionsCount} session(s). You can force delete to end all sessions using this template.`,
+          sessionsCount,
+          canForceDelete: true
+        });
+      }
+
+      // If force delete, end all sessions using this template
+      if (forceDelete && sessionsCount > 0) {
+        // First update sessions to mark them as cancelled
+        await prisma.assessmentSession.updateMany({
+          where: { template_id: templateId },
+          data: { 
+            status: 'Cancelled',
+            end_time: new Date(),
+            post_session_notes: 'Session ended due to template deletion'
+          }
+        });
+        
+        // Delete all sessions using this template (cascades to responses, reports, etc.)
+        await prisma.assessmentSession.deleteMany({
+          where: { template_id: templateId }
+        });
+      }
+
+      // Delete related session items first
       await prisma.sessionItem.deleteMany({ where: { template_id: templateId } });
+      
+      // Then delete the template
       await prisma.assessmentTemplate.delete({ where: { template_id: templateId } });
-      return res.status(204).end();
+      
+      return res.status(200).json({ 
+        message: 'Template deleted successfully',
+        endedSessions: forceDelete ? sessionsCount : 0
+      });
     }
 
     res.setHeader('Allow', ['GET','PUT','PATCH','DELETE']);

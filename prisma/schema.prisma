@@ -192,7 +192,7 @@ model SessionItem {
 model AssessmentSession {
   session_id              Int       @id @default(autoincrement())
   session_uuid            String    @unique
-  patient_id              Int
+  patient_id              Int?
   clinician_id            Int
   template_id             Int
   
@@ -207,6 +207,7 @@ model AssessmentSession {
   session_type            String    @default("Assessment")
   session_mode            String    @default("Standard")
   is_practice_session     Boolean   @default(false)
+  is_resumed              Boolean   @default(false)
   
   // Progress Tracking
   status                  String    @default("Scheduled")
@@ -236,7 +237,7 @@ model AssessmentSession {
   updated_at              DateTime  @updatedAt
   
   // Relations
-  patient                 Patient   @relation(fields: [patient_id], references: [patient_id])
+  patient                 Patient?  @relation(fields: [patient_id], references: [patient_id])
   clinician               Clinician @relation(fields: [clinician_id], references: [clinician_id])
   template                AssessmentTemplate @relation(fields: [template_id], references: [template_id])
   current_item            SessionItem? @relation(fields: [current_item_id], references: [item_id])
@@ -264,6 +265,8 @@ model SessionResponse {
   score                   Float?
   max_possible_score      Float?
   scoring_method          String?
+  consonants_correct      Int?
+  vowels_correct          Int?
   
   // Analysis
   phoneme_analysis        String?

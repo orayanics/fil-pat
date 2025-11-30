@@ -16,4 +16,7 @@ export type ExportedSessionData = {
     completionPercentage: number;
   };
   exportedAt: string;
+  sessionInfo?: any;
+  patientInfo?: any;
+  clinicianInfo?: any;
 };
