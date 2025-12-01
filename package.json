@@ -5,12 +5,14 @@
   "scripts": {
     "dev": "nodemon",
     "dev:next": "next dev --turbopack",
-  "dev:lan": "next dev --hostname 0.0.0.0 --port 3000 --turbopack",
+    "dev:lan": "next dev --hostname 0.0.0.0 --port 3000 --turbopack",
     "dev:websocket": "nodemon --config nodemon.websocket.json",
     "fullstack": "concurrently \"npm run dev:next\" \"npm run dev:websocket\"",
-  "fullstack:lan": "concurrently \"npm run dev:lan\" \"npm run dev:websocket\"",
+    "fullstack:lan": "concurrently \"npm run dev:lan\" \"npm run dev:websocket\"",
     "build": "next build && tsc --project tsconfig.server.json",
-    "start": "next start",
+    "build:server": "tsc --project tsconfig.server.json",
+    "start": "node dist/server.js",
+    "start:lan": "cross-env APP_HOSTNAME=0.0.0.0 WEBSOCKET_HOST=0.0.0.0 node dist/server.js",
     "lint": "next lint",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
@@ -20,9 +22,12 @@
     "db:reset": "prisma migrate reset && npm run db:seed",
     "build:electron": "tsc -p tsconfig.electron.json",
     "dev:electron": "npm run build:electron && electron dist-electron/main.js",
+    "package:electron": "npm run build && npm run build:electron && electron-builder --win --x64",
     "dist": "npm run build && npm run build:electron && electron-builder",
-    "clean:dist": "taskkill /F /IM electron.exe || exit 0 && rd /s /q release",
-    "rebuild:dist": "npm run clean:dist && npm run build && npm run build:electron && npm run dist",
+    "dist:portable": "npm run build && npm run build:electron && electron-builder --win portable",
+    "dist:installer": "npm run build && npm run build:electron && electron-builder --win nsis",
+    "clean:dist": "if exist release rmdir /s /q release && if exist dist-electron rmdir /s /q dist-electron && if exist dist rmdir /s /q dist",
+    "rebuild:dist": "npm run clean:dist && npm run dist",
     "dev:electron:watch": "tsc -p tsconfig.electron.json --watch",
     "dev:electron:start": "nodemon --config nodemon.electron.json",
     "dev:electron:full": "concurrently \"npm run dev:electron:watch\" \"npm run dev:electron:start\""
@@ -61,6 +66,7 @@
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
     "concurrently": "^9.2.0",
+    "cross-env": "^7.0.3",
     "electron": "^37.2.4",
     "electron-builder": "^26.0.12",
     "eslint": "^9",
@@ -72,24 +78,77 @@
     "typescript": "^5.8.3"
   },
   "build": {
-    "appId": "com.filpath.app",
-    "productName": "FilPath",
+    "appId": "com.ust.filpat",
+    "productName": "FIL-PAT",
+    "asar": true,
     "files": [
-      "dist/",
-      "dist-electron/",
-      "main.js",
-      "package.json"
+      ".next/**/*",
+      "dist/**/*",
+      "dist-electron/**/*",
+      "prisma/schema.prisma",
+      "prisma/filpat.db",
+      "public/**/*",
+      "assets/**/*",
+      "package.json",
+      "!node_modules/**/*",
+      "node_modules/@prisma/**/*",
+      "node_modules/.prisma/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": ".next",
+        "to": "app/.next"
+      },
+      {
+        "from": "dist",
+        "to": "app/dist"
+      },
+      {
+        "from": "prisma",
+        "to": "app/prisma"
+      },
+      {
+        "from": "public",
+        "to": "app/public"
+      }
     ],
     "extraMetadata": {
       "main": "dist-electron/main.js"
     },
     "directories": {
-      "output": "release"
+      "output": "release",
+      "buildResources": "assets"
     },
     "win": {
-      "target": "portable",
-      "icon": "assets/icons/icon",
+      "target": [
+        {
+          "target": "portable",
+          "arch": ["x64"]
+        },
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        }
+      ],
+      "icon": "assets/icons/icon.ico",
+      "artifactName": "${productName}-${version}-${arch}-${os}.${ext}",
+      "publisherName": "UST College of Rehabilitation Sciences",
+      "requestedExecutionLevel": "requireAdministrator",
       "forceCodeSigning": false
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "perMachine": true,
+      "installerIcon": "assets/icons/icon.ico",
+      "uninstallerIcon": "assets/icons/icon.ico",
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "FIL-PAT",
+      "include": "scripts/installer.nsh"
+    },
+    "portable": {
+      "artifactName": "${productName}-${version}-Portable.${ext}"
     }
   }
 }
