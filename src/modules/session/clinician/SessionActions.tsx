@@ -1,6 +1,6 @@
 "use client";
 import { useParams } from "next/navigation";
-import { SaveRounded, StopCircleRounded, PictureAsPdfRounded } from "@mui/icons-material";
+import { SaveRounded, StopCircleRounded, PictureAsPdfRounded, QrCode2, CheckCircle } from "@mui/icons-material";
 import {
   Card,
   Tooltip,
@@ -14,20 +14,99 @@ import {
   Textarea,
   Typography,
   Stack,
+  Box,
+  Alert,
 } from "@mui/joy";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useSocketDispatch, useSocketContext } from "@/context/SocketProvider";
 import { useSocketStore } from "@/context/socketStore";
+import getLocalIp from "@/utils/getLocalIp";
+import QRCodeLib from "qrcode";
 
 export default function SessionActions() {
   const { saveSessionManually } = useSocketDispatch();
   const { endSession } = useSocketContext();
   const params = useParams();
   const sessionId = params?.id;
+  const sessionInfo = useSocketStore((s) => s.sessionInfo);
   const [summary, setSummary] = useState("");
   const [notes, setNotes] = useState("");
   const showEndModal = useSocketStore((s) => s.showEndModal);
   const setShowEndModal = useSocketStore((s) => s.setShowEndModal);
+  
+  const [qrModalOpen, setQrModalOpen] = useState(false);
+  const [qrData, setQrData] = useState<string | null>(null);
+  const [qrLink, setQrLink] = useState<string | null>(null);
+  const [qrLoading, setQrLoading] = useState(false);
+  
+  // Save feedback state
+  const [showSaveAlert, setShowSaveAlert] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(true);
+  
+  // Listen for save events
+  useEffect(() => {
+    const handleSessionSaved = (event: CustomEvent) => {
+      setSaveSuccess(event.detail.success);
+      setShowSaveAlert(true);
+      setTimeout(() => setShowSaveAlert(false), 3000);
+    };
+    
+    window.addEventListener('sessionSaved', handleSessionSaved as EventListener);
+    return () => window.removeEventListener('sessionSaved', handleSessionSaved as EventListener);
+  }, []);
+
+  const handleGenerateQr = async () => {
+    if (!sessionInfo?.session_uuid && !sessionId) return;
+    
+    setQrLoading(true);
+    try {
+      const localIp = await getLocalIp();
+      const protocol = window.location.protocol;
+      const port = window.location.port ? `:${window.location.port}` : "";
+      const hostToUse = window.location.hostname || localIp || "localhost";
+      const useSessionId = sessionInfo?.session_uuid || sessionId;
+      const url = `${protocol}//${hostToUse}${port}/session/patient/${useSessionId}`;
+      const dataUrl = await QRCodeLib.toDataURL(url, { width: 240, margin: 1 });
+      setQrData(dataUrl);
+      setQrLink(url);
+      setQrModalOpen(true);
+    } catch (err) {
+      console.error("Failed to create QR", err);
+    } finally {
+      setQrLoading(false);
+    }
+  };
+
+  const copyToClipboard = async () => {
+    if (!qrLink) return;
+    
+    try {
+      // Check if clipboard API is available (not available in SSR)
+      if (typeof window !== 'undefined' && typeof navigator !== 'undefined' && navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(qrLink);
+        console.log('Link copied to clipboard');
+      } else {
+        // Fallback for older browsers or SSR
+        const textArea = document.createElement('textarea');
+        textArea.value = qrLink;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-999999px';
+        textArea.style.top = '-999999px';
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        try {
+          document.execCommand('copy');
+          console.log('Link copied using fallback method');
+        } catch (err) {
+          console.error('Fallback copy failed:', err);
+        }
+        document.body.removeChild(textArea);
+      }
+    } catch (err) {
+      console.error('Failed to copy:', err);
+    }
+  };
 
   const handleEndConfirmed = async () => {
     try {
@@ -42,35 +121,86 @@ export default function SessionActions() {
 
   return (
     <>
+      {/* Save Feedback Alert */}
+      {showSaveAlert && (
+        <Alert
+          color={saveSuccess ? "success" : "danger"}
+          variant="soft"
+          startDecorator={saveSuccess ? <CheckCircle /> : undefined}
+          sx={{
+            mb: 2,
+            animation: "slideDown 0.3s ease-out",
+            "@keyframes slideDown": {
+              from: { opacity: 0, transform: "translateY(-20px)" },
+              to: { opacity: 1, transform: "translateY(0)" }
+            }
+          }}
+        >
+          {saveSuccess ? "Session saved successfully!" : "Failed to save session. Please try again."}
+        </Alert>
+      )}
+      
       {/* Session Controls */}
       <Card
         variant="outlined"
         sx={{
-          display: "flex",
-          flexDirection: { xs: "column", sm: "row" },
-          flexWrap: "wrap",
+          display: "grid",
+          gridTemplateColumns: { 
+            xs: "1fr", 
+            sm: "repeat(2, 1fr)", 
+            md: "repeat(4, 1fr)" 
+          },
           gap: 2,
-          justifyContent: "center",
-          alignItems: "stretch",
-          p: 3,
+          p: 2.5,
           borderRadius: "lg",
-          boxShadow: "md",
+          boxShadow: "sm",
+          background: "linear-gradient(145deg, rgba(255,255,255,0.9), rgba(250,251,252,1))",
         }}
       >
-        <Tooltip title="The system also auto-saves every 5 minutes." placement="top">
+        <Tooltip title="Save all responses manually. Auto-saves every 5 minutes." placement="top">
           <Button
             startDecorator={<SaveRounded />}
             variant="soft"
             color="success"
             onClick={saveSessionManually}
             size="lg"
-            sx={{ flex: { xs: "1", sm: "0 1 auto" }, minWidth: { sm: "160px" } }}
+            sx={{ 
+              minHeight: "56px",
+              fontWeight: 600,
+              transition: "all 0.2s",
+              "&:hover": {
+                transform: "translateY(-2px)",
+                boxShadow: "md"
+              }
+            }}
           >
-            Save Session
+            Save
           </Button>
         </Tooltip>
 
-        <Tooltip title="Open a preview of the session PDF." placement="top">
+        <Tooltip title="Generate QR code for patient access." placement="top">
+          <Button
+            startDecorator={<QrCode2 />}
+            variant="soft"
+            color="primary"
+            onClick={handleGenerateQr}
+            loading={qrLoading}
+            size="lg"
+            sx={{ 
+              minHeight: "56px",
+              fontWeight: 600,
+              transition: "all 0.2s",
+              "&:hover": {
+                transform: "translateY(-2px)",
+                boxShadow: "md"
+              }
+            }}
+          >
+            QR Code
+          </Button>
+        </Tooltip>
+
+        <Tooltip title="Preview session PDF report." placement="top">
           <Button
             startDecorator={<PictureAsPdfRounded />}
             variant="soft"
@@ -80,22 +210,38 @@ export default function SessionActions() {
               window.open(`/pdf/${sessionId}`, "_blank", "noopener,noreferrer");
             }}
             size="lg"
-            sx={{ flex: { xs: "1", sm: "0 1 auto" }, minWidth: { sm: "160px" } }}
+            sx={{ 
+              minHeight: "56px",
+              fontWeight: 600,
+              transition: "all 0.2s",
+              "&:hover": {
+                transform: "translateY(-2px)",
+                boxShadow: "md"
+              }
+            }}
           >
-            View PDF
+            PDF
           </Button>
         </Tooltip>
 
-        <Tooltip title="End the session and add your final notes." placement="top">
+        <Tooltip title="Complete session and add final notes." placement="top">
           <Button
             startDecorator={<StopCircleRounded />}
             variant="solid"
             color="danger"
             onClick={() => setShowEndModal(true)}
             size="lg"
-            sx={{ flex: { xs: "1", sm: "0 1 auto" }, minWidth: { sm: "160px" } }}
+            sx={{ 
+              minHeight: "56px",
+              fontWeight: 600,
+              transition: "all 0.2s",
+              "&:hover": {
+                transform: "translateY(-2px)",
+                boxShadow: "md"
+              }
+            }}
           >
-            End Session
+            End
           </Button>
         </Tooltip>
       </Card>
@@ -179,6 +325,70 @@ export default function SessionActions() {
               End Session & Save
             </Button>
           </DialogActions>
+        </ModalDialog>
+      </Modal>
+
+      {/* QR Code Modal */}
+      <Modal open={qrModalOpen} onClose={() => setQrModalOpen(false)}>
+        <ModalDialog
+          sx={{
+            maxWidth: 500,
+            borderRadius: 'lg',
+            p: 3,
+            boxShadow: 'lg',
+          }}
+        >
+          <ModalClose />
+          <DialogTitle>Patient Session QR Code</DialogTitle>
+          <DialogContent>
+            <Stack spacing={2} alignItems="center">
+              <Typography level="body-sm" sx={{ color: 'text.secondary', textAlign: 'center' }}>
+                {sessionInfo?.session_name || 'Current Session'}
+              </Typography>
+              {qrData && (
+                <Box
+                  component="img"
+                  src={qrData}
+                  alt="Session QR Code"
+                  sx={{
+                    width: 240,
+                    height: 240,
+                    border: '1px solid',
+                    borderColor: 'divider',
+                    borderRadius: 'sm',
+                  }}
+                />
+              )}
+              {qrLink && (
+                <Box sx={{ width: '100%' }}>
+                  <Typography level="body-sm" sx={{ mb: 1 }}>
+                    Or share this link:
+                  </Typography>
+                  <Box
+                    sx={{
+                      p: 2,
+                      bgcolor: 'background.level1',
+                      borderRadius: 'sm',
+                      wordBreak: 'break-all',
+                      fontFamily: 'monospace',
+                      fontSize: 'sm',
+                    }}
+                  >
+                    {qrLink}
+                  </Box>
+                  <Button
+                    size="sm"
+                    variant="soft"
+                    fullWidth
+                    sx={{ mt: 1 }}
+                    onClick={copyToClipboard}
+                  >
+                    Copy Link
+                  </Button>
+                </Box>
+              )}
+            </Stack>
+          </DialogContent>
         </ModalDialog>
       </Modal>
     </>

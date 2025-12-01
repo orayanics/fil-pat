@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { useSocketStore } from "@/context/socketStore";
 import { useSocketContext } from "@/context/SocketProvider";
@@ -14,52 +14,79 @@ export default function Index() {
   const sessionStarted = useSocketStore((s) => s.sessionStarted);
   const sessionInfo = useSocketStore((s) => s.sessionInfo);
   const currentItem = useSocketStore((s) => s.currentItem);
+  const [sessionEnded, setSessionEnded] = useState(false);
+  const [noClinicianPresent, setNoClinicianPresent] = useState(false);
 
   // Check if this is a kids template
   const isKidsMode = sessionInfo?.is_for_kids ?? false;
   
-  // Auto-start resumed sessions
+  // Listen for noClinicianPresent error from WebSocket
   useEffect(() => {
-    if (!sessionInfo || !socket || sessionStarted) return;
+    if (!socket) return;
     
-    // Check if this is a resumed session
-    const isResumed = sessionInfo.is_resumed === true;
+    const handleMessage = (event: MessageEvent) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (data.type === 'error' && data.message === 'noClinicianPresent') {
+          console.log('[Patient] No clinician present in session');
+          setNoClinicianPresent(true);
+        }
+      } catch (err) {
+        // Ignore parse errors
+      }
+    };
+    
+    socket.addEventListener('message', handleMessage);
+    return () => socket.removeEventListener('message', handleMessage);
+  }, [socket]);
+  
+  // Check if session has ended (status is Completed)
+  useEffect(() => {
+    if (sessionInfo?.status === 'Completed') {
+      console.log('[Patient] Session has ended, showing completion message');
+      setSessionEnded(true);
+    }
+  }, [sessionInfo?.status]);
+  
+  // Check if session is ended on initial load
+  useEffect(() => {
+    if (!sessionId) return;
+    
+    const checkSessionStatus = async () => {
+      try {
+        const res = await fetch(`/api/sessions/${sessionId}`, { 
+          credentials: 'include' 
+        });
+        
+        if (res.ok) {
+          const data = await res.json();
+          if (data.status === 'Completed') {
+            console.log('[Patient] Session is completed, showing end message');
+            setSessionEnded(true);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to check session status:', err);
+      }
+    };
+    
+    // Check status after a short delay to allow WebSocket to connect
+    const timeoutId = setTimeout(checkSessionStatus, 2000);
+    return () => clearTimeout(timeoutId);
+  }, [sessionId]);
+  
+  // Log session info for debugging (removed auto-start, server handles it)
+  useEffect(() => {
+    if (!sessionInfo) return;
     
     console.log('Patient session info received:', {
       session_uuid: sessionInfo.session_uuid,
       session_name: sessionInfo.session_name,
       template_name: sessionInfo.template_name,
       is_resumed: sessionInfo.is_resumed,
-      isResumed: isResumed,
       sessionStarted: sessionStarted
     });
-    
-    if (isResumed && sessionInfo.session_uuid && sessionInfo.template_name) {
-      console.log('Auto-starting resumed session:', sessionInfo.session_uuid);
-      
-      // Small delay to ensure WebSocket is ready
-      const timer = setTimeout(() => {
-        try {
-          socket.send(JSON.stringify({
-            type: 'loadSession',
-            sessionId: sessionInfo.session_uuid
-          }));
-          
-          // Then start the session
-          setTimeout(() => {
-            socket.send(JSON.stringify({
-              type: 'startSession',
-              sessionId: sessionInfo.session_uuid
-            }));
-          }, 500);
-        } catch (error) {
-          console.error('Failed to auto-start resumed session:', error);
-        }
-      }, 1000);
-      
-      return () => clearTimeout(timer);
-    }
-  }, [sessionInfo, socket, sessionStarted]);
+  }, [sessionInfo, sessionStarted]);
 
   React.useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -82,6 +109,118 @@ export default function Index() {
     }
   }, [sessionInfo]);
 
+  // If no clinician present, show waiting message
+  if (noClinicianPresent) {
+    return (
+      <Box
+        sx={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          minHeight: '100dvh',
+          gap: 2,
+          p: 2,
+          background: isKidsMode
+            ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+            : 'background.body',
+        }}
+      >
+        <Card
+          sx={{
+            p: 4,
+            maxWidth: 600,
+            textAlign: 'center',
+            borderRadius: isKidsMode ? 6 : 2,
+            background: isKidsMode
+              ? 'linear-gradient(to bottom, #ffffff, #fef3c7)'
+              : 'background.surface',
+            boxShadow: isKidsMode ? 'xl' : 'md',
+          }}
+        >
+          <Typography
+            level="h2"
+            sx={{
+              fontWeight: 700,
+              fontSize: isKidsMode ? '2.5rem' : 'inherit',
+              color: isKidsMode ? '#7c3aed' : 'text.primary',
+              mb: 2,
+            }}
+          >
+            {isKidsMode ? '⏰ Please Wait!' : '⏳ Clinician Not Present'}
+          </Typography>
+          <Typography
+            sx={{
+              fontSize: isKidsMode ? '1.25rem' : 'inherit',
+              color: isKidsMode ? '#6b7280' : 'text.secondary',
+              lineHeight: 1.6,
+            }}
+          >
+            {isKidsMode
+              ? 'Your teacher hasn\'t started the activity yet. Please wait while they set things up!'
+              : 'The clinician has not joined this session yet. Please wait for the clinician to start the session, or contact them for assistance.'}
+          </Typography>
+        </Card>
+      </Box>
+    );
+  }
+  
+  // If session has ended, show completion message
+  if (sessionEnded) {
+    return (
+      <Box
+        sx={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          minHeight: '100dvh',
+          gap: 2,
+          p: 2,
+          background: isKidsMode
+            ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+            : 'background.body',
+        }}
+      >
+        <Card
+          sx={{
+            p: 4,
+            maxWidth: 600,
+            textAlign: 'center',
+            borderRadius: isKidsMode ? 6 : 2,
+            background: isKidsMode
+              ? 'linear-gradient(to bottom, #ffffff, #fef3c7)'
+              : 'background.surface',
+            boxShadow: isKidsMode ? 'xl' : 'md',
+          }}
+        >
+          <Typography
+            level="h2"
+            sx={{
+              fontWeight: 700,
+              fontSize: isKidsMode ? '2.5rem' : 'inherit',
+              color: isKidsMode ? '#7c3aed' : 'text.primary',
+              mb: 2,
+            }}
+          >
+            {isKidsMode ? '🎉 Activity Completed!' : '✓ Session Ended'}
+          </Typography>
+          <Typography
+            sx={{
+              fontSize: isKidsMode ? '1.25rem' : 'inherit',
+              color: isKidsMode ? '#6b7280' : 'text.secondary',
+              lineHeight: 1.6,
+            }}
+          >
+            {isKidsMode
+              ? 'This activity has been completed. Great job! Ask your teacher if you need help.'
+              : 'This assessment session has been completed and is no longer active. Please contact your clinician if you have any questions.'}
+          </Typography>
+        </Card>
+      </Box>
+    );
+  }
+  
   // If session started show the item (image + question)
   if (sessionStarted && currentItem) {
     return (
@@ -361,7 +500,7 @@ export default function Index() {
                 }
               }}
             >
-              {isKidsMode ? '🚀 Start Activity Now' : '▶️ Start Session'}
+              {isKidsMode ? '🚀 Start Activity Now' : '▶️ Resume Session'}
             </Button>
           )}
         </Card>

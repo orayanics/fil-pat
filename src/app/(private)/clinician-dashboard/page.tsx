@@ -10,8 +10,30 @@ import { useSocketContext } from "@/context/SocketProvider";
 import { useState } from "react";
 
 export default function ClinicianDashboardPage() {
-  const { connectionStatus, socket } = useSocketContext();
-  const [refreshing, setRefreshing] = useState(false);
+  const { connectionStatus, socket, reconnect } = useSocketContext();
+  const [reconnecting, setReconnecting] = useState(false);
+
+  const handleReconnect = async () => {
+    setReconnecting(true);
+    try {
+      // Close existing connection if any
+      if (socket && socket.readyState === WebSocket.OPEN) {
+        socket.close(1000, 'Manual reconnect');
+      }
+      // Wait a moment for cleanup
+      await new Promise(resolve => setTimeout(resolve, 300));
+      // Reconnect
+      if (reconnect) {
+        reconnect();
+      }
+      // Give it time to connect
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    } catch (err) {
+      console.error('Reconnect error:', err);
+    } finally {
+      setReconnecting(false);
+    }
+  };
 
   // QR generation logic moved here from DashboardRooms
   async function qrGenerateQrData(url: string): Promise<string> {
@@ -22,23 +44,6 @@ export default function ClinicianDashboardPage() {
       errorCorrectionLevel: "H",
     });
   }
-
-  const handleRefresh = async () => {
-    setRefreshing(true);
-    try {
-      // Close existing WebSocket connection gracefully
-      if (socket && socket.readyState === WebSocket.OPEN) {
-        socket.close(1000, 'Manual refresh');
-      }
-      // Wait a moment for cleanup
-      await new Promise(resolve => setTimeout(resolve, 500));
-      // Reload the page without clearing auth
-      window.location.reload();
-    } catch (err) {
-      console.error('Refresh error:', err);
-      setRefreshing(false);
-    }
-  };
 
   return (
     <AuthGuard>
@@ -59,12 +64,13 @@ export default function ClinicianDashboardPage() {
               <Button
                 size="sm"
                 variant="outlined"
-                color="neutral"
+                color={connectionStatus === 'connected' ? 'neutral' : 'primary'}
                 startDecorator={<Refresh />}
-                onClick={handleRefresh}
-                loading={refreshing}
+                onClick={handleReconnect}
+                loading={reconnecting}
+                disabled={connectionStatus === 'connected' && !reconnecting}
               >
-                Refresh
+                {connectionStatus === 'connected' ? 'Connected' : 'Reconnect'}
               </Button>
             </Stack>
           </Stack>

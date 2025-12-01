@@ -253,11 +253,25 @@ async function updateSessionProgress(sessionId: string, itemData: SessionItemDat
       return;
     }
 
+    // Get the actual item_id from item_number
+    let currentItemId: number | null = null;
+    if (itemData.item) {
+      const sessionItem = await prisma.sessionItem.findFirst({
+        where: {
+          template_id: session.template_id,
+          item_number: itemData.item
+        }
+      });
+      if (sessionItem) {
+        currentItemId = sessionItem.item_id;
+      }
+    }
+
     await prisma.assessmentSession.update({
       where: { session_uuid: sessionId },
       data: {
-        current_item_id: itemData.item,
-        completed_items: itemData.item > 0 ? itemData.item - 1 : 0, // ✅ Prevent negatives
+        current_item_id: currentItemId,
+        completed_items: itemData.item > 0 ? itemData.item - 1 : 0,
         status: "In Progress",
       },
     });
@@ -298,14 +312,50 @@ async function saveSessionResponse(
   responseData: ResponseData
 ): Promise<void> {
   try {
+    console.log('[saveSessionResponse] Saving response:', {
+      sessionId,
+      itemId: itemData.item,
+      responseData: {
+        response: responseData.response,
+        score: responseData.score,
+        notes: responseData.notes,
+        consonantsCorrect: responseData.consonantsCorrect,
+        vowelsCorrect: responseData.vowelsCorrect
+      }
+    });
+
     const session = await prisma.assessmentSession.findUnique({
       where: { session_uuid: sessionId },
+      include: {
+        template: {
+          include: {
+            session_items: true,
+          },
+        },
+      },
     });
 
     if (!session) {
       console.warn(`Session not found for UUID: ${sessionId}`);
       return;
     }
+
+    // Find the actual session_item_id from the template based on item_number
+    const sessionItem = session.template.session_items.find(
+      (item) => item.item_number === itemData.item
+    );
+
+    if (!sessionItem) {
+      console.error(`[saveSessionResponse] Session item not found for item_number: ${itemData.item}`);
+      return;
+    }
+
+    console.log('[saveSessionResponse] Found session item:', {
+      item_number: itemData.item,
+      item_id: sessionItem.item_id,
+      question: sessionItem.question
+    });
+
     // Make response saving idempotent: update existing response for the same
     // session_id + session_item_id if present, otherwise create one.
     // Using findFirst() because there may not be a unique constraint in the
@@ -313,24 +363,28 @@ async function saveSessionResponse(
     const existing = await prisma.sessionResponse.findFirst({
       where: {
         session_id: session.session_id,
-        session_item_id: itemData.item,
+        session_item_id: sessionItem.item_id,
       },
     });
 
     if (existing) {
+      const updateData = {
+        response_text: responseData.response ?? null,
+        response_audio_path: responseData.audioPath ?? null,
+        is_correct: responseData.isCorrect ?? null,
+        score: responseData.score ?? null,
+        max_possible_score: itemData.max_score ?? 1.0,
+        time_taken_seconds: responseData.timeTaken ?? null,
+        clinician_notes: responseData.notes ?? null,
+        consonants_correct: responseData.consonantsCorrect ?? null,
+        vowels_correct: responseData.vowelsCorrect ?? null,
+      };
+
+      console.log('[saveSessionResponse] Updating existing response:', { response_id: existing.response_id, updateData });
+
       await prisma.sessionResponse.update({
         where: { response_id: existing.response_id },
-        data: {
-          response_text: responseData.response ?? null,
-          response_audio_path: responseData.audioPath ?? null,
-          is_correct: responseData.isCorrect ?? null,
-          score: responseData.score ?? null,
-          max_possible_score: itemData.max_score ?? 1.0,
-          time_taken_seconds: responseData.timeTaken ?? null,
-          clinician_notes: responseData.notes ?? null,
-          consonants_correct: responseData.consonantsCorrect ?? null,
-          vowels_correct: responseData.vowelsCorrect ?? null,
-        },
+        data: updateData,
       });
 
       await logActivity({
@@ -340,25 +394,30 @@ async function saveSessionResponse(
         entity_id: session.session_id,
         description: `Updated response for item ${itemData.item}`,
         new_values: {
-          item_id: itemData.item,
+          item_number: itemData.item,
+          item_id: sessionItem.item_id,
           score: responseData.score ?? null,
         },
       });
     } else {
+      const createData = {
+        session_id: session.session_id,
+        session_item_id: sessionItem.item_id,
+        response_text: responseData.response ?? null,
+        response_audio_path: responseData.audioPath ?? null,
+        is_correct: responseData.isCorrect ?? null,
+        score: responseData.score ?? null,
+        max_possible_score: itemData.max_score ?? 1.0,
+        time_taken_seconds: responseData.timeTaken ?? null,
+        clinician_notes: responseData.notes ?? null,
+        consonants_correct: responseData.consonantsCorrect ?? null,
+        vowels_correct: responseData.vowelsCorrect ?? null,
+      };
+
+      console.log('[saveSessionResponse] Creating new response:', createData);
+
       await prisma.sessionResponse.create({
-        data: {
-          session_id: session.session_id,
-          session_item_id: itemData.item,
-          response_text: responseData.response ?? null,
-          response_audio_path: responseData.audioPath ?? null,
-          is_correct: responseData.isCorrect ?? null,
-          score: responseData.score ?? null,
-          max_possible_score: itemData.max_score ?? 1.0,
-          time_taken_seconds: responseData.timeTaken ?? null,
-          clinician_notes: responseData.notes ?? null,
-          consonants_correct: responseData.consonantsCorrect ?? null,
-          vowels_correct: responseData.vowelsCorrect ?? null,
-        },
+        data: createData,
       });
 
       await logActivity({
@@ -368,7 +427,8 @@ async function saveSessionResponse(
         entity_id: session.session_id,
         description: `Response saved for item ${itemData.item}`,
         new_values: {
-          item_id: itemData.item,
+          item_number: itemData.item,
+          item_id: sessionItem.item_id,
           score: responseData.score ?? null,
         },
       });
@@ -515,14 +575,39 @@ const joinRoom = async (ws: WebSocket, roomId: string, userData?: UserData) => {
 
   if (role === 'patient') {
     if (roomPatient[roomId]) {
-      // Notify the joining patient they cannot join
-      try {
-        ws.send(JSON.stringify({ type: 'patientRejected', message: 'A patient is already connected to this session.' }));
-      } catch {}
-      return;
+      // Check if the existing patient connection is still active
+      const existingPatientWs = roomPatient[roomId];
+      if (existingPatientWs && existingPatientWs.readyState === WebSocket.OPEN) {
+        // Notify the joining patient they cannot join
+        try {
+          ws.send(JSON.stringify({ type: 'patientRejected', message: 'A patient is already connected to this session.' }));
+        } catch {}
+        return;
+      } else {
+        // Existing patient disconnected, allow reconnection
+        console.log(`[Reconnection] Patient reconnecting to room ${roomId}`);
+        roomPatient[roomId] = ws;
+        
+        // Notify clinician that patient has reconnected
+        rooms[roomId].forEach((client) => {
+          const conn = connectionMap.get(client as WebSocket);
+          if (conn && conn.userType === 'clinician' && client.readyState === WebSocket.OPEN) {
+            try {
+              client.send(JSON.stringify({ 
+                type: 'patientReconnected', 
+                sessionId: roomId,
+                message: 'Patient has reconnected to the session'
+              }));
+            } catch {}
+          }
+        });
+      }
+    } else {
+      // Assign this ws as the patient for the room
+      roomPatient[roomId] = ws;
     }
-    // Assign this ws as the patient for the room
-    roomPatient[roomId] = ws;
+  } else {
+    // Not a patient - just add to room
   }
 
   rooms[roomId].add(ws);
@@ -623,6 +708,77 @@ const joinRoom = async (ws: WebSocket, roomId: string, userData?: UserData) => {
   // If a clinician just joined and a patient is already assigned to this room, notify the clinician
   const roleJustJoined = userData?.role ?? 'participant';
   if (roleJustJoined === 'clinician') {
+    // Send session info to clinician (for resume/continue scenarios)
+    try {
+      const sessionInfo = await prisma.assessmentSession.findUnique({
+        where: { session_uuid: roomId },
+        include: {
+          template: {
+            include: {
+              session_items: {
+                where: { is_active: true },
+                orderBy: { display_order: 'asc' }
+              }
+            }
+          },
+          patient: true,
+          current_item: true
+        }
+      });
+      
+      if (sessionInfo && ws.readyState === WebSocket.OPEN) {
+        console.log('[Clinician Join] Sending session info to clinician:', {
+          session_uuid: sessionInfo.session_uuid,
+          status: sessionInfo.status,
+          template_name: sessionInfo.template?.name,
+          items_count: sessionInfo.template?.session_items.length
+        });
+
+        // Initialize room items if not already set
+        const items = sessionInfo.template?.session_items || [];
+        if (!roomItemsList[roomId]) {
+          roomItemsList[roomId] = items;
+        }
+
+        // Set current item (use saved current_item or first item)
+        let currentItem = null;
+        if (sessionInfo.current_item) {
+          currentItem = {
+            ...sessionInfo.current_item,
+            item: sessionInfo.current_item.item_number || sessionInfo.current_item.item_id,
+            question: sessionInfo.current_item.question
+          };
+          roomCurrentItems[roomId] = currentItem;
+        } else if (items.length > 0 && !roomCurrentItems[roomId]) {
+          const firstItem = items[0] as Record<string, unknown>;
+          currentItem = {
+            ...firstItem,
+            item: Number(String(firstItem['item_number'] ?? firstItem['item_id'] ?? 1)),
+            question: String(firstItem['question'] ?? '')
+          };
+          roomCurrentItems[roomId] = currentItem;
+        } else {
+          currentItem = roomCurrentItems[roomId];
+        }
+        
+        ws.send(JSON.stringify({
+          type: 'sessionLoaded',
+          sessionId: roomId,
+          sessionInfo: {
+            ...sessionInfo,
+            template_name: sessionInfo.template?.name,
+            is_for_kids: sessionInfo.template?.is_for_kids,
+          },
+          templateItems: items,
+          currentItem: currentItem,
+          timestamp: new Date().toISOString()
+        }));
+      }
+    } catch (err) {
+      console.error('[Clinician Join] Failed to send session info to clinician:', err);
+    }
+
+    // Notify clinician if a patient is already connected
     const assignedPatientWs = roomPatient[roomId];
     if (assignedPatientWs) {
       const conn = connectionMap.get(assignedPatientWs as WebSocket);
@@ -688,6 +844,45 @@ const joinRoom = async (ws: WebSocket, roomId: string, userData?: UserData) => {
           currentItem: roomCurrentItems[roomId] || null,
           timestamp: new Date().toISOString()
         }));
+        
+        // Auto-start resumed sessions if both clinician and patient are connected
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const isResumed = (sessionInfo as any).is_resumed === true;
+        const roomParticipants = rooms[roomId] ? Array.from(rooms[roomId]) : [];
+        const hasClinicianAndPatient = roomParticipants.length >= 2;
+        
+        if (isResumed && hasClinicianAndPatient && sessionInfo.status !== 'In Progress') {
+          console.log('[Auto-start] Both parties connected for resumed session, starting automatically');
+          
+          // Update session status to In Progress
+          await prisma.assessmentSession.update({
+            where: { session_id: sessionInfo.session_id },
+            data: { status: 'In Progress' }
+          });
+
+          // Initialize room with session items
+          const items = sessionInfo.template?.session_items || [];
+          roomItemsList[roomId] = items;
+
+          // Set first item as current
+          if (items.length > 0) {
+            const firstItem = items[0] as Record<string, unknown>;
+            roomCurrentItems[roomId] = {
+              ...firstItem,
+              item: Number(String(firstItem['item_number'] ?? firstItem['item_id'] ?? 1)),
+              question: String(firstItem['question'] ?? '')
+            };
+          }
+
+          // Broadcast session started to room
+          const startMsg = JSON.stringify({
+            type: 'sessionStarted',
+            sessionId: roomId,
+            currentItem: roomCurrentItems[roomId],
+            timestamp: new Date().toISOString()
+          });
+          broadcastToRoom(roomId, startMsg);
+        }
       }
     } catch (err) {
       console.error('Failed to send session info to patient:', err);
@@ -714,12 +909,37 @@ const leaveRoom = async (ws: WebSocket, roomId: string) => {
   const clients = rooms[roomId];
   if (clients) {
     clients.delete(ws);
-    // If this ws was the assigned patient, clear assignment
-    if (roomPatient[roomId] === ws) {
-      roomPatient[roomId] = null;
-      // notify clinicians that patient left
-      broadcastToRoom(roomId, JSON.stringify({ type: 'patientLeft', sessionId: roomId }));
+    
+    // Check if this ws was the assigned patient
+    const wasPatient = roomPatient[roomId] === ws;
+    
+    // If this ws was the assigned patient, notify but DON'T clear assignment yet
+    // This allows for reconnection
+    if (wasPatient) {
+      console.log(`[Patient Left] Patient disconnected from room ${roomId}, waiting for reconnection...`);
+      
+      // Notify clinicians that patient left
+      broadcastToRoom(roomId, JSON.stringify({ 
+        type: 'patientDisconnected', 
+        sessionId: roomId,
+        message: 'Patient disconnected - they may reconnect'
+      }));
+      
+      // Set a timeout to clear the patient assignment if they don't reconnect
+      setTimeout(() => {
+        // Only clear if the same WebSocket is still assigned (not reconnected)
+        if (roomPatient[roomId] === ws) {
+          console.log(`[Patient Left] Patient did not reconnect to room ${roomId}, clearing assignment`);
+          roomPatient[roomId] = null;
+          broadcastToRoom(roomId, JSON.stringify({ 
+            type: 'patientLeft', 
+            sessionId: roomId,
+            message: 'Patient left the session'
+          }));
+        }
+      }, 30000); // 30 second grace period for reconnection
     }
+    
     console.log(`Client left room: ${roomId}`);
     
     if (clients.size === 0) {
@@ -999,11 +1219,16 @@ wss.on("connection", async (ws, request) => {
             const connectionData = connectionMap.get(ws);
             const clinicianIpToUse = data.hostIp ?? connectionData?.ipAddress ?? SERVER_LOCAL_IP ?? null;
             
+            // Use provided session name or generate default
+            const sessionName = data.sessionName || existingSession.session_name || `Continuation of ${data.sessionId}`;
+            
+            console.log('[generateSessionLink] Creating resumed session with name:', sessionName);
+            
             // Create new session linked to same patient and template
             const newSession = await prisma.assessmentSession.create({
               data: {
                 session_uuid: newSessionUuid,
-                session_name: existingSession.session_name || `Continuation of ${data.sessionId}`,
+                session_name: sessionName,
                 clinician_id: existingSession.clinician_id,
                 patient_id: existingSession.patient_id,
                 template_id: existingSession.template_id,
@@ -1151,6 +1376,7 @@ wss.on("connection", async (ws, request) => {
               type: 'sessionStarted',
               sessionId: roomId,
               sessionInfo: session,
+              templateItems: items,
               currentItem: roomCurrentItems[roomId],
               timestamp: new Date().toISOString()
             });
@@ -1270,7 +1496,7 @@ wss.on("connection", async (ws, request) => {
               data: { template_id: data.templateId }
             });
 
-            // Fetch template details to broadcast name/items so clients (patients) can reflect template
+            // Fetch template details including items to broadcast to all participants
             const template = await prisma.assessmentTemplate.findUnique({
               where: { template_id: data.templateId },
               include: {
@@ -1617,11 +1843,18 @@ wss.on("connection", async (ws, request) => {
         case "submitResponse":
           // Save response to database
           try {
+            console.log('[submitResponse] Received response submission:', {
+              sessionId: data.sessionId,
+              itemId: data.item?.item,
+              response: data.response
+            });
+
             const session = await prisma.assessmentSession.findUnique({
               where: { session_uuid: data.sessionId }
             });
             
             if (!session) {
+              console.error('[submitResponse] Session not found:', data.sessionId);
               ws.send(JSON.stringify({ 
                 type: 'error', 
                 message: 'Session not found',
@@ -1631,6 +1864,8 @@ wss.on("connection", async (ws, request) => {
             }
             
             await saveSessionResponse(data.sessionId, data.item, data.response);
+            
+            console.log('[submitResponse] Response saved successfully for item:', data.item?.item);
             
             // Notify clinician of response submission
             const responseMessage = JSON.stringify({
@@ -1709,14 +1944,64 @@ wss.on("connection", async (ws, request) => {
 
         case "resumeSession":
           try {
+            // Get session with template items
+            const session = await prisma.assessmentSession.findUnique({
+              where: { session_uuid: data.sessionId },
+              include: {
+                template: {
+                  include: {
+                    session_items: {
+                      where: { is_active: true },
+                      orderBy: { display_order: 'asc' }
+                    }
+                  }
+                },
+                current_item: true
+              }
+            });
+
+            if (!session) {
+              console.error('Session not found for resume:', data.sessionId);
+              break;
+            }
+
+            // Update session status
             await prisma.assessmentSession.update({
               where: { session_uuid: data.sessionId },
               data: { status: 'In Progress' }
             });
 
+            // Initialize room items if not already set
+            const items = session.template?.session_items || [];
+            if (!roomItemsList[data.sessionId]) {
+              roomItemsList[data.sessionId] = items;
+            }
+
+            // Set current item (use saved current_item or first item)
+            let currentItem = null;
+            if (session.current_item) {
+              currentItem = {
+                ...session.current_item,
+                item: session.current_item.item_number || session.current_item.item_id,
+                question: session.current_item.question
+              };
+              roomCurrentItems[data.sessionId] = currentItem;
+            } else if (items.length > 0) {
+              const firstItem = items[0] as Record<string, unknown>;
+              currentItem = {
+                ...firstItem,
+                item: Number(String(firstItem['item_number'] ?? firstItem['item_id'] ?? 1)),
+                question: String(firstItem['question'] ?? '')
+              };
+              roomCurrentItems[data.sessionId] = currentItem;
+            }
+
             const resumeMessage = JSON.stringify({
               type: "sessionResumed",
               sessionId: data.sessionId,
+              sessionInfo: session,
+              templateItems: items,
+              currentItem: currentItem,
               timestamp: new Date().toISOString()
             });
             

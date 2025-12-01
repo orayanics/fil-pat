@@ -35,8 +35,16 @@ export default function useData({ socket, sessionId, currentItem }: UseDataOptio
 
   const changeItem = (direction: number) => {
     try {
-      if (!socket || socket.readyState !== WebSocket.OPEN || !sessionId) return;
+      if (!socket || socket.readyState !== WebSocket.OPEN || !sessionId) {
+        console.log('[useData] Cannot change item:', { 
+          hasSocket: !!socket, 
+          socketState: socket?.readyState, 
+          hasSessionId: !!sessionId 
+        });
+        return;
+      }
       const type = direction > 0 ? 'nextItem' : 'prevItem';
+      console.log('[useData] Sending navigation message:', { type, sessionId, direction, currentItem: item?.item });
       socket.send(JSON.stringify({ type, sessionId }));
     } catch (error) {
       console.error("useData error sending navigation message:", error);

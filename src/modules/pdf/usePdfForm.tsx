@@ -41,6 +41,16 @@ export function usePdfForm(sessionId: string) {
         
         const data = await response.json();
         
+        console.log('[PDF] Session API response:', data);
+        console.log('[PDF] Items with responses:', data.items.map((item: any) => ({
+          item_id: item.item_id,
+          item_number: item.item_number,
+          has_response: !!item.response,
+          response_text: item.response?.response_text,
+          consonants_correct: item.response?.consonants_correct,
+          vowels_correct: item.response?.vowels_correct
+        })));
+        
         // Transform API data to match ExportedSessionData format
         const transformedData: ExportedSessionData = {
           session: data.items.reduce((acc: any, item: any) => {
@@ -55,6 +65,8 @@ export function usePdfForm(sessionId: string) {
               childResponse: item.response?.response_text || '',
               consonantsCorrect,
               vowelsCorrect,
+              consonantsCount: item.consonants_count || 0,
+              vowelsCount: item.vowels_count || 0,
               score: item.response?.score || 0,
             };
             return acc;

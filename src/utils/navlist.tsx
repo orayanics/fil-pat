@@ -1,4 +1,4 @@
-import { HomeRounded, GroupRounded } from "@mui/icons-material";
+import { HomeRounded, GroupRounded, SettingsRounded } from "@mui/icons-material";
 import { useSocketStore } from "@/context/socketStore";
 
 export function usePrivateList() {
@@ -29,6 +29,11 @@ export function usePrivateList() {
             title: "Templates",
             icon: <HomeRounded />,
             href: "/clinician-dashboard/templates",
+          },
+          {
+            title: "Settings",
+            icon: <SettingsRounded />,
+            href: "/clinician-dashboard/settings",
           },
         ]),
   ];

@@ -88,7 +88,13 @@ export default function SessionCard({ isKidsMode = false }: SessionCardProps) {
             startDecorator={<KeyboardArrowLeftRounded />}
             variant="outlined"
             color="neutral"
-            onClick={() => changeItem(-1)}
+            onClick={() => {
+              console.log('[SessionCard] Back button clicked:', { 
+                currentItem: item.item, 
+                disabled: item.item === 1 
+              });
+              changeItem(-1);
+            }}
             disabled={item.item === 1}
           >
             Back

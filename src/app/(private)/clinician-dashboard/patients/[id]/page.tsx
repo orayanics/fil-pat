@@ -16,6 +16,8 @@ type SessionItem = {
   sound?: string;
   max_score?: number;
   image_url?: string;
+  consonants_count?: number;
+  vowels_count?: number;
 };
 
 type SessionResponse = {
@@ -27,6 +29,8 @@ type SessionResponse = {
   time_taken_seconds?: number;
   clinician_notes?: string;
   timestamp?: string;
+  consonants_correct?: number | null;
+  vowels_correct?: number | null;
 };
 
 type SessionTemplate = {
@@ -126,6 +130,17 @@ export default function PatientRecordPage() {
         const res = await fetch(`/api/clinician/patients/${patientId}`, { credentials: 'include' });
         if (!res.ok) throw new Error(`Failed to load patient (${res.status})`);
         const data = await res.json();
+        console.log('[Patient Record] API response:', data.patient);
+        if (data.patient?.sessions) {
+          data.patient.sessions.forEach((session: Session, idx: number) => {
+            console.log(`[Patient Record] Session ${idx}:`, {
+              session_id: session.session_id,
+              template_items: session.template?.session_items?.length,
+              responses: session.responses?.length,
+              responses_detail: session.responses
+            });
+          });
+        }
         setPatient(data.patient);
         setError(null);
       } catch (err) {
@@ -227,7 +242,9 @@ export default function PatientRecordPage() {
                           </Box>
                           <Stack direction="row" spacing={1} sx={{ ml: 2 }}>
                             <Button variant="outlined" size="sm" component={Link} href={`/pdf/${s.session_uuid}`}>PDF</Button>
-                            <Button variant="solid" size="sm" component={Link} href={`/session/clinician/${s.session_uuid}`}>Resume</Button>
+                            {s.status === 'In Progress' && (
+                              <Button variant="solid" size="sm" component={Link} href={`/session/clinician/${s.session_uuid}`}>Resume</Button>
+                            )}
                           </Stack>
                         </AccordionSummary>
                         <AccordionDetails>
@@ -269,7 +286,24 @@ export default function PatientRecordPage() {
                                 <Stack spacing={1}>
                                   {s.template.session_items.map((templateItem) => {
                                     const response = s.responses?.find(r => r.session_item_id === templateItem.item_id);
-                                    const isAnswered = !!response;
+                                    console.log(`[Patient Record] Item ${templateItem.item_number}:`, {
+                                      item_id: templateItem.item_id,
+                                      looking_for: templateItem.item_id,
+                                      all_response_item_ids: s.responses?.map(r => r.session_item_id),
+                                      found_response: response,
+                                      response_data: response ? {
+                                        response_text: response.response_text,
+                                        consonants_correct: response.consonants_correct,
+                                        vowels_correct: response.vowels_correct,
+                                        clinician_notes: response.clinician_notes
+                                      } : null
+                                    });
+                                    const isAnswered = response && (
+                                      !!response.response_text ||
+                                      (response.consonants_correct !== null && response.consonants_correct !== undefined) ||
+                                      (response.vowels_correct !== null && response.vowels_correct !== undefined) ||
+                                      !!response.clinician_notes
+                                    );
                                     const isCorrect = response?.is_correct;
                                     
                                     return (
@@ -313,6 +347,12 @@ export default function PatientRecordPage() {
                                             <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
                                               {response.score !== undefined && response.score !== null && (
                                                 <Typography level="body-xs">Score: {response.score}/{templateItem.max_score || 1}</Typography>
+                                              )}
+                                              {(response.consonants_correct !== undefined && response.consonants_correct !== null) && (
+                                                <Typography level="body-xs">Consonants: {response.consonants_correct}/{templateItem.consonants_count || 0}</Typography>
+                                              )}
+                                              {(response.vowels_correct !== undefined && response.vowels_correct !== null) && (
+                                                <Typography level="body-xs">Vowels: {response.vowels_correct}/{templateItem.vowels_count || 0}</Typography>
                                               )}
                                               {response.time_taken_seconds && (
                                                 <Typography level="body-xs">Time: {response.time_taken_seconds}s</Typography>

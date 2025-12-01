@@ -363,8 +363,8 @@ export default function ModernDashboard() {
                       </Avatar>
                     </ListItemDecorator>
                     <ListItemContent>
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <Box>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 2 }}>
+                        <Box sx={{ flex: 1 }}>
                           <Typography level="title-sm">
                             {session.patient?.name ?? 'Anonymous Patient'}
                             {session.patient?.age && ` (${session.patient.age})`}
@@ -378,9 +378,22 @@ export default function ModernDashboard() {
                             )}
                           </Typography>
                         </Box>
-                        <Chip size="sm" variant="soft" color={getStatusColor(session.status)}>
-                          {session.status}
-                        </Chip>
+                        <Stack direction="row" spacing={1} alignItems="center">
+                          <Chip size="sm" variant="soft" color={getStatusColor(session.status)}>
+                            {session.status}
+                          </Chip>
+                          {session.status === 'In Progress' && (
+                            <Button
+                              size="sm"
+                              variant="solid"
+                              color="primary"
+                              component={Link}
+                              href={`/session/clinician/${session.session_uuid}`}
+                            >
+                              Continue
+                            </Button>
+                          )}
+                        </Stack>
                       </Box>
                     </ListItemContent>
                   </ListItem>

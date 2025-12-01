@@ -1,6 +1,6 @@
 "use client";
-import { useState, useEffect } from "react";
-import { Card, Typography, Button, Stack, Input, Tooltip, Chip, Box, Modal, ModalDialog, ModalClose, IconButton } from "@mui/joy";
+import { useState } from "react";
+import { Card, Typography, Button, Stack, Input, Tooltip, Chip, Box, Modal, ModalDialog, ModalClose } from "@mui/joy";
 import { ContentCopy, QrCode2, CheckCircle, Share, Refresh } from "@mui/icons-material";
 import { useSocketStore } from "@/context/socketStore";
 import { useSocketContext } from "@/context/SocketProvider";
@@ -8,12 +8,15 @@ import { useSocketContext } from "@/context/SocketProvider";
 export default function PatientLinkCard() {
   const sessionInfo = useSocketStore((s) => s.sessionInfo);
   const sessionId = useSocketStore((s) => s.sessionId);
+  const sessionStarted = useSocketStore((s) => s.sessionStarted);
   const { socket } = useSocketContext();
   const [copied, setCopied] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [qrModalOpen, setQrModalOpen] = useState(false);
   const [qrDataUrl, setQrDataUrl] = useState<string>("");
   const [qrLoading, setQrLoading] = useState(false);
+  const [nameModalOpen, setNameModalOpen] = useState(false);
+  const [newSessionName, setNewSessionName] = useState<string>("");
 
   const patientUrl = sessionInfo?.patientUrl;
 
@@ -56,15 +59,37 @@ export default function PatientLinkCard() {
 
   const handleGenerateNewLink = async () => {
     if (!socket || !sessionId) return;
+    setNameModalOpen(true);
+  };
+
+  const handleConfirmGenerateLink = async () => {
+    if (!socket || !sessionId) return;
     setGenerating(true);
+    setNameModalOpen(false);
     try {
+      const sessionNameToSend = newSessionName.trim() || null;
       socket.send(JSON.stringify({
         type: 'generateSessionLink',
+        sessionId,
+        sessionName: sessionNameToSend
+      }));
+      setNewSessionName(""); // Reset for next time
+    } catch (err) {
+      console.error('Failed to generate new link:', err);
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const handleStartSession = () => {
+    if (!socket || !sessionId) return;
+    try {
+      socket.send(JSON.stringify({
+        type: 'startSession',
         sessionId
       }));
     } catch (err) {
-      console.error('Failed to generate new link:', err);
-      setGenerating(false);
+      console.error('Failed to start session:', err);
     }
   };
 
@@ -169,7 +194,20 @@ export default function PatientLinkCard() {
           </Stack>
         </Stack>
 
-        <Stack direction="row" spacing={1} justifyContent="flex-end">
+        <Stack direction="row" spacing={1} justifyContent="flex-end" flexWrap="wrap">
+          {!sessionStarted && sessionInfo?.template_name && sessionInfo?.status !== 'In Progress' && sessionInfo?.status !== 'Completed' && (
+            <Tooltip title="Start the assessment session" placement="top">
+              <Button
+                variant="solid"
+                size="sm"
+                color="success"
+                onClick={handleStartSession}
+                startDecorator={<CheckCircle />}
+              >
+                Start Session
+              </Button>
+            </Tooltip>
+          )}
           <Tooltip title="Show QR code for patient" placement="top">
             <Button
               variant="solid"
@@ -255,6 +293,54 @@ export default function PatientLinkCard() {
             <Typography level="body-xs" sx={{ color: 'text.tertiary', textAlign: 'center' }}>
               {patientUrl}
             </Typography>
+          </Stack>
+        </ModalDialog>
+      </Modal>
+
+      {/* Session Name Modal */}
+      <Modal open={nameModalOpen} onClose={() => setNameModalOpen(false)}>
+        <ModalDialog
+          sx={{
+            maxWidth: 450,
+            borderRadius: 'lg',
+            p: 3,
+            boxShadow: 'lg',
+          }}
+        >
+          <ModalClose />
+          <Stack spacing={2}>
+            <Typography level="h4" sx={{ fontWeight: 700 }}>
+              Generate New Session Link
+            </Typography>
+            <Typography level="body-sm" sx={{ color: 'text.secondary' }}>
+              Optionally give this resumed session a name to help identify it later.
+            </Typography>
+            <Input
+              placeholder="e.g., Session 2, Follow-up Assessment"
+              value={newSessionName}
+              onChange={(e) => setNewSessionName(e.target.value)}
+              sx={{ fontSize: 'md' }}
+            />
+            <Stack direction="row" spacing={1} justifyContent="flex-end">
+              <Button
+                variant="outlined"
+                color="neutral"
+                onClick={() => {
+                  setNameModalOpen(false);
+                  setNewSessionName("");
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="solid"
+                color="primary"
+                onClick={handleConfirmGenerateLink}
+                loading={generating}
+              >
+                Generate Link
+              </Button>
+            </Stack>
           </Stack>
         </ModalDialog>
       </Modal>

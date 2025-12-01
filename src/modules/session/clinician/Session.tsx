@@ -1,8 +1,10 @@
 "use client";
 
-import {Box, Button, Stack, Typography, Divider} from "@mui/joy";
+import {Box, Button, Stack, Typography, Divider, Modal, ModalDialog, ModalClose} from "@mui/joy";
 import Link from "next/link";
-import { ArrowBack, ChildCare } from "@mui/icons-material";
+import { ArrowBack, ChildCare, Warning } from "@mui/icons-material";
+import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
 
 import SessionCard from "./SessionCard";
 import SessionForm from "./SessionForm";
@@ -12,39 +14,91 @@ import PatientLinkCard from "./PatientLinkCard";
 import { useSocketStore } from "@/context/socketStore";
 
 export default function Session() {
+  const router = useRouter();
   const sessionInfo = useSocketStore((s) => s.sessionInfo);
+  const sessionStarted = useSocketStore((s) => s.sessionStarted);
   const isKidsMode = sessionInfo?.is_for_kids ?? false;
+  const [showExitConfirm, setShowExitConfirm] = useState(false);
+
+  // Cleanup session state when component unmounts
+  useEffect(() => {
+    return () => {
+      console.log('[Session] Component unmounting - resetting session state');
+      // Reset all session state when leaving session page
+      useSocketStore.getState().resetSessionState();
+    };
+  }, []);
+
+  const handleBackClick = (e: React.MouseEvent) => {
+    // If session is in progress, show confirmation
+    if (sessionStarted || sessionInfo?.status === 'In Progress') {
+      e.preventDefault();
+      setShowExitConfirm(true);
+    }
+    // Otherwise, allow normal navigation
+  };
+
+  const handleConfirmExit = () => {
+    setShowExitConfirm(false);
+    router.push('/clinician-dashboard');
+  };
 
   return (
     <Box 
       sx={{ 
         display: "flex", 
         flexDirection: "column", 
-        gap: 3, 
+        gap: 2.5, 
         padding: { xs: 2, md: 3 },
-        maxWidth: "1600px",
+        maxWidth: "100%",
         margin: "0 auto",
-        width: "100%"
+        width: "100%",
+        minHeight: "100vh"
       }}
     >
-      {/* Header */}
-      <Stack direction="row" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap={2}>
-        <Button 
-          component={Link} 
-          href="/clinician-dashboard" 
-          size="md" 
-          variant="outlined"
-          startDecorator={<ArrowBack />}
-          sx={{ fontWeight: 600 }}
-        >
-          Back to Dashboard
-        </Button>
+      {/* Header - Compact & Modern */}
+      <Stack 
+        direction="row" 
+        justifyContent="space-between" 
+        alignItems="center" 
+        flexWrap="wrap" 
+        gap={2}
+        sx={{
+          position: "sticky",
+          top: 0,
+          zIndex: 10,
+          bgcolor: "background.body",
+          py: 1,
+          borderBottom: 1,
+          borderColor: "divider"
+        }}
+      >
+        {(sessionStarted || sessionInfo?.status === 'In Progress') ? (
+          <Button 
+            onClick={handleBackClick}
+            size="sm" 
+            variant="outlined"
+            startDecorator={<ArrowBack />}
+          >
+            Dashboard
+          </Button>
+        ) : (
+          <Button 
+            component={Link}
+            href="/clinician-dashboard"
+            size="sm" 
+            variant="outlined"
+            startDecorator={<ArrowBack />}
+          >
+            Dashboard
+          </Button>
+        )}
         
         {isKidsMode && (
           <Stack direction="row" alignItems="center" spacing={1}>
-            <ChildCare color="primary" />
-            <Typography level="title-md" color="primary">
-              Kids Mode Active
+            <ChildCare color="primary" fontSize="small" />
+            <Typography level="body-sm" color="primary" fontWeight={600}>
+              Kids Mode
             </Typography>
           </Stack>
         )}
@@ -52,43 +106,65 @@ export default function Session() {
 
       {/* Session Status Alert */}
       <SessionStatus />
-      
-      {/* Patient Link Card */}
-      <PatientLinkCard />
 
-      {/* Session Controls */}
-      <Box>
-        <Typography level="title-lg" sx={{ mb: 2 }}>
-          Session Controls
-        </Typography>
-        <SessionActions />
-      </Box>
+      {/* Session Controls - Full Width Redesign */}
+      <SessionActions />
 
-      <Divider sx={{ my: 1 }} />
-
-      {/* Assessment Interface - Responsive Layout */}
-      <Typography level="title-lg" sx={{ mb: 2 }}>
-        {isKidsMode ? "Child's Sound Assessment" : "Assessment Items"}
-      </Typography>
-      
+      {/* Assessment Interface - Full Width Modern Layout */}
       <Box
         sx={{
-          display: "flex",
+          display: "grid",
+          gridTemplateColumns: { xs: "1fr", lg: "minmax(400px, 45%) 1fr" },
           gap: 3,
-          flexDirection: { xs: "column", lg: "row" },
-          alignItems: { xs: "stretch", lg: "flex-start" }
+          flex: 1
         }}
       >
         {/* Left: Assessment Item Card */}
-        <Box sx={{ flex: { xs: "1", lg: "0 0 45%" } }}>
+        <Box>
           <SessionCard isKidsMode={isKidsMode} />
         </Box>
         
         {/* Right: Response Form */}
-        <Box sx={{ flex: { xs: "1", lg: "0 0 55%" } }}>
+        <Box>
           <SessionForm isKidsMode={isKidsMode} />
         </Box>
       </Box>
+
+      {/* Exit Confirmation Modal */}
+      <Modal open={showExitConfirm} onClose={() => setShowExitConfirm(false)}>
+        <ModalDialog
+          variant="outlined"
+          role="alertdialog"
+          sx={{ maxWidth: 500 }}
+        >
+          <ModalClose />
+          <Stack spacing={2}>
+            <Stack direction="row" spacing={1} alignItems="center">
+              <Warning color="warning" />
+              <Typography level="title-lg">Leave Active Session?</Typography>
+            </Stack>
+            <Typography level="body-md">
+              This session is currently in progress. Leaving now will pause the session, but you can resume it anytime from the dashboard.
+            </Typography>
+            <Stack direction="row" spacing={2} justifyContent="flex-end">
+              <Button
+                variant="plain"
+                color="neutral"
+                onClick={() => setShowExitConfirm(false)}
+              >
+                Stay in Session
+              </Button>
+              <Button
+                variant="solid"
+                color="warning"
+                onClick={handleConfirmExit}
+              >
+                Leave Session
+              </Button>
+            </Stack>
+          </Stack>
+        </ModalDialog>
+      </Modal>
     </Box>
   );
 }

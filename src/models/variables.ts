@@ -7,6 +7,8 @@ export type ExportedSessionData = {
       childResponse: string;
       consonantsCorrect: number;
       vowelsCorrect: number;
+      consonantsCount: number;
+      vowelsCount: number;
       score: number;
     };
   };

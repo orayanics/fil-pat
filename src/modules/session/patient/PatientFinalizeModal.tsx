@@ -30,8 +30,6 @@ export default function PatientFinalizeModal({ sessionId }: PatientFinalizeModal
   const { sendMessage } = useSocketContext();
   
   const [open, setOpen] = useState(false);
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
   const [age, setAge] = useState("");
   const [gender, setGender] = useState<string>("");
   const [notes, setNotes] = useState("");
@@ -40,7 +38,9 @@ export default function PatientFinalizeModal({ sessionId }: PatientFinalizeModal
 
   // Open modal when session is completed
   useEffect(() => {
+    console.log('[PatientFinalizeModal] sessionCompleted:', sessionCompleted, 'patientFinalized:', patientFinalized);
     if (sessionCompleted && !patientFinalized) {
+      console.log('[PatientFinalizeModal] Opening modal');
       setOpen(true);
     }
   }, [sessionCompleted, patientFinalized]);
@@ -53,22 +53,14 @@ export default function PatientFinalizeModal({ sessionId }: PatientFinalizeModal
   }, [patientFinalized]);
 
   const handleSubmit = async () => {
-    // Validate required fields
-    if (!firstName.trim() || !lastName.trim()) {
-      setError("First name and last name are required");
-      return;
-    }
-
     setError("");
     setIsSubmitting(true);
 
     try {
-      // Send finalize message to server
+      // Send finalize message to server with only additional optional info
       sendMessage({
         type: "finalizePatient",
         sessionId,
-        first_name: firstName.trim(),
-        last_name: lastName.trim(),
         age: age ? Number(age) : undefined,
         gender: gender || undefined,
         notes: notes.trim() || undefined,
@@ -116,7 +108,7 @@ export default function PatientFinalizeModal({ sessionId }: PatientFinalizeModal
         <DialogContent>
           <Stack spacing={2.5}>
             <Typography level="body-md" sx={{ color: 'text.secondary' }}>
-              The session has been completed. Please provide your information so we can save your assessment results.
+              The session has been completed. You may optionally provide additional information below.
             </Typography>
 
             {error && (
@@ -136,27 +128,6 @@ export default function PatientFinalizeModal({ sessionId }: PatientFinalizeModal
             )}
 
             <Stack spacing={2}>
-              <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
-                <FormControl required sx={{ flex: 1 }}>
-                  <FormLabel>First Name</FormLabel>
-                  <Input
-                    placeholder="Enter first name"
-                    value={firstName}
-                    onChange={(e) => setFirstName(e.target.value)}
-                    disabled={isSubmitting || patientFinalized}
-                  />
-                </FormControl>
-
-                <FormControl required sx={{ flex: 1 }}>
-                  <FormLabel>Last Name</FormLabel>
-                  <Input
-                    placeholder="Enter last name"
-                    value={lastName}
-                    onChange={(e) => setLastName(e.target.value)}
-                    disabled={isSubmitting || patientFinalized}
-                  />
-                </FormControl>
-              </Stack>
 
               <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
                 <FormControl sx={{ flex: 1 }}>

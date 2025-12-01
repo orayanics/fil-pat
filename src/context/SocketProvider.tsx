@@ -8,7 +8,7 @@ import useWebSocket from "@/lib/useWebSocket";
 const SocketContext = createContext<SocketContextType | undefined>(undefined);
 
 export default function SocketProvider({ children }: { children: ReactNode }) {
-  const { socket, isConnected } = useWebSocket();
+  const { socket, isConnected, reconnect, disconnect } = useWebSocket();
   const router = useRouter();
   const params = useParams();
   const id = params && typeof params === 'object' && 'id' in params ? params.id : null;
@@ -148,6 +148,7 @@ export default function SocketProvider({ children }: { children: ReactNode }) {
             break;
           case 'sessionCreated':
             // Server created a session (either via clinician action or auto-created when both parties present)
+            console.log('[SocketProvider] Session created:', data.sessionId);
             if (data.sessionId) {
               setSessionId(data.sessionId);
             }
@@ -158,27 +159,39 @@ export default function SocketProvider({ children }: { children: ReactNode }) {
                 console.log('Patient URL stored:', data.sessionInfo.patientUrl);
               }
             }
-            // if a patient is already present, mark connected
-            if (!patientInfo) {
-              setPatientInfo({ patient_id: data.tempPatientId ?? 0, first_name: 'Patient', last_name: 'Connected' });
+            // Only set patient info if there was a temp patient created (auto-create scenario)
+            if (data.tempPatientId && !patientInfo) {
+              setPatientInfo({ patient_id: data.tempPatientId, first_name: 'Patient', last_name: 'Connected' });
+              setPatientConnected(true);
             }
-            setPatientConnected(true);
             break;
           case 'sessionLoaded':
-            // Handle loaded existing session
+            // Handle loaded existing session (both new loads and clinician joins)
+            console.log('[SocketProvider] Session loaded:', {
+              sessionId: data.sessionId,
+              status: data.sessionInfo?.status,
+              hasTemplateItems: !!data.templateItems,
+              itemsCount: data.templateItems?.length
+            });
+            
             if (data.sessionId) {
               setSessionId(data.sessionId);
             }
             if (data.sessionInfo) {
               setSessionInfo(data.sessionInfo);
+              // If session is already in progress, mark it as started
+              if (data.sessionInfo.status === 'In Progress') {
+                console.log('[SocketProvider] Session already in progress, setting sessionStarted=true');
+                setSessionStarted(true);
+              }
             }
             if (data.templateItems) {
+              console.log('[SocketProvider] Loading template items:', data.templateItems.length);
               setTemplateItems(data.templateItems);
             }
             if (data.currentItem) {
               setCurrentItem(data.currentItem as unknown as AssessmentItem);
             }
-            console.log('Session loaded from database:', data.sessionInfo);
             break;
           case 'patientConnected':
             // Mark that a patient has connected to the current session
@@ -280,26 +293,52 @@ export default function SocketProvider({ children }: { children: ReactNode }) {
           case 'sessionLinkGenerated':
             // New link generated for patient reconnection
             if (data.sessionInfo && data.patientUrl) {
+              const newSessionId = data.newSessionId || data.sessionInfo.session_uuid;
+              
+              console.log('[SocketProvider] New session link generated:', {
+                oldSessionId: sessionId,
+                newSessionId: newSessionId,
+                patientUrl: data.patientUrl
+              });
+              
+              // Update session info with new session data
               setSessionInfo({
                 ...sessionInfo,
                 ...data.sessionInfo,
                 patientUrl: data.patientUrl
               });
+              
+              // Update sessionId to the new one
+              setSessionId(newSessionId);
+              
+              // Leave the old room and join the new one
+              if (socket && socket.readyState === WebSocket.OPEN) {
+                // Leave old room if we were in one
+                if (sessionId && hasJoinedRoom) {
+                  console.log('[SocketProvider] Leaving old room:', sessionId);
+                  socket.send(JSON.stringify({
+                    type: 'leaveRoom',
+                    roomId: sessionId
+                  }));
+                  setHasJoinedRoom(false);
+                }
+                
+                // Join new room
+                setTimeout(() => {
+                  console.log('[SocketProvider] Joining new room:', newSessionId);
+                  socket.send(JSON.stringify({
+                    type: 'joinRoom',
+                    roomId: newSessionId,
+                    role: 'clinician',
+                    clinicianId: user?.clinician_id,
+                    isKidsMode
+                  }));
+                }, 300);
+              }
+              
               // Show notification
               setToast({ open: true, message: `New patient link generated successfully!` });
               setTimeout(() => setToast({ open: false, message: '' }), 3000);
-            }
-            break;
-          case 'sessionLoaded':
-            // Existing session loaded from database
-            if (data.sessionInfo) {
-              setSessionInfo(data.sessionInfo);
-            }
-            if (data.templateItems) {
-              setTemplateItems(data.templateItems);
-            }
-            if (data.currentItem) {
-              setCurrentItem(data.currentItem as unknown as AssessmentItem);
             }
             break;
           case 'changeAssessmentItem':
@@ -329,19 +368,64 @@ export default function SocketProvider({ children }: { children: ReactNode }) {
           case 'sessionStarted':
             setSessionStarted(true);
             setSessionPaused(false);
-            if (sessionInfo) {
+            // Update session info from the broadcast
+            if (data.sessionInfo) {
+              setSessionInfo(data.sessionInfo);
+            } else if (sessionInfo) {
               setSessionInfo({
                 ...sessionInfo,
                 status: 'In Progress'
               });
             }
-            // Navigate clinician to session page
+            // Load template items if provided
+            if (data.templateItems) {
+              setTemplateItems(data.templateItems);
+            }
+            // Set current item if provided
+            if (data.currentItem) {
+              setCurrentItem(data.currentItem as unknown as AssessmentItem);
+            }
+            // Navigate clinician to session page only if not already there
             try {
               if (isAuthenticated && data.sessionId) {
-                router.push(`/clinician-dashboard/session/${data.sessionId}`);
+                const currentPath = window.location.pathname;
+                const targetPath = `/session/clinician/${data.sessionId}`;
+                
+                console.log('[SocketProvider] Session started navigation check:', {
+                  currentPath,
+                  targetPath,
+                  sessionId: data.sessionId,
+                  storeSessionId: sessionId
+                });
+                
+                if (!currentPath.includes(targetPath)) {
+                  console.log('[SocketProvider] Navigating to session:', targetPath);
+                  // Use replace to avoid back button issues
+                  router.replace(targetPath);
+                } else {
+                  console.log('[SocketProvider] Already on session page, skipping navigation');
+                }
               }
             } catch (e) {
               console.warn('Navigation error:', e);
+            }
+            break;
+          case 'sessionResumed':
+            console.log('[SocketProvider] Session resumed:', data);
+            setSessionStarted(true);
+            setSessionPaused(false);
+            // Update session info
+            if (data.sessionInfo) {
+              setSessionInfo(data.sessionInfo);
+            }
+            // Load template items
+            if (data.templateItems) {
+              console.log('[SocketProvider] Loading template items for resumed session:', data.templateItems.length);
+              setTemplateItems(data.templateItems);
+            }
+            // Set current item
+            if (data.currentItem) {
+              setCurrentItem(data.currentItem as unknown as AssessmentItem);
             }
             break;
           case 'sessionCompleted':
@@ -397,6 +481,16 @@ export default function SocketProvider({ children }: { children: ReactNode }) {
               setTimeout(() => {
                 router.push('/clinician-dashboard');
               }, 3000);
+            }
+            break;
+          case 'sessionCompleted':
+            // Patient-specific message when session ends
+            console.log('[SocketProvider] Received sessionCompleted message');
+            try {
+              useSocketStore.getState().setSessionCompleted(true);
+              console.log('[SocketProvider] sessionCompleted set to true');
+            } catch (e) {
+              console.warn('Failed to set sessionCompleted', e);
             }
             break;
           case 'sessionSettingsUpdated':
@@ -574,8 +668,16 @@ export default function SocketProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const resumeSession = () => {
+  const resumeSession = async () => {
     if (sessionInfo) {
+      // First, navigate to the session page
+      try {
+        router.push(`/session/clinician/${sessionInfo.session_uuid}`);
+      } catch (e) {
+        console.warn('Navigation error:', e);
+      }
+      
+      // Then send the resume message
       sendMessage({
         type: 'resumeSession',
         sessionId: sessionInfo.session_uuid
@@ -666,6 +768,8 @@ export default function SocketProvider({ children }: { children: ReactNode }) {
     updatePatientInfo,
     setPatientConnected: useSocketStore((s) => s.setPatientConnected),
     setSessionId,
+    reconnect,
+    disconnect,
   };
 
   return (
@@ -738,6 +842,10 @@ export function useSocketDispatch() {
     const sid = ctx.sessionId;
     if (!sid) return;
     setIsPersisting(true);
+    
+    console.log('[saveSessionManually] Starting manual save for session:', sid);
+    console.log('[saveSessionManually] Form data:', form);
+    
     try {
       for (const [key, val] of Object.entries(form)) {
         const itemNum = Number(key);
@@ -748,14 +856,27 @@ export function useSocketDispatch() {
           isCorrect: typeof entry['score'] === 'number' ? ((entry['score'] as number) > 0) : null,
           timestamp: new Date().toISOString(),
           notes: (entry['clinicianNotes'] as string) ?? null,
-          consonantsCorrect: (entry['consonantsCorrect'] as number) ?? null,
-          vowelsCorrect: (entry['vowelsCorrect'] as number) ?? null
+          consonantsCorrect: (entry['consonantsCorrect'] as number) ?? 0,
+          vowelsCorrect: (entry['vowelsCorrect'] as number) ?? 0
         };
+
+        console.log(`[saveSessionManually] Submitting item ${itemNum}:`, responsePayload);
 
         ctx.sendMessage({ type: 'submitResponse', sessionId: sid, item: { item: itemNum }, response: responsePayload });
       }
+      
+      // Show success feedback
+      if (typeof window !== 'undefined') {
+        const event = new CustomEvent('sessionSaved', { detail: { success: true } });
+        window.dispatchEvent(event);
+      }
     } catch (err) {
       console.error('Failed to save session manually:', err);
+      // Show error feedback
+      if (typeof window !== 'undefined') {
+        const event = new CustomEvent('sessionSaved', { detail: { success: false, error: err } });
+        window.dispatchEvent(event);
+      }
     } finally {
       setIsPersisting(false);
     }

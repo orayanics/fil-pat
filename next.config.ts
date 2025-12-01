@@ -9,6 +9,8 @@ const nextConfig: NextConfig = {
       { protocol: 'https', hostname: 'i.pinimg.com', pathname: '/**' },
       // Fallback placeholder images
       { protocol: 'https', hostname: 'placehold.co', pathname: '/**' },
+      // Medical images used in templates
+      { protocol: 'https', hostname: 'gelenk-klinik.de', pathname: '/**' },
       // Allow local dev images if any are referenced
       { protocol: 'http', hostname: 'localhost', port: '3000', pathname: '/**' },
     ],

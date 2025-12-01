@@ -72,15 +72,18 @@ export default function useWebSocket(options: UseWebSocketOptions = {}) {
       };
 
       webSocket.onerror = (error) => {
-        console.error('WebSocket error:', {
-          type: error.type,
-          message: error instanceof ErrorEvent ? error.message : 'Connection error',
-          readyState: webSocket.readyState,
-          url: wsUrl
-        });
-        if (mountedRef.current) {
-          setIsConnected(false);
+        // Only log if we're not already connected or connecting
+        if (webSocket.readyState !== WebSocket.OPEN && webSocket.readyState !== WebSocket.CONNECTING) {
+          console.error('WebSocket error:', {
+            type: error.type,
+            message: error instanceof ErrorEvent ? error.message : 'Connection error',
+            readyState: webSocket.readyState,
+            readyStateText: ['CONNECTING', 'OPEN', 'CLOSING', 'CLOSED'][webSocket.readyState] || 'UNKNOWN',
+            url: wsUrl
+          });
         }
+        // Don't set isConnected to false here if we're already connected or connecting
+        // Let onclose handle the disconnection
       };
 
     } catch (error) {
@@ -105,6 +108,29 @@ export default function useWebSocket(options: UseWebSocketOptions = {}) {
     setIsConnected(false);
     setReconnectAttempts(0);
   }, []);
+
+  const manualReconnect = useCallback(() => {
+    console.log('Manual reconnect triggered');
+    // Clear any pending reconnection timeouts
+    if (reconnectTimeoutRef.current) {
+      clearTimeout(reconnectTimeoutRef.current);
+      reconnectTimeoutRef.current = null;
+    }
+    
+    // Reset reconnect attempts for manual reconnection
+    setReconnectAttempts(0);
+    
+    // Close existing connection if any
+    if (socketRef.current) {
+      socketRef.current.close(1000, 'Manual reconnect');
+      socketRef.current = null;
+    }
+    
+    // Wait a moment for cleanup, then reconnect
+    setTimeout(() => {
+      connect();
+    }, 300);
+  }, [connect]);
 
   // Initial connection
   useEffect(() => {
@@ -147,7 +173,7 @@ export default function useWebSocket(options: UseWebSocketOptions = {}) {
     socket: socketRef.current, 
     isConnected,
     reconnectAttempts,
-    connect,
+    reconnect: manualReconnect,
     disconnect
   };
 }

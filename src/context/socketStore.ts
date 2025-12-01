@@ -107,6 +107,8 @@ export interface SocketContextType {
   toggleKidsMode: () => void;
   updatePatientInfo: (patientInfo: PatientInfo) => void;
   setSessionId: (id: string | null) => void;
+  reconnect?: () => void;
+  disconnect?: () => void;
 }
 
 export interface SocketState {
@@ -164,6 +166,8 @@ export interface SocketState {
   setTemplateItems: (items: Array<Record<string, unknown>> | null) => void;
   setIsPersisting: (persisting: boolean) => void;
   setConnectionStatus: (status: ConnectionStatus) => void;
+  // Comprehensive session state reset
+  resetSessionState: () => void;
 }
 
 export const useSocketStore = create<SocketState>((set) => ({
@@ -215,4 +219,27 @@ export const useSocketStore = create<SocketState>((set) => ({
   setPatientFinalized: (finalized: boolean) => set({ patientFinalized: finalized }),
   setConnectionStatus: (status: ConnectionStatus) => set({ connectionStatus: status }),
   setIsPersisting: (persisting: boolean) => set({ isPersisting: persisting }),
+  // Comprehensive session state reset - clears ALL session-related state
+  resetSessionState: () => set({
+    sessionId: null,
+    sessionInfo: null,
+    currentItem: null,
+    templateItems: null,
+    formData: null,
+    patientInfo: null,
+    hasJoinedRoom: false,
+    roomParticipants: 0,
+    patientConnected: false,
+    patientList: {},
+    sessionStarted: false,
+    sessionPaused: false,
+    sessionCompleted: false,
+    patientFinalized: false,
+    qrData: null,
+    patientQrData: null,
+    isPersisting: false,
+    showEndModal: false,
+    patient: '',
+  }),
 }));
+

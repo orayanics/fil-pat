@@ -121,13 +121,16 @@ export default function SessionPdf() {
                     <th style={{ width: '25%' }}>Child Response</th>
                     <th style={{ width: '12%' }}>Consonants</th>
                     <th style={{ width: '12%' }}>Vowels</th>
-                    <th style={{ width: '16%' }}>Score</th>
+                    <th style={{ width: '16%' }}>Accuracy</th>
                   </tr>
                 </thead>
                 <tbody>
                   {sessionData.map(([key, value], index) => {
                     const hasResponse = value.childResponse && value.childResponse.trim() !== '';
-                    const scorePercentage = value.score ? (value.score / 10) * 100 : 0;
+                    // Calculate phoneme accuracy based on consonants and vowels
+                    const totalPhonemes = (value.consonantsCount || 0) + (value.vowelsCount || 0);
+                    const correctPhonemes = (value.consonantsCorrect || 0) + (value.vowelsCorrect || 0);
+                    const accuracyPercentage = totalPhonemes > 0 ? (correctPhonemes / totalPhonemes) * 100 : 0;
                     
                     return (
                       <tr key={key}>
@@ -184,15 +187,15 @@ export default function SessionPdf() {
                             >
                               <Box 
                                 sx={{ 
-                                  width: `${scorePercentage}%`, 
+                                  width: `${accuracyPercentage}%`, 
                                   height: '100%',
-                                  bgcolor: scorePercentage >= 70 ? 'success.500' : scorePercentage >= 40 ? 'warning.500' : 'danger.500',
+                                  bgcolor: accuracyPercentage >= 85 ? 'success.500' : accuracyPercentage >= 65 ? 'warning.500' : 'danger.500',
                                   transition: 'width 0.3s'
                                 }}
                               />
                             </Box>
                             <Typography level="body-sm" sx={{ fontWeight: 700 }}>
-                              {value.score || 0}/10
+                              {totalPhonemes > 0 ? `${correctPhonemes}/${totalPhonemes}` : '—'}
                             </Typography>
                           </Box>
                         </td>

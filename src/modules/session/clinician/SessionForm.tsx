@@ -136,10 +136,10 @@ export default function SessionForm({ isKidsMode = false }: SessionFormProps) {
 
           <div>
             <Typography fontWeight={800} gutterBottom={false}>
-              {isKidsMode ? "What the Child Said" : "Tugon ng Bata"}
+              {isKidsMode ? "What the Child Said" : "What the Patient Said"}
             </Typography>
             <Typography gutterBottom level="body-sm" sx={{fontStyle: "italic"}}>
-              {isKidsMode ? "Child's Sound Production" : "Child&#39;s Response"}
+              {isKidsMode ? "Child's Sound Production" : "Patient's Response"}
             </Typography>
             <Box sx={{marginBottom: 2}}>
               <Textarea
