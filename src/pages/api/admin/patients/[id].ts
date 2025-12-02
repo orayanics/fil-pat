@@ -17,11 +17,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const patient = await prisma.patient.findUnique({
         where: { patient_id: Number(id) },
         include: {
-          clinician: {
+          assigned_clinician: {
             select: {
               clinician_id: true,
               first_name: true,
               last_name: true,
+              specialization: true,
             },
           },
         },

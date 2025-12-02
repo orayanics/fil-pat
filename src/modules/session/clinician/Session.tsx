@@ -1,6 +1,6 @@
 "use client";
 
-import {Box, Button, Stack, Typography, Divider, Modal, ModalDialog, ModalClose} from "@mui/joy";
+import {Box, Button, Stack, Typography, Modal, ModalDialog, ModalClose} from "@mui/joy";
 import Link from "next/link";
 import { ArrowBack, ChildCare, Warning } from "@mui/icons-material";
 import { useRouter } from "next/navigation";
@@ -10,7 +10,7 @@ import SessionCard from "./SessionCard";
 import SessionForm from "./SessionForm";
 import SessionActions from "./SessionActions";
 import SessionStatus from "./SessionStatus";
-import PatientLinkCard from "./PatientLinkCard";
+// import PatientLinkCard from "./PatientLinkCard"; // Unused component
 import { useSocketStore } from "@/context/socketStore";
 
 export default function Session() {

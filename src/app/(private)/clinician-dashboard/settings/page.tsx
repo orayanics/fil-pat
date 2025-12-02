@@ -57,7 +57,7 @@ interface PasswordChange {
 }
 
 export default function SettingsPage() {
-  const { user } = useSocketContext();
+  const { user, refreshUser } = useSocketContext();
   const [settings, setSettings] = useState<ClinicianSettings>({
     first_name: "",
     last_name: "",
@@ -138,33 +138,30 @@ export default function SettingsPage() {
 
       if (response.ok) {
         const updatedData = await response.json();
-        setSettings(updatedData);
         
-        // Update user context and localStorage with new profile data
-        if (user) {
-          const updatedUser = {
-            ...user,
-            first_name: updatedData.first_name,
-            last_name: updatedData.last_name,
-            email: updatedData.email,
-          };
-          
-          // Update both localStorage and context
-          localStorage.setItem('auth_user', JSON.stringify(updatedUser));
-          
-          // Trigger a re-fetch from API to ensure context is updated
-          try {
-            const authRes = await fetch('/api/auth/me', { method: 'GET', credentials: 'include' });
-            if (authRes.ok) {
-              const authData = await authRes.json();
-              if (authData?.user) {
-                localStorage.setItem('auth_user', JSON.stringify(authData.user));
-              }
-            }
-          } catch (e) {
-            console.warn('Failed to refresh user context:', e);
-          }
-        }
+        // Ensure all string fields are never null, use empty string instead
+        const sanitizedData = {
+          first_name: updatedData.first_name || "",
+          last_name: updatedData.last_name || "",
+          middle_name: updatedData.middle_name || "",
+          email: updatedData.email || "",
+          phone: updatedData.phone || "",
+          license_number: updatedData.license_number || "",
+          specialization: updatedData.specialization || "",
+          qualification: updatedData.qualification || "",
+          address: updatedData.address || "",
+          city: updatedData.city || "",
+          state_province: updatedData.state_province || "",
+          postal_code: updatedData.postal_code || "",
+          years_of_experience: updatedData.years_of_experience || 0,
+          is_active: updatedData.is_active !== undefined ? updatedData.is_active : true,
+        };
+        
+        setSettings(sanitizedData);
+        
+        // Update user context immediately - this will cause dashboard to re-render
+        const refreshedUser = await refreshUser();
+        console.log('User refreshed after settings update:', refreshedUser);
         
         setMessage({ type: 'success', text: 'Profile updated successfully!' });
         setTimeout(() => setMessage(null), 5000);

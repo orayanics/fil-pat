@@ -34,7 +34,7 @@ interface Patient {
   gender: string | null;
   is_active: boolean;
   created_at: string;
-  clinician: {
+  assigned_clinician: {
     first_name: string;
     last_name: string;
   } | null;
@@ -199,8 +199,8 @@ export default function PatientsPage() {
                           </td>
                           <td>
                             <Typography level="body-sm">
-                              {patient.clinician
-                                ? `${patient.clinician.first_name} ${patient.clinician.last_name}`
+                              {patient.assigned_clinician
+                                ? `${patient.assigned_clinician.first_name} ${patient.assigned_clinician.last_name}`
                                 : "Unassigned"}
                             </Typography>
                           </td>

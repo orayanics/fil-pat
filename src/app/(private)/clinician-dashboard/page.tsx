@@ -16,18 +16,12 @@ export default function ClinicianDashboardPage() {
   const handleReconnect = async () => {
     setReconnecting(true);
     try {
-      // Close existing connection if any
-      if (socket && socket.readyState === WebSocket.OPEN) {
-        socket.close(1000, 'Manual reconnect');
-      }
-      // Wait a moment for cleanup
-      await new Promise(resolve => setTimeout(resolve, 300));
-      // Reconnect
+      // Call the reconnect function from useWebSocket which handles cleanup properly
       if (reconnect) {
         reconnect();
       }
       // Give it time to connect
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise(resolve => setTimeout(resolve, 1500));
     } catch (err) {
       console.error('Reconnect error:', err);
     } finally {
@@ -68,7 +62,7 @@ export default function ClinicianDashboardPage() {
                 startDecorator={<Refresh />}
                 onClick={handleReconnect}
                 loading={reconnecting}
-                disabled={connectionStatus === 'connected' && !reconnecting}
+                disabled={reconnecting}
               >
                 {connectionStatus === 'connected' ? 'Connected' : 'Reconnect'}
               </Button>

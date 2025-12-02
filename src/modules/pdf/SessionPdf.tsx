@@ -2,12 +2,12 @@ import {useParams} from "next/navigation";
 
 import {Box, Button, Alert, Table, CircularProgress, Typography, Sheet, Stack, Divider, Chip} from "@mui/joy";
 import {usePdfForm} from "./usePdfForm";
-import {ExportedSessionData} from "@/models/variables";
+// import {ExportedSessionData} from "@/models/variables"; // Unused type
 import {CheckCircle, Cancel, Warning} from "@mui/icons-material";
 
 export default function SessionPdf() {
   const params = useParams();
-  const sessionId = params.id as string;
+  const sessionId = params?.id as string;
   const {formData, loading, error, isSave, savePdf, targetRef} = usePdfForm(sessionId);
 
   if (loading) {

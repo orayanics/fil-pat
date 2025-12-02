@@ -1339,7 +1339,12 @@ wss.on("connection", async (ws, request) => {
               where: { session_uuid: data.sessionId },
               include: {
                 template: {
-                  include: { session_items: { orderBy: { item_number: 'asc' } } }
+                  include: { 
+                    session_items: { 
+                      where: { is_active: true },
+                      orderBy: { display_order: 'asc' } 
+                    } 
+                  }
                 },
                 patient: true
               }
@@ -1356,13 +1361,19 @@ wss.on("connection", async (ws, request) => {
               data: { status: 'In Progress' }
             });
 
-            // Initialize room with session items
+            // Initialize room with session items (only if not already loaded)
             const roomId = data.sessionId;
             const items = session.template?.session_items || [];
-            roomItemsList[roomId] = items;
+            
+            // Only set items if not already loaded from assignTemplate
+            if (!roomItemsList[roomId] || roomItemsList[roomId].length === 0) {
+              roomItemsList[roomId] = items;
+            } else {
+              console.log(`[startSession] Using existing roomItemsList for ${roomId}, count: ${roomItemsList[roomId].length}`);
+            }
 
-            // Set first item as current
-            if (items.length > 0) {
+            // Set first item as current (only if not already set)
+            if (!roomCurrentItems[roomId] && items.length > 0) {
               const firstItem = items[0] as Record<string, unknown>;
               roomCurrentItems[roomId] = {
                 ...firstItem,
@@ -1371,12 +1382,12 @@ wss.on("connection", async (ws, request) => {
               };
             }
 
-            // Broadcast session started to room
+            // Broadcast session started to room with the correct items from roomItemsList
             const msg = JSON.stringify({
               type: 'sessionStarted',
               sessionId: roomId,
               sessionInfo: session,
-              templateItems: items,
+              templateItems: roomItemsList[roomId] || items, // Use cached items if available
               currentItem: roomCurrentItems[roomId],
               timestamp: new Date().toISOString()
             });
@@ -1467,20 +1478,125 @@ wss.on("connection", async (ws, request) => {
             isKidsMode: data.isKidsMode
           });
           
-          ws.send(JSON.stringify({ 
-            type: "joinedRoom", 
-            roomId: data.roomId,
-            timestamp: new Date().toISOString()
-          }));
-          
-          // Send current item if available
-          if (roomCurrentItems[data.roomId]) {
-            ws.send(JSON.stringify({
-              type: "changeAssessmentItem",
-              item: roomCurrentItems[data.roomId],
-              sessionId: data.roomId,
+          // Check if this is an existing session with saved state
+          try {
+            const existingSession = await prisma.assessmentSession.findUnique({
+              where: { session_uuid: data.roomId },
+              include: {
+                template: {
+                  include: {
+                    session_items: {
+                      where: { is_active: true },
+                      orderBy: { display_order: 'asc' }
+                    }
+                  }
+                },
+                current_item: true,
+                patient: true
+              }
+            });
+
+            if (existingSession && existingSession.template) {
+              // This is a resumed/existing session - load template items
+              const items = existingSession.template.session_items || [];
+              
+              // Initialize room items if not already set
+              if (!roomItemsList[data.roomId] || roomItemsList[data.roomId].length === 0) {
+                roomItemsList[data.roomId] = items;
+              }
+
+              // Restore current item from database if available
+              if (existingSession.current_item && !roomCurrentItems[data.roomId]) {
+                roomCurrentItems[data.roomId] = {
+                  ...existingSession.current_item,
+                  item: existingSession.current_item.item_number || existingSession.current_item.item_id,
+                  question: existingSession.current_item.question
+                };
+              } else if (items.length > 0 && !roomCurrentItems[data.roomId]) {
+                // Fallback to first item if no current item saved
+                const firstItem = items[0] as Record<string, unknown>;
+                roomCurrentItems[data.roomId] = {
+                  ...firstItem,
+                  item: Number(String(firstItem['item_number'] ?? firstItem['item_id'] ?? 1)),
+                  question: String(firstItem['question'] ?? '')
+                };
+              }
+
+              // Send full session state to clinician rejoining
+              if (data.role === 'clinician') {
+                ws.send(JSON.stringify({
+                  type: "sessionResumed",
+                  sessionId: data.roomId,
+                  sessionInfo: {
+                    ...existingSession,
+                    template_id: existingSession.template_id,
+                    template_name: existingSession.template.name,
+                    is_for_kids: existingSession.template.is_for_kids,
+                    patient_name: existingSession.patient ? `${existingSession.patient.first_name} ${existingSession.patient.last_name}` : 'Unknown'
+                  },
+                  templateItems: items,
+                  currentItem: roomCurrentItems[data.roomId],
+                  timestamp: new Date().toISOString()
+                }));
+                console.log(`[Rejoin] Clinician rejoined session ${data.roomId} - sent full session state`);
+              } else {
+                // Patient rejoining active session - send sessionResumed to set sessionStarted flag
+                ws.send(JSON.stringify({
+                  type: "sessionResumed",
+                  sessionInfo: {
+                    session_uuid: existingSession.session_uuid,
+                    session_name: existingSession.session_name,
+                    status: existingSession.status,
+                    clinician_id: existingSession.clinician_id,
+                    patient_id: existingSession.patient_id,
+                    is_resumed: true,
+                    ...existingSession,
+                    template_id: existingSession.template_id,
+                    template_name: existingSession.template.name,
+                    is_for_kids: existingSession.template.is_for_kids,
+                    patient_name: existingSession.patient ? `${existingSession.patient.first_name} ${existingSession.patient.last_name}` : 'Unknown'
+                  },
+                  templateItems: items,
+                  currentItem: roomCurrentItems[data.roomId],
+                  timestamp: new Date().toISOString()
+                }));
+                console.log(`[Rejoin] Patient rejoined session ${data.roomId} - sent session resumed state`);
+              }
+            } else {
+              // New session - just send joinedRoom
+              ws.send(JSON.stringify({ 
+                type: "joinedRoom", 
+                roomId: data.roomId,
+                timestamp: new Date().toISOString()
+              }));
+              
+              // Send current item if available
+              if (roomCurrentItems[data.roomId]) {
+                ws.send(JSON.stringify({
+                  type: "changeAssessmentItem",
+                  item: roomCurrentItems[data.roomId],
+                  sessionId: data.roomId,
+                  timestamp: new Date().toISOString()
+                }));
+              }
+            }
+          } catch (error) {
+            console.error('Error loading session state on rejoin:', error);
+            // Fallback to basic joinedRoom
+            ws.send(JSON.stringify({ 
+              type: "joinedRoom", 
+              roomId: data.roomId,
               timestamp: new Date().toISOString()
             }));
+            
+            if (roomCurrentItems[data.roomId]) {
+              ws.send(JSON.stringify({
+                type: "changeAssessmentItem",
+                item: roomCurrentItems[data.roomId],
+                sessionId: data.roomId,
+                timestamp: new Date().toISOString()
+              }));
+            }
           }
           break;
 
@@ -2013,7 +2129,7 @@ wss.on("connection", async (ws, request) => {
 
         case "endSession":
           try {
-            const session = await prisma.assessmentSession.update({
+            const session = await prisma.assessmentSession.updateMany({
               where: { session_uuid: data.sessionId },
               data: { 
                 status: 'Completed',
@@ -2022,6 +2138,13 @@ wss.on("connection", async (ws, request) => {
                 session_summary: data.summary
               }
             });
+
+            // Get the session details for logging
+            const sessionDetails = await prisma.assessmentSession.findFirst({
+              where: { session_uuid: data.sessionId }
+            });
+
+            console.log(`[endSession] Session ${data.sessionId} marked as Completed`);
 
             // Broadcast both sessionEnded (for clinician) and sessionCompleted (for patient)
             const endMessage = JSON.stringify({
@@ -2040,13 +2163,15 @@ wss.on("connection", async (ws, request) => {
             broadcastToRoom(data.sessionId, endMessage);
             broadcastToRoom(data.sessionId, completedMessage);
 
-            await logActivity({
-              user_id: session.clinician_id,
-              action: 'end_session',
-              entity_type: 'assessment_session',
-              entity_id: session.session_id,
-              description: `Assessment session completed: ${data.sessionId}`
-            });
+            if (sessionDetails) {
+              await logActivity({
+                user_id: sessionDetails.clinician_id,
+                action: 'end_session',
+                entity_type: 'assessment_session',
+                entity_id: sessionDetails.session_id,
+                description: `Assessment session completed: ${data.sessionId}`
+              });
+            }
           } catch (error) {
             console.error('Failed to end session:', error);
           }

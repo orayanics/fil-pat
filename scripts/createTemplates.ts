@@ -589,12 +589,10 @@ async function createTemplates(clinicianId: number) {
     data: {
       name: 'Filipino PAT - Kids Edition (20 Items)',
       description: 'Child-friendly Filipino Phonological Assessment with playful images and simple vocabulary. Ideal for ages 3-7.',
-      language: 'Filipino',
       is_default: false,
       is_for_kids: true,
       is_active: true,
       created_by: clinicianId,
-      total_items: 20,
     },
   });
 
@@ -623,12 +621,10 @@ async function createTemplates(clinicianId: number) {
     data: {
       name: 'Filipino PAT - Standard Assessment (20 Items)',
       description: 'Comprehensive Filipino Phonological Assessment Tool covering a wide range of phonemes and difficulty levels. Suitable for general population.',
-      language: 'Filipino',
       is_default: true, // Set as default
       is_for_kids: false,
       is_active: true,
       created_by: clinicianId,
-      total_items: 20,
     },
   });
 

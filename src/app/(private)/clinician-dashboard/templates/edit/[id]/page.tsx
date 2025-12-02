@@ -6,10 +6,11 @@ import PrivateSidebar from '@/components/Layout/PrivateSidebar';
 import { Box, Typography, Button } from '@mui/joy';
 import Link from 'next/link';
 
-type Props = { params: { id: string } };
+type Props = { params: Promise<{ id: string }> };
 
 export default async function EditTemplatePage({ params }: Props) {
-  const id = Number(params.id);
+  const { id: idString } = await params;
+  const id = Number(idString);
   if (!id) return notFound();
 
   const template = await prisma.assessmentTemplate.findUnique({

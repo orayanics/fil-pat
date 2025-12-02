@@ -6,7 +6,7 @@ import {PageHeader} from "@/components/Page";
 import {usePathname} from "next/navigation";
 export default function SessionLayout({children}: {children: React.ReactNode}) {
   const path = usePathname();
-  const isPatient = path.startsWith("/session/patient");
+  const isPatient = path?.startsWith("/session/patient") || false;
   return (
     <SocketProvider>
       <Box

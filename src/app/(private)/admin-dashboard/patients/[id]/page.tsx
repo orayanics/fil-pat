@@ -33,16 +33,33 @@ interface Patient {
   patient_id: number;
   first_name: string;
   last_name: string;
+  middle_name: string | null;
   date_of_birth: string;
+  age: number | null;
   gender: string | null;
   phone: string | null;
   email: string | null;
+  address: string | null;
+  city: string | null;
+  state_province: string | null;
+  postal_code: string | null;
+  guardian_name: string | null;
+  guardian_phone: string | null;
+  guardian_email: string | null;
+  guardian_relationship: string | null;
+  medical_history: string | null;
+  allergies: string | null;
+  medications: string | null;
+  special_needs: string | null;
+  preferred_language: string | null;
+  notes: string | null;
   is_active: boolean;
   created_at: string;
-  clinician: {
+  assigned_clinician: {
     clinician_id: number;
     first_name: string;
     last_name: string;
+    specialization: string | null;
   } | null;
 }
 
@@ -253,6 +270,22 @@ export default function PatientDetailPage() {
                     </Stack>
                   )}
 
+                  {patient.address && (
+                    <Stack direction="row" spacing={2}>
+                      <Person sx={{ color: "text.secondary" }} />
+                      <Box>
+                        <Typography level="body-sm" sx={{ color: "text.secondary" }}>
+                          Address
+                        </Typography>
+                        <Typography level="title-md">
+                          {patient.address}
+                          {patient.city && `, ${patient.city}`}
+                          {patient.state_province && `, ${patient.state_province}`}
+                        </Typography>
+                      </Box>
+                    </Stack>
+                  )}
+
                   <Stack direction="row" spacing={2}>
                     <MedicalServices sx={{ color: "text.secondary" }} />
                     <Box>
@@ -260,17 +293,24 @@ export default function PatientDetailPage() {
                         Assigned Clinician
                       </Typography>
                       <Typography level="title-md">
-                        {patient.clinician ? (
-                          <JoyLink
-                            onClick={() =>
-                              router.push(
-                                `/admin-dashboard/clinicians/${patient.clinician?.clinician_id}`
-                              )
-                            }
-                            sx={{ cursor: "pointer" }}
-                          >
-                            {patient.clinician.first_name} {patient.clinician.last_name}
-                          </JoyLink>
+                        {patient.assigned_clinician ? (
+                          <>
+                            <JoyLink
+                              onClick={() =>
+                                router.push(
+                                  `/admin-dashboard/clinicians/${patient.assigned_clinician?.clinician_id}`
+                                )
+                              }
+                              sx={{ cursor: "pointer" }}
+                            >
+                              {patient.assigned_clinician.first_name} {patient.assigned_clinician.last_name}
+                            </JoyLink>
+                            {patient.assigned_clinician.specialization && (
+                              <Typography level="body-xs" sx={{ color: "text.tertiary", mt: 0.5 }}>
+                                {patient.assigned_clinician.specialization}
+                              </Typography>
+                            )}
+                          </>
                         ) : (
                           "Unassigned"
                         )}
@@ -280,6 +320,125 @@ export default function PatientDetailPage() {
                 </Stack>
               </CardContent>
             </Card>
+
+            {(patient.guardian_name || patient.guardian_phone || patient.guardian_email) && (
+              <Card variant="outlined">
+                <CardContent>
+                  <Typography level="title-lg" sx={{ mb: 3 }}>
+                    Guardian Information
+                  </Typography>
+                  <Stack spacing={2}>
+                    {patient.guardian_name && (
+                      <Stack direction="row" spacing={2}>
+                        <Person sx={{ color: "text.secondary" }} />
+                        <Box>
+                          <Typography level="body-sm" sx={{ color: "text.secondary" }}>
+                            Guardian Name
+                          </Typography>
+                          <Typography level="title-md">{patient.guardian_name}</Typography>
+                          {patient.guardian_relationship && (
+                            <Typography level="body-xs" sx={{ color: "text.tertiary" }}>
+                              {patient.guardian_relationship}
+                            </Typography>
+                          )}
+                        </Box>
+                      </Stack>
+                    )}
+
+                    {patient.guardian_phone && (
+                      <Stack direction="row" spacing={2}>
+                        <Phone sx={{ color: "text.secondary" }} />
+                        <Box>
+                          <Typography level="body-sm" sx={{ color: "text.secondary" }}>
+                            Guardian Phone
+                          </Typography>
+                          <Typography level="title-md">{patient.guardian_phone}</Typography>
+                        </Box>
+                      </Stack>
+                    )}
+
+                    {patient.guardian_email && (
+                      <Stack direction="row" spacing={2}>
+                        <Email sx={{ color: "text.secondary" }} />
+                        <Box>
+                          <Typography level="body-sm" sx={{ color: "text.secondary" }}>
+                            Guardian Email
+                          </Typography>
+                          <Typography level="title-md">{patient.guardian_email}</Typography>
+                        </Box>
+                      </Stack>
+                    )}
+                  </Stack>
+                </CardContent>
+              </Card>
+            )}
+
+            {(patient.medical_history || patient.allergies || patient.medications || patient.special_needs) && (
+              <Card variant="outlined">
+                <CardContent>
+                  <Typography level="title-lg" sx={{ mb: 3 }}>
+                    Medical Information
+                  </Typography>
+                  <Stack spacing={2}>
+                    {patient.medical_history && (
+                      <Box>
+                        <Typography level="body-sm" sx={{ color: "text.secondary", mb: 0.5 }}>
+                          Medical History
+                        </Typography>
+                        <Typography level="body-md">{patient.medical_history}</Typography>
+                      </Box>
+                    )}
+
+                    {patient.allergies && (
+                      <Box>
+                        <Typography level="body-sm" sx={{ color: "text.secondary", mb: 0.5 }}>
+                          Allergies
+                        </Typography>
+                        <Typography level="body-md">{patient.allergies}</Typography>
+                      </Box>
+                    )}
+
+                    {patient.medications && (
+                      <Box>
+                        <Typography level="body-sm" sx={{ color: "text.secondary", mb: 0.5 }}>
+                          Current Medications
+                        </Typography>
+                        <Typography level="body-md">{patient.medications}</Typography>
+                      </Box>
+                    )}
+
+                    {patient.special_needs && (
+                      <Box>
+                        <Typography level="body-sm" sx={{ color: "text.secondary", mb: 0.5 }}>
+                          Special Needs
+                        </Typography>
+                        <Typography level="body-md">{patient.special_needs}</Typography>
+                      </Box>
+                    )}
+
+                    {patient.preferred_language && (
+                      <Box>
+                        <Typography level="body-sm" sx={{ color: "text.secondary", mb: 0.5 }}>
+                          Preferred Language
+                        </Typography>
+                        <Typography level="body-md">{patient.preferred_language}</Typography>
+                      </Box>
+                    )}
+                  </Stack>
+                </CardContent>
+              </Card>
+            )}
+
+            {patient.notes && (
+              <Card variant="outlined">
+                <CardContent>
+                  <Typography level="title-lg" sx={{ mb: 2 }}>
+                    Additional Notes
+                  </Typography>
+                  <Typography level="body-md">{patient.notes}</Typography>
+                </CardContent>
+              </Card>
+            )}
 
             <Card variant="outlined">
               <CardContent>

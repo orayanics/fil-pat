@@ -106,6 +106,7 @@ export interface SocketContextType {
   submitResponse: (response: SessionResponsePayload) => void;
   toggleKidsMode: () => void;
   updatePatientInfo: (patientInfo: PatientInfo) => void;
+  refreshUser: () => Promise<AuthUser | null>;
   setSessionId: (id: string | null) => void;
   reconnect?: () => void;
   disconnect?: () => void;

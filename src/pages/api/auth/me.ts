@@ -14,7 +14,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const user = await prisma.clinician.findUnique({
       where: { clinician_id: payload.userId },
-      select: { clinician_id: true, first_name: true, last_name: true, email: true, is_active: true }
+      select: { 
+        clinician_id: true, 
+        username: true,
+        first_name: true, 
+        last_name: true, 
+        email: true, 
+        is_active: true,
+        is_admin: true
+      }
     });
 
     if (!user) return res.status(404).json({ error: "User not found" });

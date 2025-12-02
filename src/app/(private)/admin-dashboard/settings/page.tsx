@@ -19,7 +19,7 @@ import { Save, Person } from "@mui/icons-material";
 import { useSocketContext } from "@/context/SocketProvider";
 
 export default function AdminSettingsPage() {
-  const { user } = useSocketContext();
+  const { user, refreshUser } = useSocketContext();
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -68,6 +68,8 @@ export default function AdminSettingsPage() {
       });
 
       if (res.ok) {
+        // Refresh user context immediately
+        await refreshUser();
         setSuccess(true);
         setTimeout(() => setSuccess(false), 3000);
       } else {

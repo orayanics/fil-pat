@@ -3,6 +3,7 @@ import { hashPassword } from '../auth/auth';
 
 async function main() {
   console.log('🌱 Starting database seed...');
+  console.log('📦 Seeding for Electron-ready deployment...');
 
   // Create default admin user
   const adminPassword = await hashPassword('admin123'); 
@@ -21,130 +22,35 @@ async function main() {
     }
   });
 
-  console.log('✅ Created admin user:', admin.username);
+  console.log('✅ Created admin user:', admin.username, '(Password: admin123)');
 
-  // Create default assessment templates
-  // Fix: Use findFirst + create pattern instead of upsert with non-unique field
-  let defaultTemplate = await prisma.assessmentTemplate.findFirst({
-    where: { name: 'Standard Filipino Phoneme Assessment' }
-  });
-
-  if (!defaultTemplate) {
-    defaultTemplate = await prisma.assessmentTemplate.create({
-      data: {
-        name: 'Standard Filipino Phoneme Assessment',
-        description: 'Default comprehensive assessment template with all phoneme groups',
-        is_default: true,
-        is_for_kids: false,
-        created_by: admin.clinician_id,
-      }
-    });
-  }
-
-  let kidsTemplate = await prisma.assessmentTemplate.findFirst({
-    where: { name: 'Kids Filipino Phoneme Assessment' }
-  });
-
-  if (!kidsTemplate) {
-    kidsTemplate = await prisma.assessmentTemplate.create({
-      data: {
-        name: 'Kids Filipino Phoneme Assessment',
-        description: 'Child-friendly version with colorful UI and simplified instructions',
-        is_default: false,
-        is_for_kids: true,
-        created_by: admin.clinician_id,
-      }
-    });
-  }
-
-  console.log('✅ Created assessment templates');
-
-  // Seed session items from existing data (sample - add more from your data.ts)
-  const sessionItemsData = [
-    {
-      item_number: 1,
-      question: "Ito ang ginagamit natin para makakita",
-      sound: "SIWI /m/",
-      ipa_key: "/ma.ta/",
-      consonant_group: "m",
-      consonants_count: 2,
-      vowels_count: 2,
-      image_url: "https://i.pinimg.com/736x/00/0c/56/000c56b811f1dcd108c9280a80adbf97.jpg",
-      expected_response: "mata",
-      difficulty_level: "Easy",
-      max_score: 1.0
-    },
-    {
-      item_number: 2,
-      question: "Ano ginagawa ng bata?",
-      sound: "SFWF /m/",
-      ipa_key: "/ʔi.nɔm/",
-      consonant_group: "m",
-      consonants_count: 3,
-      vowels_count: 2,
-      image_url: "https://i.pinimg.com/736x/e9/a1/4c/e9a14c4c6100e4c1aa467b74f67cb57e.jpg",
-      expected_response: "inom",
-      difficulty_level: "Easy",
-      max_score: 1.0
-    },
-    {
-      item_number: 3,
-      question: "Ginagamit natin ito panghawak",
-      sound: "SIWW /m/",
-      ipa_key: "/ka.maj/",
-      consonant_group: "m",
-      consonants_count: 2,
-      vowels_count: 2,
-      expected_response: "kamay",
-      difficulty_level: "Easy",
-      max_score: 1.0
-    },
-    {
-      item_number: 4,
-      question: "Ito ay isang insekto na may walong paa at gumagawa ng web",
-      sound: "SFWW /m/",
-      ipa_key: "/ga.gam.ba/",
-      consonant_group: "m",
-      consonants_count: 4,
-      vowels_count: 3,
-      expected_response: "gagamba",
-      difficulty_level: "Medium",
-      max_score: 1.0
-    },
-    {
-      item_number: 5,
-      question: "Ito ay bilog na tumatalbog",
-      sound: "SIWI /b/",
-      ipa_key: "/bɔ.la/",
-      consonant_group: "b",
-      consonants_count: 2,
-      vowels_count: 2,
-      expected_response: "bola",
-      difficulty_level: "Easy",
-      max_score: 1.0
+  // Create test clinician account for fresh installations
+  const clinicianPassword = await hashPassword('clinician123');
+  
+  const testClinician = await prisma.clinician.upsert({
+    where: { username: 'clinician' },
+    update: {},
+    create: {
+      username: 'clinician',
+      email: 'clinician@filpat.local',
+      password_hash: clinicianPassword,
+      first_name: 'Test',
+      last_name: 'Clinician',
+      middle_name: 'Demo',
+      is_admin: false,
+      specialization: 'Speech-Language Pathology',
+      mobile: '+63 917 123 4567',
+      address: 'UST College of Rehabilitation Sciences',
     }
-    // Add more items from your data.ts file here...
-  ];
-
-  // Check if items already exist before creating
-  const existingItemsCount = await prisma.sessionItem.count({
-    where: { template_id: defaultTemplate.template_id }
   });
 
-  if (existingItemsCount === 0) {
-    for (const itemData of sessionItemsData) {
-      await prisma.sessionItem.create({
-        data: {
-          ...itemData,
-          template_id: defaultTemplate.template_id,
-          display_order: itemData.item_number
-        }
-      });
-    }
-    console.log(`✅ Seeded ${sessionItemsData.length} session items`);
-  } else {
-    console.log(`ℹ️  Session items already exist (${existingItemsCount} items), skipping...`);
-  }
+  console.log('✅ Created test clinician:', testClinician.username, '(Password: clinician123)');
+  console.log('   Use these accounts for testing and initial setup');
+  console.log('');
+  console.log('💡 Note: To add assessment templates, run:');
+  console.log('   npx tsx scripts/seedTemplates.ts [clinician_id]');
+  console.log('   Example: npx tsx scripts/seedTemplates.ts 1');
+  console.log('');
 
   // Create app settings
   const settings = [
@@ -175,14 +81,35 @@ async function main() {
   }
 
   console.log('✅ Created app settings');
+  console.log('');
   console.log('🎉 Database seed completed!');
+  console.log('═══════════════════════════════════════════════════════');
+  console.log('📊 Seeded Data Summary:');
+  console.log('   • 2 Clinician accounts (admin + test clinician)');
+  console.log('   • 8 App settings');
+  console.log('');
+  console.log('🔐 Test Accounts:');
+  console.log('   Admin     → Username: admin      | Password: admin123');
+  console.log('   Clinician → Username: clinician  | Password: clinician123');
+  console.log('');
+  console.log('📝 To create assessment templates for a clinician:');
+  console.log('   npx tsx scripts/seedTemplates.ts [clinician_id]');
+  console.log('   Example: npx tsx scripts/seedTemplates.ts 1');
+  console.log('═══════════════════════════════════════════════════════');
+  console.log('✨ Ready for Electron deployment!');
 }
 
-main()
-  .catch((e) => {
-    console.error('❌ Seed failed:', e);
-    process.exit(1);
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
-  });
+// Export for use as a module (production Electron)
+export default main;
+
+// Run directly if executed as a script
+if (require.main === module) {
+  main()
+    .catch((e) => {
+      console.error('❌ Seed failed:', e);
+      process.exit(1);
+    })
+    .finally(async () => {
+      await prisma.$disconnect();
+    });
+}

@@ -6,7 +6,7 @@ import {usePathname} from "next/navigation";
 
 export default function PrivateBreadcrumbs() {
   const pathname = usePathname();
-  const displayPath = pathname.slice(1);
+  const displayPath = pathname?.slice(1) || '';
 
   return (
     <Box sx={{display: "flex", alignItems: "center", gap: 2}}>
@@ -18,7 +18,7 @@ export default function PrivateBreadcrumbs() {
       >
         <LinkUI
           component={Link}
-          href={pathname}
+          href={pathname || '/'}
           color="neutral"
           sx={{textDecoration: "none"}}
         >

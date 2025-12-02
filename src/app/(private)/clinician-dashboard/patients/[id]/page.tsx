@@ -1,7 +1,7 @@
 "use client";
 import PrivateSidebar from "@/components/Layout/PrivateSidebar";
 import AuthGuard from "@/components/auth/authGuard";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { Box, Typography, Sheet, CircularProgress, Alert, Stack, Divider, Chip, Button, Accordion, AccordionSummary, AccordionDetails } from "@mui/joy";
@@ -108,12 +108,14 @@ export default function PatientRecordPage() {
     // Reload patient data after save
     if (!patientId) return;
     try {
+      console.log('[Patient Record] Reloading patient after edit...');
       const res = await fetch(`/api/clinician/patients/${patientId}`, {
         credentials: 'include'
       });
       if (res.ok) {
         const data = await res.json();
-        setPatient(data);
+        console.log('[Patient Record] Patient data reloaded');
+        setPatient(data.patient);
       }
     } catch (err) {
       console.error('Failed to reload patient:', err);
@@ -121,12 +123,13 @@ export default function PatientRecordPage() {
     setEditModalOpen(false);
   };
 
-  useEffect(() => {
+  const loadPatient = useCallback(async () => {
     if (!patientId) return;
     let attempts = 0;
     const load = async () => {
       try {
         setLoading(true);
+        console.log('[Patient Record] Loading patient data...');
         const res = await fetch(`/api/clinician/patients/${patientId}`, { credentials: 'include' });
         if (!res.ok) throw new Error(`Failed to load patient (${res.status})`);
         const data = await res.json();
@@ -135,9 +138,9 @@ export default function PatientRecordPage() {
           data.patient.sessions.forEach((session: Session, idx: number) => {
             console.log(`[Patient Record] Session ${idx}:`, {
               session_id: session.session_id,
+              status: session.status,
               template_items: session.template?.session_items?.length,
-              responses: session.responses?.length,
-              responses_detail: session.responses
+              responses: session.responses?.length
             });
           });
         }
@@ -157,6 +160,33 @@ export default function PatientRecordPage() {
     };
     load();
   }, [patientId]);
+
+  useEffect(() => {
+    loadPatient();
+  }, [loadPatient]);
+
+  // Auto-refresh when page becomes visible (e.g., navigating back from dashboard)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && patientId) {
+        console.log('[Patient Record] Page visible, refreshing patient data');
+        loadPatient();
+      }
+    };
+
+    const handleSessionStatusChange = () => {
+      console.log('[Patient Record] Session status changed, refreshing patient data');
+      loadPatient();
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('sessionStatusChanged', handleSessionStatusChange);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('sessionStatusChanged', handleSessionStatusChange);
+    };
+  }, [patientId, loadPatient]);
 
   return (
     <AuthGuard>

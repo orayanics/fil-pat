@@ -63,9 +63,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       },
     });
 
-    // Get recent sessions (last 5)
+    // Get recent sessions (last 5) - only sessions with active patients
     const recentSessions = await prisma.assessmentSession.findMany({
-      where: { clinician_id: clinicianId },
+      where: { 
+        clinician_id: clinicianId,
+        patient_id: { not: null }, // Must have a patient assigned
+        patient: {
+          is_active: true // Patient must be active
+        }
+      },
       include: {
         patient: {
           select: {
@@ -86,6 +92,26 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       orderBy: { created_at: 'desc' },
       take: 5,
     });
+
+    // Delete orphaned sessions (no patient or inactive patient)
+    try {
+      await prisma.assessmentSession.deleteMany({
+        where: {
+          clinician_id: clinicianId,
+          OR: [
+            { patient_id: null },
+            {
+              patient: {
+                is_active: false
+              }
+            }
+          ]
+        }
+      });
+    } catch (cleanupError) {
+      console.error('Failed to cleanup orphaned sessions:', cleanupError);
+      // Don't fail the request if cleanup fails
+    }
 
     // Get recent patients (last 5)
     const recentPatients = await prisma.patient.findMany({

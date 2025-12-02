@@ -20,18 +20,26 @@ export default function Index() {
   // Check if this is a kids template
   const isKidsMode = sessionInfo?.is_for_kids ?? false;
   
-  // Listen for noClinicianPresent error from WebSocket
+  // Listen for session state changes and reload page when session starts
   useEffect(() => {
     if (!socket) return;
     
     const handleMessage = (event: MessageEvent) => {
       try {
         const data = JSON.parse(event.data);
+        
+        // Handle session started - reload the page to get fresh state
+        if (data.type === 'sessionStarted') {
+          console.log('[Patient] Session started, reloading page...');
+          window.location.reload();
+        }
+        
+        // Handle no clinician present
         if (data.type === 'error' && data.message === 'noClinicianPresent') {
           console.log('[Patient] No clinician present in session');
           setNoClinicianPresent(true);
         }
-      } catch (err) {
+      } catch {
         // Ignore parse errors
       }
     };
@@ -75,18 +83,24 @@ export default function Index() {
     return () => clearTimeout(timeoutId);
   }, [sessionId]);
   
-  // Log session info for debugging (removed auto-start, server handles it)
+  // Log session info for debugging and force re-render when sessionInfo changes
   useEffect(() => {
     if (!sessionInfo) return;
     
-    console.log('Patient session info received:', {
+    console.log('Patient session info updated:', {
       session_uuid: sessionInfo.session_uuid,
       session_name: sessionInfo.session_name,
       template_name: sessionInfo.template_name,
       is_resumed: sessionInfo.is_resumed,
-      sessionStarted: sessionStarted
+      sessionStarted: sessionStarted,
+      patient_id: sessionInfo.patient_id,
+      status: sessionInfo.status,
+      hasCurrentItem: !!currentItem
     });
-  }, [sessionInfo, sessionStarted]);
+    
+    // Force a re-render by updating local state when template changes
+    setNoClinicianPresent(false);
+  }, [sessionInfo, sessionStarted, currentItem]);
 
   React.useEffect(() => {
     if (typeof window === 'undefined') return;

@@ -82,6 +82,7 @@ export default function PatientsPage() {
       return;
     }
 
+    console.log('[Patients] Fetching patient list...');
     setLoading(true);
     const controller = new AbortController();
     const { signal } = controller;
@@ -93,6 +94,7 @@ export default function PatientsPage() {
         return res.json();
       })
       .then((data) => {
+        console.log('[Patients] Patient list fetched:', data.patients?.length, 'patients');
         setPatients(data.patients || []);
         setLoading(false);
         setError(null);
@@ -109,6 +111,19 @@ export default function PatientsPage() {
   useEffect(() => {
     fetchPatients();
   }, [fetchPatients]);
+
+  // Auto-refresh when page becomes visible (e.g., navigating back)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && user) {
+        console.log('[Patients] Page visible, refreshing patient list');
+        fetchPatients();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [user, fetchPatients]);
 
   // Filter patients based on search and status with memoization
   const filteredPatients = useMemo(() => {

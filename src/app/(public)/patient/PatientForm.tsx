@@ -23,7 +23,7 @@ export default function PatientForm() {
   const handleSubmit = () => {
     if (!patient.trim()) return;
     setLoading(true);
-    const patientId = Math.random().toString(36).substring(2, 15);
+    // const patientId = Math.random().toString(36).substring(2, 15);
     setLoading(true);
   };
 

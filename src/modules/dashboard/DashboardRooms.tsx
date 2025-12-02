@@ -230,6 +230,7 @@ export default function DashboardRooms({ qrGenerateQrData }: DashboardRoomsProps
     };
   }, []);
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const handleJoinRoom = (roomId: string) => {
     if (joinRoom) {
       joinRoom(roomId, "clinician");

@@ -265,18 +265,27 @@ export default function SocketProvider({ children }: { children: ReactNode }) {
             break;
           case 'templateAssigned':
             // Update template info and always store items
+            console.log('[SocketProvider] Template assigned:', {
+              templateId: data.templateId,
+              templateName: data.templateName,
+              itemsCount: data.templateItems?.length,
+              is_for_kids: data.is_for_kids
+            });
+            
             const templateName = data.templateName ?? (data.templateId ? `Template ${data.templateId}` : undefined);
             const totalItems = Array.isArray(data.templateItems) ? data.templateItems.length : (sessionInfo?.total_items ?? 0);
             const isForKids = data.is_for_kids ?? false;
             if (sessionInfo) {
-              setSessionInfo({
+              const updatedInfo = {
                 ...sessionInfo,
                 template_name: templateName ?? sessionInfo.template_name,
                 total_items: totalItems,
                 is_for_kids: isForKids
-              });
+              };
+              console.log('[SocketProvider] Updating sessionInfo with template:', updatedInfo);
+              setSessionInfo(updatedInfo);
             } else if (templateName && sessionId) {
-              setSessionInfo({
+              const newInfo = {
                 session_id: 0,
                 session_uuid: sessionId,
                 session_mode: 'Standard',
@@ -286,9 +295,28 @@ export default function SocketProvider({ children }: { children: ReactNode }) {
                 template_name: templateName,
                 is_practice_session: false,
                 is_for_kids: isForKids
-              });
+              };
+              console.log('[SocketProvider] Creating new sessionInfo with template:', newInfo);
+              setSessionInfo(newInfo);
             }
             setTemplateItems(data.templateItems ?? null);
+            console.log('[SocketProvider] Template items stored, count:', data.templateItems?.length);
+            break;
+          case 'patientSet':
+            // Update patient info when clinician assigns session to an existing patient
+            console.log('[SocketProvider] Patient assigned to session:', data.patient);
+            if (data.patient) {
+              setPatientInfo(data.patient);
+              setPatientConnected(true);
+              
+              // Update sessionInfo to ensure patient view refreshes
+              if (sessionInfo) {
+                setSessionInfo({
+                  ...sessionInfo,
+                  patient_id: data.patient.patient_id
+                });
+              }
+            }
             break;
           case 'sessionLinkGenerated':
             // New link generated for patient reconnection
@@ -462,13 +490,24 @@ export default function SocketProvider({ children }: { children: ReactNode }) {
             }
             break;
           case 'sessionEnded':
+            console.log('[SocketProvider] Session ended, updating status to Completed');
             setSessionStarted(false);
             setSessionPaused(false);
             if (sessionInfo) {
-              setSessionInfo({
+              const updatedInfo = {
                 ...sessionInfo,
-                status: 'Completed'
-              });
+                status: 'Completed',
+                end_time: new Date()
+              };
+              console.log('[SocketProvider] Setting sessionInfo to:', updatedInfo);
+              setSessionInfo(updatedInfo);
+              // Also update localStorage to persist the status
+              try {
+                const storageKey = `session_${sessionInfo.session_uuid}_status`;
+                localStorage.setItem(storageKey, 'Completed');
+              } catch (e) {
+                console.warn('Failed to update localStorage', e);
+              }
             }
             // Set sessionCompleted flag for patient finalization
             try {
@@ -476,10 +515,12 @@ export default function SocketProvider({ children }: { children: ReactNode }) {
             } catch (e) {
               console.warn('Failed to set sessionCompleted', e);
             }
-            // Redirect clinician to dashboard after delay
+            // Redirect clinician to dashboard after delay and force refresh
             if (isAuthenticated) {
               setTimeout(() => {
                 router.push('/clinician-dashboard');
+                // Force a hard refresh of dashboard data
+                window.dispatchEvent(new Event('sessionStatusChanged'));
               }, 3000);
             }
             break;
@@ -735,6 +776,43 @@ export default function SocketProvider({ children }: { children: ReactNode }) {
     setPatientInfo(newPatientInfo);
   };
 
+  // Refresh user data from API and localStorage
+  const refreshUser = useCallback(async () => {
+    console.log('[refreshUser] Starting user refresh...');
+    try {
+      const res = await fetch('/api/auth/me', { method: 'GET', credentials: 'include' });
+      if (res.ok) {
+        const data = await res.json();
+        console.log('[refreshUser] API response:', data);
+        if (data?.user) {
+          console.log('[refreshUser] Updating user state with:', data.user);
+          setUser(data.user);
+          setIsAuthenticated(true);
+          localStorage.setItem('auth_user', JSON.stringify(data.user));
+          console.log('[refreshUser] User state updated successfully');
+          return data.user;
+        }
+      } else {
+        console.warn('[refreshUser] API request failed with status:', res.status);
+      }
+    } catch (e) {
+      console.error('[refreshUser] Failed to refresh user data:', e);
+    }
+    // Fallback to localStorage
+    const storedUser = localStorage.getItem('auth_user');
+    if (storedUser) {
+      try {
+        const userData = JSON.parse(storedUser);
+        setUser(userData);
+        setIsAuthenticated(true);
+        return userData;
+      } catch {
+        localStorage.removeItem('auth_user');
+      }
+    }
+    return null;
+  }, [setUser, setIsAuthenticated]);
+
   const contextValue: SocketContextType & { setSessionId: (id: string | null) => void } = {
     socket,
     isConnected,
@@ -766,6 +844,7 @@ export default function SocketProvider({ children }: { children: ReactNode }) {
     submitResponse,
     toggleKidsMode,
     updatePatientInfo,
+    refreshUser,
     setPatientConnected: useSocketStore((s) => s.setPatientConnected),
     setSessionId,
     reconnect,

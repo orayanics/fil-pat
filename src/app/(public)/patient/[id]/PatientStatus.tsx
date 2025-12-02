@@ -9,7 +9,7 @@ export default function PatientStatus({
   isQrGenerated?: boolean;
 }) {
   const params = useParams();
-  const sessionId = params.id as string;
+  const sessionId = params?.id as string;
 
   if (!isQrGenerated) {
     return (

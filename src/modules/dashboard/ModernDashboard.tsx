@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   Card,
@@ -31,6 +31,7 @@ import {
   AccessTime,
 } from '@mui/icons-material';
 import { useSocketContext } from '@/context/SocketProvider';
+import { useSocketStore } from '@/context/socketStore';
 
 interface DashboardStats {
   totalPatients: number;
@@ -71,31 +72,55 @@ interface DashboardData {
 }
 
 export default function ModernDashboard() {
-  const { user, connectionStatus } = useSocketContext();
+  const { connectionStatus } = useSocketContext();
+  const user = useSocketStore((state) => state.user); // Subscribe directly to Zustand store for reactive updates
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const fetchData = useCallback(async () => {
+    try {
+      const res = await fetch('/api/clinician/dashboard/stats', {
+        credentials: 'include',
+      });
+      if (res.ok) {
+        const json = await res.json();
+        setData(json);
+      }
+    } catch (err) {
+      console.error('Failed to fetch dashboard data:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const res = await fetch('/api/clinician/dashboard/stats', {
-          credentials: 'include',
-        });
-        if (res.ok) {
-          const json = await res.json();
-          setData(json);
-        }
-      } catch (err) {
-        console.error('Failed to fetch dashboard data:', err);
-      } finally {
-        setLoading(false);
+    if (user) {
+      console.log('[Dashboard] User or fetchData changed, fetching data');
+      fetchData();
+    }
+  }, [user, fetchData]);
+
+  // Auto-refresh dashboard data when component becomes visible
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && user) {
+        fetchData();
       }
     };
 
-    if (user) {
+    const handleSessionStatusChange = () => {
+      console.log('[Dashboard] Session status changed, refreshing data');
       fetchData();
-    }
-  }, [user]);
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('sessionStatusChanged', handleSessionStatusChange);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('sessionStatusChanged', handleSessionStatusChange);
+    };
+  }, [user, fetchData]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -309,9 +334,11 @@ export default function ModernDashboard() {
             size="lg"
             variant="solid"
             startDecorator={<Add />}
-            component={Link}
-            href="#new-session"
-            sx={{ flex: 1 }}
+            onClick={() => {
+              const sessionControlsTab = document.querySelector('[role="tab"][aria-selected="false"]') as HTMLElement;
+              if (sessionControlsTab) sessionControlsTab.click();
+            }}
+            sx={{ flex: 1, cursor: 'pointer' }}
           >
             Start New Session
           </Button>

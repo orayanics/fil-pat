@@ -5,6 +5,7 @@ import * as os from 'os';
 import { ipcMain } from 'electron';
 import { registerClinician, loginClinician } from './database';
 import * as fs from 'fs';
+import { initializeDatabase, ensureDatabaseDirectory } from './initDatabase';
 
 function getLocalIp(): string {
   const interfaces = os.networkInterfaces();
@@ -29,6 +30,7 @@ let wsProcess: ChildProcess | null = null;
 /**
  * Add Windows Firewall rules to allow incoming connections on ports 3000 and 8080
  * This enables other devices on the same WiFi network to access the patient dashboard
+ * Rules are applied with 'private' and 'domain' profiles to work on home/office networks
  */
 async function addFirewallRules(): Promise<void> {
   if (process.platform !== 'win32') {
@@ -44,15 +46,15 @@ async function addFirewallRules(): Promise<void> {
     exec(`netsh advfirewall firewall show rule name="${appName} - HTTP"`, (error) => {
       if (error) {
         // Rules don't exist, create them
-        console.log('Adding Windows Firewall rules...');
+        console.log('Adding Windows Firewall rules for network access...');
         
         const commands = [
-          // Allow HTTP (Next.js) on port 3000
-          `netsh advfirewall firewall add rule name="${appName} - HTTP" dir=in action=allow protocol=TCP localport=${APP_PORT} enable=yes`,
-          // Allow WebSocket on port 8080
-          `netsh advfirewall firewall add rule name="${appName} - WebSocket" dir=in action=allow protocol=TCP localport=${WS_PORT} enable=yes`,
-          // Allow the executable itself
-          `netsh advfirewall firewall add rule name="${appName} - App" dir=in action=allow program="${exePath}" enable=yes`,
+          // Allow HTTP (Next.js) on port 3000 for private/domain networks
+          `netsh advfirewall firewall add rule name="${appName} - HTTP" dir=in action=allow protocol=TCP localport=${APP_PORT} profile=private,domain enable=yes`,
+          // Allow WebSocket on port 8080 for private/domain networks
+          `netsh advfirewall firewall add rule name="${appName} - WebSocket" dir=in action=allow protocol=TCP localport=${WS_PORT} profile=private,domain enable=yes`,
+          // Allow the executable itself for private/domain networks
+          `netsh advfirewall firewall add rule name="${appName} - App" dir=in action=allow program="${exePath}" profile=private,domain enable=yes`,
         ];
 
         const addRules = spawn('powershell.exe', [
@@ -66,15 +68,17 @@ async function addFirewallRules(): Promise<void> {
         addRules.on('close', (code) => {
           if (code === 0) {
             console.log('✓ Firewall rules added successfully');
+            console.log('  Patient devices on same WiFi can now connect');
           } else {
             console.warn(`⚠ Firewall rules may not have been added (code ${code}). Manual setup may be needed.`);
+            console.log('  You may need to run the app as Administrator to add firewall rules automatically.');
           }
           resolve();
         });
 
         addRules.on('error', (err) => {
           console.warn('⚠ Could not add firewall rules automatically:', err.message);
-          console.log('You may need to manually allow ports 3000 and 8080 in Windows Firewall');
+          console.log('Manual setup: Allow ports 3000 and 8080 in Windows Firewall for private networks');
           resolve();
         });
       } else {
@@ -177,7 +181,7 @@ function startProductionServer(): Promise<void> {
     };
 
     serverProcess = spawn('node', [serverPath], {
-      env,
+      env: env as NodeJS.ProcessEnv,
       cwd: isDev ? path.join(__dirname, '..') : path.join(process.resourcesPath, 'app'),
       stdio: 'pipe',
     });
@@ -257,6 +261,19 @@ http://${localIp}:${APP_PORT}
 
 Use the QR code feature in sessions for easy patient device connection.
 
+🔐 Default Login Credentials:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Admin Account:
+  Username: admin
+  Password: admin123
+
+Test Clinician Account:
+  Username: clinician
+  Password: clinician123
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Note: Please change passwords after first login for security.
+
 Firewall: Windows Firewall rules have been configured automatically.
     `,
     buttons: ['OK'],
@@ -266,20 +283,31 @@ Firewall: Windows Firewall rules have been configured automatically.
 // Initialize app
 app.whenReady().then(async () => {
   try {
-    // Add firewall rules first
+    console.log('═══════════════════════════════════════════════════════');
+    console.log('          FIL-PAT Starting Up (Electron)              ');
+    console.log('═══════════════════════════════════════════════════════');
+    console.log('');
+
+    // Step 1: Ensure database directory exists
+    ensureDatabaseDirectory(isDev);
+
+    // Step 2: Initialize database (auto-seed on fresh install)
+    await initializeDatabase(isDev);
+
+    // Step 3: Add firewall rules
     await addFirewallRules();
 
-    // Start appropriate servers
+    // Step 4: Start appropriate servers
     if (isDev) {
       await startDevServers();
     } else {
       await startProductionServer();
     }
 
-    // Create main window
+    // Step 5: Create main window
     createWindow();
 
-    // Show connection info after window loads
+    // Step 6: Show connection info after window loads
     setTimeout(() => {
       if (mainWindow && !mainWindow.isDestroyed()) {
         showConnectionInfo();
@@ -327,8 +355,8 @@ ipcMain.handle('register-clinician', (event, username, password) => {
   }
 });
 
-ipcMain.handle('login-clinician', (event, username, password) => {
-  const user = loginClinician(username, password);
+ipcMain.handle('login-clinician', async (event, username, password) => {
+  const user = await loginClinician(username, password);
   if (user) return { success: true, user };
   return { success: false, error: 'Invalid credentials' };
 });

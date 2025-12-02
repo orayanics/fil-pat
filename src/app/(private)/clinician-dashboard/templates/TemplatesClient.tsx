@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   Box,
   Button,
@@ -57,6 +57,19 @@ export default function TemplatesClient({ templates }: TemplatesClientProps) {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [carouselIndex, setCarouselIndex] = useState(0);
   const [forceDeleteInfo, setForceDeleteInfo] = useState<{ sessionsCount: number } | null>(null);
+
+  // Auto-refresh when page becomes visible (e.g., navigating back or switching tabs)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        console.log('[Templates] Page visible, refreshing template list');
+        router.refresh();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [router]);
 
   const filteredTemplates = useMemo(() => {
     if (!searchQuery.trim()) return templates;
@@ -394,9 +407,9 @@ export default function TemplatesClient({ templates }: TemplatesClientProps) {
                 If you proceed with force delete:
               </Typography>
               <ul style={{ marginTop: 0, paddingLeft: '20px', marginBottom: '16px' }}>
-                <li><Typography level="body-sm">All {forceDeleteInfo.sessionsCount} session(s) will be marked as "Cancelled"</Typography></li>
+                <li><Typography level="body-sm">All {forceDeleteInfo.sessionsCount} session(s) will be marked as &quot;Cancelled&quot;</Typography></li>
                 <li><Typography level="body-sm">Session end times will be set to now</Typography></li>
-                <li><Typography level="body-sm">A note will be added: "Session ended due to template deletion"</Typography></li>
+                <li><Typography level="body-sm">A note will be added: &quot;Session ended due to template deletion&quot;</Typography></li>
                 <li><Typography level="body-sm">The template will be permanently deleted</Typography></li>
               </ul>
               

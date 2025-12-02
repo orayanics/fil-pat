@@ -110,6 +110,7 @@ export async function updateSessionProgress(session_uuid: string, updates: Parti
   return session;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export async function getSessionItems(template_id: number, is_kids_mode = false) {
   return prisma.sessionItem.findMany({
     where: {
