@@ -68,6 +68,8 @@ export function usePdfForm(sessionId: string) {
               consonantsCount: item.consonants_count || 0,
               vowelsCount: item.vowels_count || 0,
               score: item.response?.score || 0,
+              clinicianNotes: item.response?.clinician_notes || '',
+              timeTaken: item.response?.time_taken_seconds || null,
             };
             return acc;
           }, {}),
@@ -80,6 +82,7 @@ export function usePdfForm(sessionId: string) {
           sessionInfo: data.session,
           patientInfo: data.patient,
           clinicianInfo: data.clinician,
+          templateInfo: data.template,
         };
         
         setFormData(transformedData);

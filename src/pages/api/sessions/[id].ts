@@ -81,6 +81,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         template_id: session.template.template_id,
         name: session.template.name,
         description: session.template.description,
+        is_for_kids: session.template.is_for_kids,
       },
       items: session.template.session_items.map((item) => {
         const response = session.responses.find(

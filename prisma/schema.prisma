@@ -232,6 +232,13 @@ model AssessmentSession {
   session_summary         String?
   recommendations         String?
   
+  // Session Activity Tracking
+  session_paused_at       DateTime?
+  session_resumed_at      DateTime?
+  activity_log            String?   // JSON array of activity events
+  clinician_left_count    Int       @default(0)
+  total_pause_duration    Int       @default(0) // in seconds
+  
   // System Fields
   created_at              DateTime  @default(now())
   updated_at              DateTime  @updatedAt

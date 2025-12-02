@@ -4,10 +4,13 @@ import AuthGuard from "@/components/auth/authGuard";
 import { useEffect, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { Box, Typography, Sheet, CircularProgress, Alert, Stack, Divider, Chip, Button, Accordion, AccordionSummary, AccordionDetails } from "@mui/joy";
+import { Box, Typography, Sheet, CircularProgress, Alert, Stack, Divider, Chip, Button, Accordion, AccordionSummary, AccordionDetails, Modal, ModalDialog, ModalClose } from "@mui/joy";
 import { CheckCircle, Cancel, PictureAsPdf, Edit } from "@mui/icons-material";
 import PatientFormModal from "@/components/crud/PatientFormModal";
 import { useSocketStore } from "@/context/socketStore";
+import dynamic from "next/dynamic";
+
+const PatientFullReport = dynamic(() => import("@/modules/pdf/PatientFullReport"), { ssr: false });
 
 type SessionItem = {
   item_id: number;
@@ -45,6 +48,8 @@ type Session = {
   session_uuid: string;
   session_name?: string;
   session_date?: string;
+  start_time?: string;
+  end_time?: string;
   status?: string;
   overall_score?: number;
   percentage_score?: number;
@@ -52,6 +57,9 @@ type Session = {
   session_summary?: string;
   template?: SessionTemplate;
   responses?: SessionResponse[];
+  activity_log?: string;
+  clinician_left_count?: number;
+  total_pause_duration?: number;
 };
 
 type PatientData = {
@@ -77,27 +85,10 @@ export default function PatientRecordPage() {
   const [patient, setPatient] = useState<PatientData | null>(null);
   const [generatingPdf, setGeneratingPdf] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
+  const [showFullReport, setShowFullReport] = useState(false);
 
-  const handleGenerateReport = async () => {
-    if (!patientId) return;
-    try {
-      setGeneratingPdf(true);
-      const res = await fetch(`/api/clinician/patients/${patientId}/report`, { credentials: 'include' });
-      if (!res.ok) throw new Error('Failed to generate report');
-      const report = await res.json();
-      
-      // Open in new tab for now - could enhance with actual PDF generation
-      const newWindow = window.open('', '_blank');
-      if (newWindow) {
-        newWindow.document.write('<pre>' + JSON.stringify(report, null, 2) + '</pre>');
-        newWindow.document.title = `Patient Report - ${report.patient.first_name} ${report.patient.last_name}`;
-      }
-    } catch (err) {
-      console.error('Report generation error:', err);
-      alert('Failed to generate report');
-    } finally {
-      setGeneratingPdf(false);
-    }
+  const handleGenerateReport = () => {
+    setShowFullReport(true);
   };
 
   const handleEditPatient = () => {
@@ -308,7 +299,71 @@ export default function PatientRecordPage() {
                               </Box>
                             )}
 
-                            {s.template && Array.isArray(s.template.session_items) && (
+                            {s.activity_log && (() => {
+                              try {
+                                const activities = JSON.parse(s.activity_log);
+                                if (activities && activities.length > 0) {
+                                  return (
+                                    <Box>
+                                      <Typography level="body-sm" sx={{ fontWeight: 600, mb: 0.5 }}>Session Activity Timeline</Typography>
+                                      <Sheet variant="outlined" sx={{ p: 1.5, borderRadius: 'sm' }}>
+                                        <Stack spacing={0.75}>
+                                          {activities.map((activity: any, idx: number) => {
+                                            const timestamp = new Date(activity.timestamp);
+                                            const timeStr = timestamp.toLocaleTimeString();
+                                            const dateStr = timestamp.toLocaleDateString();
+                                            
+                                            let icon = '•';
+                                            let color = 'neutral';
+                                            let label = activity.type;
+                                            
+                                            if (activity.type === 'session_started') {
+                                              icon = '▶';
+                                              color = 'success';
+                                              label = 'Session Started';
+                                            } else if (activity.type === 'clinician_left') {
+                                              icon = '⏸';
+                                              color = 'warning';
+                                              label = 'Clinician Left';
+                                            } else if (activity.type === 'clinician_rejoined') {
+                                              icon = '↻';
+                                              color = 'primary';
+                                              label = 'Clinician Rejoined';
+                                            } else if (activity.type === 'session_ended') {
+                                              icon = '■';
+                                              color = 'danger';
+                                              label = 'Session Ended';
+                                            }
+                                            
+                                            return (
+                                              <Box key={idx} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                <Typography level="body-xs" sx={{ fontWeight: 700, color: `${color}.500` }}>
+                                                  {icon}
+                                                </Typography>
+                                                <Typography level="body-xs" sx={{ flex: 1 }}>
+                                                  <strong>{label}</strong> - {timeStr} ({dateStr})
+                                                </Typography>
+                                              </Box>
+                                            );
+                                          })}
+                                        </Stack>
+                                        {s.clinician_left_count && s.clinician_left_count > 0 && (
+                                          <Typography level="body-xs" sx={{ mt: 1, color: 'text.tertiary', fontStyle: 'italic' }}>
+                                            Total pauses: {s.clinician_left_count} 
+                                            {s.total_pause_duration && s.total_pause_duration > 0 && 
+                                              ` (${Math.floor(s.total_pause_duration / 60)}m ${s.total_pause_duration % 60}s total pause time)`
+                                            }
+                                          </Typography>
+                                        )}
+                                      </Sheet>
+                                    </Box>
+                                  );
+                                }
+                              } catch (e) {
+                                console.error('Failed to parse activity log:', e);
+                              }
+                              return null;
+                            })()}
                               <Box>
                                 <Typography level="body-sm" sx={{ fontWeight: 600, mb: 1 }}>
                                   Assessment Items ({s.responses?.length || 0} of {s.template.session_items.length} completed)
@@ -428,6 +483,19 @@ export default function PatientRecordPage() {
           clinicianId={user.clinician_id}
         />
       )}
+
+      {/* Full Report Modal */}
+      <Modal open={showFullReport} onClose={() => setShowFullReport(false)}>
+        <ModalDialog sx={{ maxWidth: '95vw', width: '1400px', maxHeight: '95vh', overflow: 'auto' }}>
+          <ModalClose />
+          {patientId && (
+            <PatientFullReport 
+              patientId={Number(patientId)} 
+              onClose={() => setShowFullReport(false)}
+            />
+          )}
+        </ModalDialog>
+      </Modal>
     </AuthGuard>
   );
 }

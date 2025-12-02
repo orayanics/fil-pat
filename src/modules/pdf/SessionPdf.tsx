@@ -1,9 +1,9 @@
 import {useParams} from "next/navigation";
 
-import {Box, Button, Alert, Table, CircularProgress, Typography, Sheet, Stack, Divider, Chip} from "@mui/joy";
+import {Box, Button, Alert, Table, CircularProgress, Typography, Sheet, Stack, Divider, Chip, Card} from "@mui/joy";
 import {usePdfForm} from "./usePdfForm";
 // import {ExportedSessionData} from "@/models/variables"; // Unused type
-import {CheckCircle, Cancel, Warning} from "@mui/icons-material";
+import {CheckCircle, Cancel, Warning, Person, Cake, Wc, CalendarToday, Timer, PlayArrow, Stop} from "@mui/icons-material";
 
 export default function SessionPdf() {
   const params = useParams();
@@ -37,6 +37,8 @@ export default function SessionPdf() {
 
   const completionPercentage = formData.meta?.completionPercentage || 0;
   const sessionData = Object.entries(formData.session || {});
+  const isKidsTemplate = formData.templateInfo?.is_for_kids || false;
+  const responseLabel = isKidsTemplate ? "Child Response" : "Patient Response";
 
   return (
     <Box sx={{ maxWidth: 1200, mx: 'auto', p: 3 }}>
@@ -60,53 +62,144 @@ export default function SessionPdf() {
             <Typography level="h2" sx={{ color: 'primary.700', fontWeight: 800, mb: 1 }}>
               Filipino Phonological Assessment Report
             </Typography>
-            <Typography level="body-md" sx={{ color: 'text.secondary' }}>
-              Session ID: {sessionId}
+            <Typography level="body-md" sx={{ color: 'text.secondary', fontWeight: 600 }}>
+              {formData.sessionInfo?.session_name || `Session ${sessionId}`}
             </Typography>
             <Typography level="body-sm" sx={{ color: 'text.tertiary', mt: 0.5 }}>
-              Generated: {formData.exportedAt}
+              Generated: {new Date(formData.exportedAt).toLocaleString()}
             </Typography>
           </Box>
 
+          {/* Patient & Session Info Cards */}
+          <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} sx={{ mb: 3 }}>
+            {/* Patient Information */}
+            {formData.patientInfo && (
+              <Card variant="outlined" sx={{ flex: 1, p: 2 }}>
+                <Typography level="title-md" sx={{ mb: 1.5, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Person sx={{ fontSize: 20 }} /> Patient Information
+                </Typography>
+                <Stack spacing={0.5}>
+                  <Typography level="body-sm"><strong>Name:</strong> {formData.patientInfo.first_name} {formData.patientInfo.last_name}</Typography>
+                  {formData.patientInfo.age && (
+                    <Typography level="body-sm" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                      <Cake sx={{ fontSize: 16 }} /> <strong>Age:</strong> {formData.patientInfo.age} years old
+                    </Typography>
+                  )}
+                  {formData.patientInfo.gender && (
+                    <Typography level="body-sm" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                      <Wc sx={{ fontSize: 16 }} /> <strong>Gender:</strong> {formData.patientInfo.gender}
+                    </Typography>
+                  )}
+                  {formData.patientInfo.date_of_birth && (
+                    <Typography level="body-sm" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                      <CalendarToday sx={{ fontSize: 16 }} /> <strong>DOB:</strong> {new Date(formData.patientInfo.date_of_birth).toLocaleDateString()}
+                    </Typography>
+                  )}
+                </Stack>
+              </Card>
+            )}
+
+            {/* Clinician Information */}
+            {formData.clinicianInfo && (
+              <Card variant="outlined" sx={{ flex: 1, p: 2 }}>
+                <Typography level="title-md" sx={{ mb: 1.5, fontWeight: 700 }}>
+                  Clinician Information
+                </Typography>
+                <Stack spacing={0.5}>
+                  <Typography level="body-sm"><strong>Name:</strong> {formData.clinicianInfo.first_name} {formData.clinicianInfo.last_name}</Typography>
+                  <Typography level="body-sm"><strong>Email:</strong> {formData.clinicianInfo.email}</Typography>
+                </Stack>
+              </Card>
+            )}
+          </Stack>
+
+          {/* Session Details Card */}
+          {formData.sessionInfo && (
+            <Card variant="soft" color="primary" sx={{ mb: 3, p: 2 }}>
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+                <Box sx={{ flex: 1 }}>
+                  <Typography level="body-sm" sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.5 }}>
+                    <CalendarToday sx={{ fontSize: 16 }} /> <strong>Date:</strong> {formData.sessionInfo.session_date ? new Date(formData.sessionInfo.session_date).toLocaleDateString() : 'N/A'}
+                  </Typography>
+                  <Typography level="body-sm" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                    <PlayArrow sx={{ fontSize: 16 }} /> <strong>Start:</strong> {formData.sessionInfo.start_time ? new Date(formData.sessionInfo.start_time).toLocaleTimeString() : 'N/A'}
+                  </Typography>
+                </Box>
+                <Box sx={{ flex: 1 }}>
+                  <Typography level="body-sm" sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.5 }}>
+                    <Stop sx={{ fontSize: 16 }} /> <strong>End:</strong> {formData.sessionInfo.end_time ? new Date(formData.sessionInfo.end_time).toLocaleTimeString() : 'N/A'}
+                  </Typography>
+                  <Typography level="body-sm" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                    <Timer sx={{ fontSize: 16 }} /> <strong>Duration:</strong> {formData.sessionInfo.duration_minutes ? `${formData.sessionInfo.duration_minutes} minutes` : 'N/A'}
+                  </Typography>
+                </Box>
+                <Box sx={{ flex: 1 }}>
+                  <Typography level="body-sm" sx={{ mb: 0.5 }}>
+                    <strong>Template:</strong> {formData.templateInfo?.name || 'N/A'}
+                  </Typography>
+                  <Typography level="body-sm">
+                    <strong>Mode:</strong> {formData.sessionInfo.session_mode === 'kids' || isKidsTemplate ? 'Kids Mode' : 'Standard'}
+                  </Typography>
+                </Box>
+              </Stack>
+            </Card>
+          )}
+
           {/* Summary Cards */}
-          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mb: 4 }}>
-            <Sheet variant="soft" color="primary" sx={{ flex: 1, p: 3, borderRadius: 'md', textAlign: 'center' }}>
-              <Typography level="h4" sx={{ mb: 0.5 }}>{formData.meta.completedItems}</Typography>
-              <Typography level="body-sm">Completed Items</Typography>
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mb: 3 }}>
+            <Sheet variant="soft" color="primary" sx={{ flex: 1, p: 2.5, borderRadius: 'md', textAlign: 'center' }}>
+              <Typography level="h3" sx={{ mb: 0.5, fontWeight: 700 }}>{formData.meta.completedItems}</Typography>
+              <Typography level="body-sm" sx={{ fontWeight: 600 }}>Items Completed</Typography>
             </Sheet>
-            <Sheet variant="soft" color="neutral" sx={{ flex: 1, p: 3, borderRadius: 'md', textAlign: 'center' }}>
-              <Typography level="h4" sx={{ mb: 0.5 }}>{formData.meta.totalItems}</Typography>
-              <Typography level="body-sm">Total Items</Typography>
+            <Sheet variant="soft" color="neutral" sx={{ flex: 1, p: 2.5, borderRadius: 'md', textAlign: 'center' }}>
+              <Typography level="h3" sx={{ mb: 0.5, fontWeight: 700 }}>{formData.meta.totalItems}</Typography>
+              <Typography level="body-sm" sx={{ fontWeight: 600 }}>Total Items</Typography>
             </Sheet>
             <Sheet 
               variant="soft" 
               color={completionPercentage >= 80 ? "success" : completionPercentage >= 50 ? "warning" : "danger"}
-              sx={{ flex: 1, p: 3, borderRadius: 'md', textAlign: 'center' }}
+              sx={{ flex: 1, p: 2.5, borderRadius: 'md', textAlign: 'center' }}
             >
-              <Typography level="h4" sx={{ mb: 0.5 }}>{completionPercentage}%</Typography>
-              <Typography level="body-sm">Completion</Typography>
+              <Typography level="h3" sx={{ mb: 0.5, fontWeight: 700 }}>{completionPercentage.toFixed(1)}%</Typography>
+              <Typography level="body-sm" sx={{ fontWeight: 600 }}>Completion Rate</Typography>
             </Sheet>
+            {formData.sessionInfo?.overall_score !== null && formData.sessionInfo?.overall_score !== undefined && (
+              <Sheet variant="soft" color="success" sx={{ flex: 1, p: 2.5, borderRadius: 'md', textAlign: 'center' }}>
+                <Typography level="h3" sx={{ mb: 0.5, fontWeight: 700 }}>{formData.sessionInfo.overall_score.toFixed(1)}</Typography>
+                <Typography level="body-sm" sx={{ fontWeight: 600 }}>Overall Score</Typography>
+              </Sheet>
+            )}
           </Stack>
 
           <Divider sx={{ my: 3 }} />
 
           {/* Detailed Results Table */}
           <Box>
-            <Typography level="h4" sx={{ mb: 2, fontWeight: 700 }}>Assessment Details</Typography>
-            <Sheet variant="outlined" sx={{ borderRadius: 'md', overflow: 'hidden' }}>
+            <Typography level="h4" sx={{ mb: 2, fontWeight: 700 }}>Phonological Assessment Results</Typography>
+            <Sheet variant="outlined" sx={{ borderRadius: 'md', overflow: 'auto' }}>
               <Table 
                 variant="plain"
                 sx={{
+                  tableLayout: 'fixed',
+                  width: '100%',
                   '& thead th': {
                     bgcolor: 'primary.100',
                     color: 'primary.900',
                     fontWeight: 700,
                     py: 1.5,
-                    fontSize: '0.875rem'
+                    px: 1,
+                    fontSize: '0.8rem',
+                    lineHeight: 1.2,
+                    verticalAlign: 'top'
                   },
                   '& tbody td': {
                     py: 1.5,
-                    fontSize: '0.875rem'
+                    px: 1,
+                    fontSize: '0.75rem',
+                    lineHeight: 1.3,
+                    verticalAlign: 'top',
+                    wordWrap: 'break-word',
+                    overflow: 'hidden'
                   },
                   '& tbody tr:nth-of-type(odd)': {
                     bgcolor: 'background.level1'
@@ -115,18 +208,21 @@ export default function SessionPdf() {
               >
                 <thead>
                   <tr>
-                    <th style={{ width: '5%' }}>#</th>
-                    <th style={{ width: '15%' }}>IPA</th>
-                    <th style={{ width: '15%' }}>Group</th>
-                    <th style={{ width: '25%' }}>Child Response</th>
-                    <th style={{ width: '12%' }}>Consonants</th>
-                    <th style={{ width: '12%' }}>Vowels</th>
-                    <th style={{ width: '16%' }}>Accuracy</th>
+                    <th style={{ width: '5%' }}>Item #</th>
+                    <th style={{ width: '8%' }}>Phoneme Group</th>
+                    <th style={{ width: '12%' }}>IPA Key</th>
+                    <th style={{ width: '15%' }}>{responseLabel}</th>
+                    <th style={{ width: '8%' }}>Consonants</th>
+                    <th style={{ width: '8%' }}>Vowels</th>
+                    <th style={{ width: '10%' }}>Phoneme Accuracy</th>
+                    <th style={{ width: '8%' }}>Time (sec)</th>
+                    <th style={{ width: '26%' }}>Clinical Notes</th>
                   </tr>
                 </thead>
                 <tbody>
                   {sessionData.map(([key, value], index) => {
                     const hasResponse = value.childResponse && value.childResponse.trim() !== '';
+                    const hasNotes = value.clinicianNotes && value.clinicianNotes.trim() !== '';
                     // Calculate phoneme accuracy based on consonants and vowels
                     const totalPhonemes = (value.consonantsCount || 0) + (value.vowelsCount || 0);
                     const correctPhonemes = (value.consonantsCorrect || 0) + (value.vowelsCorrect || 0);
@@ -134,52 +230,58 @@ export default function SessionPdf() {
                     
                     return (
                       <tr key={key}>
-                        <td><strong>{index + 1}</strong></td>
-                        <td>
-                          <Typography level="body-sm" sx={{ fontFamily: 'monospace', fontWeight: 600 }}>
-                            {value.ipa_key || '—'}
-                          </Typography>
+                        <td style={{ textAlign: 'center' }}>
+                          <Typography level="body-sm" sx={{ fontWeight: 700 }}>{index + 1}</Typography>
                         </td>
                         <td>
-                          <Chip size="sm" variant="soft" color="neutral">
+                          <Chip size="sm" variant="soft" color="neutral" sx={{ fontSize: '0.7rem', minHeight: 'auto', py: 0.25 }}>
                             {value.group || 'N/A'}
                           </Chip>
                         </td>
                         <td>
-                          <Typography level="body-sm" sx={{ fontWeight: hasResponse ? 600 : 400, fontStyle: hasResponse ? 'normal' : 'italic' }}>
-                            {hasResponse ? value.childResponse : 'No response'}
+                          <Typography level="body-sm" sx={{ fontFamily: 'monospace', fontWeight: 600, fontSize: '0.75rem', lineHeight: 1.2 }}>
+                            {value.ipa_key || '—'}
                           </Typography>
                         </td>
                         <td>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                          <Typography level="body-sm" sx={{ fontWeight: hasResponse ? 600 : 400, fontStyle: hasResponse ? 'normal' : 'italic', fontSize: '0.75rem', lineHeight: 1.3 }}>
+                            {hasResponse ? value.childResponse : 'No response'}
+                          </Typography>
+                        </td>
+                        <td style={{ textAlign: 'center' }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.5 }}>
                             {value.consonantsCorrect > 0 ? (
-                              <CheckCircle sx={{ fontSize: 16, color: 'success.500' }} />
+                              <CheckCircle sx={{ fontSize: 14, color: 'success.500' }} />
                             ) : value.consonantsCorrect === 0 && hasResponse ? (
-                              <Cancel sx={{ fontSize: 16, color: 'danger.500' }} />
+                              <Cancel sx={{ fontSize: 14, color: 'danger.500' }} />
                             ) : (
-                              <Warning sx={{ fontSize: 16, color: 'warning.500' }} />
+                              <Warning sx={{ fontSize: 14, color: 'warning.500' }} />
                             )}
-                            <Typography level="body-sm">{value.consonantsCorrect || 0}</Typography>
+                            <Typography level="body-sm" sx={{ fontSize: '0.75rem', fontWeight: 600 }}>
+                              {value.consonantsCorrect || 0}/{value.consonantsCount || 0}
+                            </Typography>
                           </Box>
                         </td>
-                        <td>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                        <td style={{ textAlign: 'center' }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.5 }}>
                             {value.vowelsCorrect > 0 ? (
-                              <CheckCircle sx={{ fontSize: 16, color: 'success.500' }} />
+                              <CheckCircle sx={{ fontSize: 14, color: 'success.500' }} />
                             ) : value.vowelsCorrect === 0 && hasResponse ? (
-                              <Cancel sx={{ fontSize: 16, color: 'danger.500' }} />
+                              <Cancel sx={{ fontSize: 14, color: 'danger.500' }} />
                             ) : (
-                              <Warning sx={{ fontSize: 16, color: 'warning.500' }} />
+                              <Warning sx={{ fontSize: 14, color: 'warning.500' }} />
                             )}
-                            <Typography level="body-sm">{value.vowelsCorrect || 0}</Typography>
+                            <Typography level="body-sm" sx={{ fontSize: '0.75rem', fontWeight: 600 }}>
+                              {value.vowelsCorrect || 0}/{value.vowelsCount || 0}
+                            </Typography>
                           </Box>
                         </td>
                         <td>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.5 }}>
                             <Box 
                               sx={{ 
-                                width: 60, 
-                                height: 8, 
+                                width: '100%', 
+                                height: 6, 
                                 bgcolor: 'neutral.200', 
                                 borderRadius: 'sm',
                                 overflow: 'hidden'
@@ -189,15 +291,24 @@ export default function SessionPdf() {
                                 sx={{ 
                                   width: `${accuracyPercentage}%`, 
                                   height: '100%',
-                                  bgcolor: accuracyPercentage >= 85 ? 'success.500' : accuracyPercentage >= 65 ? 'warning.500' : 'danger.500',
-                                  transition: 'width 0.3s'
+                                  bgcolor: accuracyPercentage >= 85 ? 'success.500' : accuracyPercentage >= 65 ? 'warning.500' : 'danger.500'
                                 }}
                               />
                             </Box>
-                            <Typography level="body-sm" sx={{ fontWeight: 700 }}>
-                              {totalPhonemes > 0 ? `${correctPhonemes}/${totalPhonemes}` : '—'}
+                            <Typography level="body-sm" sx={{ fontWeight: 700, fontSize: '0.7rem' }}>
+                              {totalPhonemes > 0 ? `${correctPhonemes}/${totalPhonemes} (${accuracyPercentage.toFixed(0)}%)` : '—'}
                             </Typography>
                           </Box>
+                        </td>
+                        <td style={{ textAlign: 'center' }}>
+                          <Typography level="body-sm" sx={{ fontSize: '0.75rem', fontWeight: 600 }}>
+                            {value.timeTaken ? `${value.timeTaken}s` : '—'}
+                          </Typography>
+                        </td>
+                        <td>
+                          <Typography level="body-sm" sx={{ fontStyle: hasNotes ? 'normal' : 'italic', color: hasNotes ? 'text.primary' : 'text.tertiary', fontSize: '0.7rem', lineHeight: 1.3 }}>
+                            {hasNotes ? value.clinicianNotes : 'No notes'}
+                          </Typography>
                         </td>
                       </tr>
                     );
@@ -206,6 +317,37 @@ export default function SessionPdf() {
               </Table>
             </Sheet>
           </Box>
+
+          {/* Final Notes Section */}
+          {(formData.sessionInfo?.post_session_notes || formData.sessionInfo?.session_summary || formData.sessionInfo?.recommendations) && (
+            <Box sx={{ mt: 4 }}>
+              <Typography level="h4" sx={{ mb: 2, fontWeight: 700 }}>Session Notes</Typography>
+              {formData.sessionInfo.post_session_notes && (
+                <Sheet variant="soft" color="primary" sx={{ p: 3, mb: 2, borderRadius: 'md' }}>
+                  <Typography level="title-md" sx={{ mb: 1, fontWeight: 600 }}>Final Notes</Typography>
+                  <Typography level="body-sm" sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                    {formData.sessionInfo.post_session_notes}
+                  </Typography>
+                </Sheet>
+              )}
+              {formData.sessionInfo.session_summary && (
+                <Sheet variant="soft" color="neutral" sx={{ p: 3, mb: 2, borderRadius: 'md' }}>
+                  <Typography level="title-md" sx={{ mb: 1, fontWeight: 600 }}>Session Summary</Typography>
+                  <Typography level="body-sm" sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                    {formData.sessionInfo.session_summary}
+                  </Typography>
+                </Sheet>
+              )}
+              {formData.sessionInfo.recommendations && (
+                <Sheet variant="soft" color="success" sx={{ p: 3, borderRadius: 'md' }}>
+                  <Typography level="title-md" sx={{ mb: 1, fontWeight: 600 }}>Recommendations</Typography>
+                  <Typography level="body-sm" sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                    {formData.sessionInfo.recommendations}
+                  </Typography>
+                </Sheet>
+              )}
+            </Box>
+          )}
 
           {/* Footer */}
           <Box sx={{ mt: 4, pt: 3, borderTop: '1px solid', borderColor: 'divider', textAlign: 'center' }}>

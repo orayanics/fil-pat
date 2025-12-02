@@ -404,6 +404,32 @@ export default function ModernDashboard() {
                               </Chip>
                             )}
                           </Typography>
+                          {(() => {
+                            try {
+                              const activityLog = session.activity_log ? JSON.parse(session.activity_log) : [];
+                              if (activityLog && activityLog.length > 0) {
+                                const latestActivity = activityLog[activityLog.length - 1];
+                                const timestamp = new Date(latestActivity.timestamp);
+                                let activityText = '';
+                                
+                                if (latestActivity.type === 'session_started') activityText = 'Started';
+                                else if (latestActivity.type === 'clinician_left') activityText = 'Paused';
+                                else if (latestActivity.type === 'clinician_rejoined') activityText = 'Resumed';
+                                else if (latestActivity.type === 'session_ended') activityText = 'Ended';
+                                
+                                if (activityText) {
+                                  return (
+                                    <Typography level="body-xs" sx={{ color: 'text.tertiary', fontStyle: 'italic', mt: 0.5 }}>
+                                      {activityText} at {timestamp.toLocaleTimeString()}
+                                    </Typography>
+                                  );
+                                }
+                              }
+                            } catch (e) {
+                              // Ignore parsing errors
+                            }
+                            return null;
+                          })()}
                         </Box>
                         <Stack direction="row" spacing={1} alignItems="center">
                           <Chip size="sm" variant="soft" color={getStatusColor(session.status)}>

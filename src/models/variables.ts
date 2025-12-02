@@ -10,6 +10,8 @@ export type ExportedSessionData = {
       consonantsCount: number;
       vowelsCount: number;
       score: number;
+      clinicianNotes?: string;
+      timeTaken?: number | null;
     };
   };
   meta: {
@@ -21,4 +23,5 @@ export type ExportedSessionData = {
   sessionInfo?: any;
   patientInfo?: any;
   clinicianInfo?: any;
+  templateInfo?: any;
 };

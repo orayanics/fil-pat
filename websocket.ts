@@ -44,7 +44,8 @@ const connectionMap: Map<WebSocket, {
   sessionId?: string;
   roomId?: string;
   ipAddress?: string;
-  last_activity?: Date; 
+  last_activity?: Date;
+  role?: string;
 }> = new Map();
 
 // =============================================
@@ -59,6 +60,81 @@ interface WebSocketConnectionData {
   userAgent?: string;
   roomId?: string;
   role?: string;
+}
+
+// Session Activity Logging Helper
+async function logSessionActivity(sessionUuid: string, activityType: string, details?: any) {
+  try {
+    const session = await prisma.assessmentSession.findUnique({
+      where: { session_uuid: sessionUuid },
+      select: { session_id: true, activity_log: true }
+    });
+
+    if (!session) {
+      console.warn(`[Activity Log] Session ${sessionUuid} not found`);
+      return;
+    }
+
+    // Parse existing activity log or start new array
+    let activities: any[] = [];
+    if (session.activity_log) {
+      try {
+        activities = JSON.parse(session.activity_log);
+      } catch (e) {
+        console.warn('[Activity Log] Failed to parse existing log, starting fresh');
+      }
+    }
+
+    // Add new activity
+    const newActivity = {
+      type: activityType,
+      timestamp: new Date().toISOString(),
+      ...details
+    };
+    activities.push(newActivity);
+
+    // Update session with new activity log
+    const updateData: any = {
+      activity_log: JSON.stringify(activities)
+    };
+
+    // Update specific timestamp fields based on activity type
+    if (activityType === 'session_paused' || activityType === 'clinician_left') {
+      updateData.session_paused_at = new Date();
+      if (activityType === 'clinician_left') {
+        await prisma.assessmentSession.update({
+          where: { session_uuid: sessionUuid },
+          data: {
+            clinician_left_count: { increment: 1 }
+          }
+        });
+      }
+    } else if (activityType === 'session_resumed' || activityType === 'clinician_rejoined') {
+      updateData.session_resumed_at = new Date();
+      
+      // Calculate pause duration if we have a paused_at timestamp
+      const sessionWithPause = await prisma.assessmentSession.findUnique({
+        where: { session_uuid: sessionUuid },
+        select: { session_paused_at: true, total_pause_duration: true }
+      });
+      
+      if (sessionWithPause?.session_paused_at) {
+        const pauseDuration = Math.floor(
+          (new Date().getTime() - new Date(sessionWithPause.session_paused_at).getTime()) / 1000
+        );
+        updateData.total_pause_duration = (sessionWithPause.total_pause_duration || 0) + pauseDuration;
+      }
+    }
+
+    await prisma.assessmentSession.update({
+      where: { session_uuid: sessionUuid },
+      data: updateData
+    });
+
+    console.log(`[Activity Log] ${activityType} logged for session ${sessionUuid}`, details);
+  } catch (error) {
+    console.error('[Activity Log] Failed to log activity:', error);
+  }
 }
 
 async function createWebSocketConnection(ws: WebSocket, data: WebSocketConnectionData) {
@@ -85,6 +161,7 @@ async function createWebSocketConnection(ws: WebSocket, data: WebSocketConnectio
       sessionId: data.sessionId,
       roomId: data.roomId,
       ipAddress: data.ipAddress,
+      role: data.role,
     });
 
     await logActivity({
@@ -910,8 +987,29 @@ const leaveRoom = async (ws: WebSocket, roomId: string) => {
   if (clients) {
     clients.delete(ws);
     
-    // Check if this ws was the assigned patient
+    // Check if this ws was a clinician or the assigned patient
+    const connInfo = connectionMap.get(ws);
+    const isClinician = connInfo?.userType === 'clinician' || connInfo?.role === 'clinician';
     const wasPatient = roomPatient[roomId] === ws;
+    
+    // Log clinician leaving the session
+    if (isClinician) {
+      console.log(`[Clinician Left] Clinician left room ${roomId}`);
+      await logSessionActivity(roomId, 'clinician_left', {
+        clinician_id: connInfo?.userId,
+        reason: 'disconnected'
+      });
+      
+      // Notify other participants that clinician left
+      broadcastToRoom(roomId, JSON.stringify({ 
+        type: 'clinicianLeft', 
+        sessionId: roomId,
+        message: 'Clinician has left the session',
+        timestamp: new Date().toISOString()
+      }));
+    }
+    
+    // If this ws was the assigned patient
     
     // If this ws was the assigned patient, notify but DON'T clear assignment yet
     // This allows for reconnection
@@ -1330,13 +1428,15 @@ wss.on("connection", async (ws, request) => {
         }
         case "startSession": {
           try {
-            if (!data.sessionId) {
+            const roomId = data.sessionId;
+            
+            if (!roomId) {
               ws.send(JSON.stringify({ type: "error", message: "Missing sessionId" }));
               break;
             }
 
             const session = await prisma.assessmentSession.findFirst({
-              where: { session_uuid: data.sessionId },
+              where: { session_uuid: roomId },
               include: {
                 template: {
                   include: { 
@@ -1361,8 +1461,15 @@ wss.on("connection", async (ws, request) => {
               data: { status: 'In Progress' }
             });
 
+            // Log session start activity
+            await logSessionActivity(roomId, 'session_started', {
+              clinician_id: session.clinician_id,
+              patient_id: session.patient_id,
+              session_name: session.session_name,
+              template_name: session.template?.name
+            });
+
             // Initialize room with session items (only if not already loaded)
-            const roomId = data.sessionId;
             const items = session.template?.session_items || [];
             
             // Only set items if not already loaded from assignTemplate
@@ -1524,6 +1631,12 @@ wss.on("connection", async (ws, request) => {
 
               // Send full session state to clinician rejoining
               if (data.role === 'clinician') {
+                // Log clinician rejoin activity
+                await logSessionActivity(data.roomId, 'clinician_rejoined', {
+                  clinician_id: data.clinicianId,
+                  session_name: existingSession.session_name
+                });
+
                 ws.send(JSON.stringify({
                   type: "sessionResumed",
                   sessionId: data.roomId,
@@ -2145,6 +2258,14 @@ wss.on("connection", async (ws, request) => {
             });
 
             console.log(`[endSession] Session ${data.sessionId} marked as Completed`);
+
+            // Log session end activity
+            await logSessionActivity(data.sessionId, 'session_ended', {
+              clinician_id: sessionDetails?.clinician_id,
+              end_time: new Date().toISOString(),
+              has_notes: !!data.notes,
+              has_summary: !!data.summary
+            });
 
             // Broadcast both sessionEnded (for clinician) and sessionCompleted (for patient)
             const endMessage = JSON.stringify({
