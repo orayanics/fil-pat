@@ -174,6 +174,26 @@ export default function SocketProvider({ children }: { children: ReactNode }) {
               itemsCount: data.templateItems?.length
             });
             
+            // Don't load completed sessions - treat as ended
+            if (data.sessionInfo?.status === 'Completed') {
+              console.log('[SocketProvider] Session is completed, treating as ended');
+              setSessionStarted(false);
+              setSessionPaused(false);
+              if (data.sessionInfo) {
+                setSessionInfo({
+                  ...data.sessionInfo,
+                  status: 'Completed'
+                });
+              }
+              // Set completion flag for patient modal
+              try {
+                useSocketStore.getState().setSessionCompleted(true);
+              } catch (e) {
+                console.warn('Failed to set sessionCompleted', e);
+              }
+              break;
+            }
+            
             if (data.sessionId) {
               setSessionId(data.sessionId);
             }
@@ -440,6 +460,11 @@ export default function SocketProvider({ children }: { children: ReactNode }) {
             break;
           case 'sessionResumed':
             console.log('[SocketProvider] Session resumed:', data);
+            // Only resume if session is not completed
+            if (sessionInfo?.status === 'Completed' || data.sessionInfo?.status === 'Completed') {
+              console.log('[SocketProvider] Session is completed, ignoring sessionResumed');
+              break;
+            }
             setSessionStarted(true);
             setSessionPaused(false);
             // Update session info
@@ -481,6 +506,11 @@ export default function SocketProvider({ children }: { children: ReactNode }) {
             }
             break;
           case 'sessionResumed':
+            // Don't change status if session is completed
+            if (sessionInfo?.status === 'Completed') {
+              console.log('[SocketProvider] Session is completed, ignoring sessionResumed status change');
+              break;
+            }
             setSessionPaused(false);
             if (sessionInfo) {
               setSessionInfo({
@@ -662,8 +692,48 @@ export default function SocketProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (socket && sessionId && !hasJoinedRoom && isConnected) {
-      const role = isAuthenticated ? 'clinician' : 'patient';
-      joinRoom(sessionId, role);
+      // First check session status from database before joining
+      const checkAndJoin = async () => {
+        try {
+          const res = await fetch(`/api/sessions/${sessionId}`, { 
+            credentials: 'include' 
+          });
+          
+          if (res.ok) {
+            const data = await res.json();
+            if (data.status === 'Completed') {
+              console.log('[SocketProvider] Session is completed, not joining room');
+              // Set the completed state
+              setSessionInfo({
+                session_id: data.session_id || 0,
+                session_uuid: sessionId,
+                status: 'Completed',
+                session_name: data.session_name,
+                session_mode: data.session_mode || 'Standard',
+                total_items: data.total_items || 0,
+                completed_items: data.completed_items || 0,
+                is_practice_session: false
+              });
+              setSessionStarted(false);
+              try {
+                useSocketStore.getState().setSessionCompleted(true);
+              } catch (e) {
+                console.warn('Failed to set sessionCompleted', e);
+              }
+              return; // Don't join room
+            }
+          }
+        } catch (err) {
+          console.warn('[SocketProvider] Failed to check session status:', err);
+          // Continue with join on error to avoid breaking existing sessions
+        }
+        
+        // Session is not completed or check failed - proceed with join
+        const role = isAuthenticated ? 'clinician' : 'patient';
+        joinRoom(sessionId, role);
+      };
+      
+      checkAndJoin();
     }
   }, [socket, sessionId, isAuthenticated, hasJoinedRoom, isConnected, joinRoom]);
 

@@ -27,6 +27,7 @@ interface PatientFinalizeModalProps {
 export default function PatientFinalizeModal({ sessionId }: PatientFinalizeModalProps) {
   const sessionCompleted = useSocketStore((s) => s.sessionCompleted);
   const patientFinalized = useSocketStore((s) => s.patientFinalized);
+  const sessionInfo = useSocketStore((s) => s.sessionInfo);
   const { sendMessage } = useSocketContext();
   
   const [open, setOpen] = useState(false);
@@ -36,14 +37,18 @@ export default function PatientFinalizeModal({ sessionId }: PatientFinalizeModal
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Open modal when session is completed
+  // Open modal when session is completed AND status is 'Completed'
   useEffect(() => {
-    console.log('[PatientFinalizeModal] sessionCompleted:', sessionCompleted, 'patientFinalized:', patientFinalized);
-    if (sessionCompleted && !patientFinalized) {
+    console.log('[PatientFinalizeModal] sessionCompleted:', sessionCompleted, 'status:', sessionInfo?.status, 'patientFinalized:', patientFinalized);
+    if (sessionCompleted && sessionInfo?.status === 'Completed' && !patientFinalized) {
       console.log('[PatientFinalizeModal] Opening modal');
       setOpen(true);
+    } else if (sessionInfo?.status !== 'Completed') {
+      // If status is not completed, close modal
+      console.log('[PatientFinalizeModal] Status is not Completed, closing modal');
+      setOpen(false);
     }
-  }, [sessionCompleted, patientFinalized]);
+  }, [sessionCompleted, sessionInfo?.status, patientFinalized]);
 
   // Close modal when patient is finalized
   useEffect(() => {

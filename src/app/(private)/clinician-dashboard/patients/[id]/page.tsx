@@ -364,6 +364,8 @@ export default function PatientRecordPage() {
                               }
                               return null;
                             })()}
+
+                            {s.template && Array.isArray(s.template.session_items) && (
                               <Box>
                                 <Typography level="body-sm" sx={{ fontWeight: 600, mb: 1 }}>
                                   Assessment Items ({s.responses?.length || 0} of {s.template.session_items.length} completed)

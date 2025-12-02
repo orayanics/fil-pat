@@ -1,11 +1,16 @@
 "use client";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { useParams } from "next/navigation";
 import { useSocketStore } from "@/context/socketStore";
 import { useSocketContext } from "@/context/SocketProvider";
 import { Box, CircularProgress, Card, Typography, Button } from "@mui/joy";
 import Image from "next/image";
 import PatientFinalizeModal from "./PatientFinalizeModal";
+import { jungleAdventureTheme } from "@/styles/kids-themes/jungle-adventure";
+import { oceanFriendsTheme } from "@/styles/kids-themes/ocean-friends";
+import { spaceExplorerTheme } from "@/styles/kids-themes/space-explorer";
+
+const kidsThemes = [jungleAdventureTheme, oceanFriendsTheme, spaceExplorerTheme];
 
 export default function Index() {
   const params = useParams();
@@ -19,6 +24,12 @@ export default function Index() {
 
   // Check if this is a kids template
   const isKidsMode = sessionInfo?.is_for_kids ?? false;
+  
+  // Randomly select a theme for this session (memoized so it stays consistent)
+  const theme = useMemo(() => {
+    if (!isKidsMode) return null;
+    return kidsThemes[Math.floor(Math.random() * kidsThemes.length)];
+  }, [isKidsMode, sessionId]); // Re-pick theme per session
   
   // Listen for session state changes and reload page when session starts
   useEffect(() => {
@@ -51,12 +62,13 @@ export default function Index() {
   // Check if session has ended (status is Completed)
   useEffect(() => {
     if (sessionInfo?.status === 'Completed') {
-      console.log('[Patient] Session has ended, showing completion message');
+      console.log('[Patient] Session has ended (from sessionInfo), showing completion message');
       setSessionEnded(true);
+      setNoClinicianPresent(false);
     }
   }, [sessionInfo?.status]);
   
-  // Check if session is ended on initial load
+  // Check if session is ended on initial load (before WebSocket connects)
   useEffect(() => {
     if (!sessionId) return;
     
@@ -69,8 +81,9 @@ export default function Index() {
         if (res.ok) {
           const data = await res.json();
           if (data.status === 'Completed') {
-            console.log('[Patient] Session is completed, showing end message');
+            console.log('[Patient] Session is completed (from API), showing end message');
             setSessionEnded(true);
+            setNoClinicianPresent(false);
           }
         }
       } catch (err) {
@@ -78,9 +91,8 @@ export default function Index() {
       }
     };
     
-    // Check status after a short delay to allow WebSocket to connect
-    const timeoutId = setTimeout(checkSessionStatus, 2000);
-    return () => clearTimeout(timeoutId);
+    // Check status immediately
+    checkSessionStatus();
   }, [sessionId]);
   
   // Log session info for debugging and force re-render when sessionInfo changes
@@ -125,6 +137,13 @@ export default function Index() {
 
   // If no clinician present, show waiting message
   if (noClinicianPresent) {
+    const bgGradient = isKidsMode && theme 
+      ? `linear-gradient(135deg, ${theme.colors.primary} 0%, ${theme.colors.secondary} 100%)`
+      : 'background.body';
+    const cardBg = isKidsMode && theme
+      ? `linear-gradient(to bottom, ${theme.colors.surface}, ${theme.colors.background})`
+      : 'background.surface';
+    
     return (
       <Box
         sx={{
@@ -135,9 +154,7 @@ export default function Index() {
           minHeight: '100dvh',
           gap: 2,
           p: 2,
-          background: isKidsMode
-            ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
-            : 'background.body',
+          background: bgGradient,
         }}
       >
         <Card
@@ -146,9 +163,7 @@ export default function Index() {
             maxWidth: 600,
             textAlign: 'center',
             borderRadius: isKidsMode ? 6 : 2,
-            background: isKidsMode
-              ? 'linear-gradient(to bottom, #ffffff, #fef3c7)'
-              : 'background.surface',
+            background: cardBg,
             boxShadow: isKidsMode ? 'xl' : 'md',
           }}
         >
@@ -157,16 +172,18 @@ export default function Index() {
             sx={{
               fontWeight: 700,
               fontSize: isKidsMode ? '2.5rem' : 'inherit',
-              color: isKidsMode ? '#7c3aed' : 'text.primary',
+              fontFamily: isKidsMode && theme ? theme.fonts.headings : 'inherit',
+              color: isKidsMode && theme ? theme.colors.text.primary : 'text.primary',
               mb: 2,
             }}
           >
-            {isKidsMode ? '⏰ Please Wait!' : '⏳ Clinician Not Present'}
+            {isKidsMode ? `${theme?.characters.mascot || '⏰'} Please Wait!` : '⏳ Clinician Not Present'}
           </Typography>
           <Typography
             sx={{
               fontSize: isKidsMode ? '1.25rem' : 'inherit',
-              color: isKidsMode ? '#6b7280' : 'text.secondary',
+              fontFamily: isKidsMode && theme ? theme.fonts.body : 'inherit',
+              color: isKidsMode && theme ? theme.colors.text.secondary : 'text.secondary',
               lineHeight: 1.6,
             }}
           >
@@ -181,6 +198,13 @@ export default function Index() {
   
   // If session has ended, show completion message
   if (sessionEnded) {
+    const bgGradient = isKidsMode && theme 
+      ? `linear-gradient(135deg, ${theme.colors.primary} 0%, ${theme.colors.secondary} 100%)`
+      : 'background.body';
+    const cardBg = isKidsMode && theme
+      ? `linear-gradient(to bottom, ${theme.colors.surface}, ${theme.colors.background})`
+      : 'background.surface';
+    
     return (
       <Box
         sx={{
@@ -191,9 +215,7 @@ export default function Index() {
           minHeight: '100dvh',
           gap: 2,
           p: 2,
-          background: isKidsMode
-            ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
-            : 'background.body',
+          background: bgGradient,
         }}
       >
         <Card
@@ -202,9 +224,7 @@ export default function Index() {
             maxWidth: 600,
             textAlign: 'center',
             borderRadius: isKidsMode ? 6 : 2,
-            background: isKidsMode
-              ? 'linear-gradient(to bottom, #ffffff, #fef3c7)'
-              : 'background.surface',
+            background: cardBg,
             boxShadow: isKidsMode ? 'xl' : 'md',
           }}
         >
@@ -213,16 +233,18 @@ export default function Index() {
             sx={{
               fontWeight: 700,
               fontSize: isKidsMode ? '2.5rem' : 'inherit',
-              color: isKidsMode ? '#7c3aed' : 'text.primary',
+              fontFamily: isKidsMode && theme ? theme.fonts.headings : 'inherit',
+              color: isKidsMode && theme ? theme.colors.text.primary : 'text.primary',
               mb: 2,
             }}
           >
-            {isKidsMode ? '🎉 Activity Completed!' : '✓ Session Ended'}
+            {isKidsMode ? `${theme?.characters.celebration || '🎉'} Activity Completed!` : '✓ Session Ended'}
           </Typography>
           <Typography
             sx={{
               fontSize: isKidsMode ? '1.25rem' : 'inherit',
-              color: isKidsMode ? '#6b7280' : 'text.secondary',
+              fontFamily: isKidsMode && theme ? theme.fonts.body : 'inherit',
+              color: isKidsMode && theme ? theme.colors.text.secondary : 'text.secondary',
               lineHeight: 1.6,
             }}
           >
@@ -237,6 +259,14 @@ export default function Index() {
   
   // If session started show the item (image + question)
   if (sessionStarted && currentItem) {
+    const bgGradient = isKidsMode && theme 
+      ? `linear-gradient(135deg, ${theme.colors.primary} 0%, ${theme.colors.secondary} 100%)`
+      : 'background.body';
+    const cardBg = isKidsMode && theme
+      ? `linear-gradient(to bottom, ${theme.colors.surface}, ${theme.colors.background})`
+      : 'background.surface';
+    const borderColor = isKidsMode && theme ? theme.colors.accent : 'transparent';
+    
     return (
       <>
         <Box
@@ -246,9 +276,7 @@ export default function Index() {
             justifyContent: 'center',
             alignItems: 'center',
             minHeight: '100dvh',
-            background: isKidsMode
-              ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
-              : 'background.body',
+            background: bgGradient,
           }}
         >
           <Card
@@ -261,9 +289,7 @@ export default function Index() {
               p: isKidsMode ? 4 : 2,
               borderRadius: isKidsMode ? 6 : 2,
               boxShadow: isKidsMode ? 'xl' : 'md',
-              background: isKidsMode
-                ? 'linear-gradient(to bottom, #ffffff, #fef3c7)'
-                : 'background.surface',
+              background: cardBg,
             }}
           >
             <Box sx={{ flex: 1, minWidth: 0 }}>
@@ -275,7 +301,7 @@ export default function Index() {
                   borderRadius: isKidsMode ? 4 : 2,
                   overflow: 'hidden',
                   border: isKidsMode ? '6px solid' : 'none',
-                  borderColor: isKidsMode ? '#f59e0b' : 'transparent',
+                  borderColor: borderColor,
                   boxShadow: isKidsMode ? 'lg' : 'none',
                 }}
               >
@@ -309,11 +335,12 @@ export default function Index() {
                 sx={{
                   fontSize: isKidsMode ? '2.5rem' : 'inherit',
                   fontWeight: 800,
-                  color: isKidsMode ? '#7c3aed' : 'text.primary',
+                  fontFamily: isKidsMode && theme ? theme.fonts.headings : 'inherit',
+                  color: isKidsMode && theme ? theme.colors.text.primary : 'text.primary',
                   textShadow: isKidsMode ? '2px 2px 4px rgba(0,0,0,0.1)' : 'none',
                 }}
               >
-                {isKidsMode ? `🌟 Question ${currentItem.item}` : `Item ${currentItem.item}`}
+                {isKidsMode ? `${theme?.characters.thinking || '🌟'} Question ${currentItem.item}` : `Item ${currentItem.item}`}
               </Typography>
 
               <Typography
@@ -321,47 +348,24 @@ export default function Index() {
                 sx={{
                   fontWeight: 700,
                   fontSize: isKidsMode ? '1.5rem' : 'inherit',
-                  color: isKidsMode ? '#1e40af' : 'text.primary',
+                  fontFamily: isKidsMode && theme ? theme.fonts.body : 'inherit',
+                  color: isKidsMode && theme ? theme.colors.text.primary : 'text.primary',
                   lineHeight: 1.6,
                 }}
               >
                 {currentItem.question}
               </Typography>
 
-              {currentItem.sound && (
-                <Button
-                  variant={isKidsMode ? 'solid' : 'outlined'}
-                  size={isKidsMode ? 'lg' : 'md'}
-                  sx={{
-                    ...(isKidsMode && {
-                      bgcolor: '#10b981',
-                      '&:hover': { bgcolor: '#059669' },
-                      fontSize: '1.25rem',
-                      fontWeight: 700,
-                      borderRadius: 4,
-                      py: 1.5,
-                    }),
-                  }}
-                  onClick={() => {
-                    try {
-                      const a = new Audio(currentItem.sound);
-                      a.play();
-                    } catch {}
-                  }}
-                >
-                  {isKidsMode ? '🔊 Play Sound' : 'Play Sound'}
-                </Button>
-              )}
-
               <Box sx={{ mt: 'auto' }}>
                 <Typography
                   level="body-sm"
                   sx={{
-                    color: isKidsMode ? '#6b7280' : 'text.secondary',
+                    fontFamily: isKidsMode && theme ? theme.fonts.body : 'inherit',
+                    color: isKidsMode && theme ? theme.colors.text.secondary : 'text.secondary',
                     fontSize: isKidsMode ? '1rem' : 'inherit',
                   }}
                 >
-                  {isKidsMode ? '📋 ' : ''}Template:{' '}
+                  {isKidsMode && theme?.characters.decorative ? `${theme.characters.decorative[0]} ` : ''}Template:{' '}
                   <strong>{sessionInfo?.template_name ?? '—'}</strong>
                 </Typography>
               </Box>
@@ -376,6 +380,13 @@ export default function Index() {
   }
 
   // Lobby view while waiting for clinician to assign template and start
+  const bgGradient = isKidsMode && theme 
+    ? `linear-gradient(135deg, ${theme.colors.primary} 0%, ${theme.colors.secondary} 100%)`
+    : 'background.body';
+  const cardBg = isKidsMode && theme
+    ? `linear-gradient(to bottom, ${theme.colors.surface}, ${theme.colors.background})`
+    : 'background.surface';
+  
   return (
     <>
       <Box
@@ -387,9 +398,7 @@ export default function Index() {
           minHeight: '100dvh',
           gap: 2,
           p: 2,
-          background: isKidsMode
-            ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
-            : 'background.body',
+          background: bgGradient,
         }}
       >
         <Card
@@ -398,9 +407,7 @@ export default function Index() {
             maxWidth: 600,
             textAlign: 'center',
             borderRadius: isKidsMode ? 6 : 2,
-            background: isKidsMode
-              ? 'linear-gradient(to bottom, #ffffff, #fef3c7)'
-              : 'background.surface',
+            background: cardBg,
             boxShadow: isKidsMode ? 'xl' : 'md',
           }}
         >
@@ -420,12 +427,13 @@ export default function Index() {
               fontWeight: 700,
               mt: 2,
               fontSize: isKidsMode ? '2rem' : 'inherit',
-              color: isKidsMode ? '#7c3aed' : 'text.primary',
+              fontFamily: isKidsMode && theme ? theme.fonts.headings : 'inherit',
+              color: isKidsMode && theme ? theme.colors.text.primary : 'text.primary',
             }}
           >
             {sessionInfo?.is_resumed 
-              ? (isKidsMode ? '🎈 Loading Your Activity...' : 'Loading session...')
-              : (isKidsMode ? '🎈 Getting Ready...' : 'Waiting for clinician...')
+              ? (isKidsMode ? `${theme?.characters.encouragement || '🎈'} Loading Your Activity...` : 'Loading session...')
+              : (isKidsMode ? `${theme?.characters.mascot || '🎈'} Getting Ready...` : 'Waiting for clinician...')
             }
           </Typography>
 
@@ -434,10 +442,12 @@ export default function Index() {
               sx={{
                 mt: 2,
                 fontSize: isKidsMode ? '1.25rem' : 'inherit',
-                color: isKidsMode ? '#1e40af' : 'text.primary',
+                fontFamily: isKidsMode && theme ? theme.fonts.body : 'inherit',
+                color: isKidsMode && theme ? theme.colors.text.primary : 'text.primary',
               }}
             >
-              {isKidsMode ? '📝 Activity: ' : 'Assigned template: '}
+              {isKidsMode && theme?.characters.decorative ? `${theme.characters.decorative[1]} ` : ''}
+              {isKidsMode ? 'Activity: ' : 'Assigned template: '}
               <strong>{sessionInfo.template_name}</strong>
             </Typography>
           ) : (
@@ -445,7 +455,8 @@ export default function Index() {
               sx={{
                 mt: 2,
                 fontSize: isKidsMode ? '1.25rem' : 'inherit',
-                color: isKidsMode ? '#6b7280' : 'text.secondary',
+                fontFamily: isKidsMode && theme ? theme.fonts.body : 'inherit',
+                color: isKidsMode && theme ? theme.colors.text.secondary : 'text.secondary',
               }}
             >
               {isKidsMode
@@ -459,10 +470,11 @@ export default function Index() {
               sx={{
                 mt: 1,
                 fontSize: isKidsMode ? '1rem' : 'body-sm',
-                color: isKidsMode ? '#6b7280' : 'text.secondary',
+                fontFamily: isKidsMode && theme ? theme.fonts.body : 'inherit',
+                color: isKidsMode && theme ? theme.colors.text.secondary : 'text.secondary',
               }}
             >
-              📋 Session: <strong>{sessionInfo.session_name}</strong>
+              {theme?.characters.decorative?.[2] || '📋'} Session: <strong>{sessionInfo.session_name}</strong>
             </Typography>
           )}
 
@@ -482,17 +494,18 @@ export default function Index() {
           <Typography
             sx={{
               mt: 3,
-              color: isKidsMode ? '#6b7280' : 'neutral.600',
+              fontFamily: isKidsMode && theme ? theme.fonts.body : 'inherit',
+              color: isKidsMode && theme ? theme.colors.text.secondary : 'neutral.600',
               fontSize: isKidsMode ? '1.1rem' : 'inherit',
               lineHeight: 1.6,
             }}
           >
             {sessionInfo?.is_resumed
               ? (isKidsMode
-                  ? "🌈 We're getting your activity ready! Just a moment..."
+                  ? `${theme?.characters.decorative?.[3] || '🌈'} We're getting your activity ready! Just a moment...`
                   : 'Resuming your assessment session. This will start automatically.')
               : (isKidsMode
-                  ? "🌈 Your teacher will start the fun activity soon! Get ready to show what you know!"
+                  ? `${theme?.characters.decorative?.[4] || '🌈'} Your teacher will start the fun activity soon! Get ready to show what you know!`
                   : 'When the clinician assigns a template and starts the session, the assessment will begin automatically on this device.')
             }
           </Typography>
@@ -503,7 +516,18 @@ export default function Index() {
               variant="solid"
               color="primary"
               size="lg"
-              sx={{ mt: 3 }}
+              sx={{ 
+                mt: 3,
+                ...(isKidsMode && theme && {
+                  background: `linear-gradient(135deg, ${theme.colors.primary} 0%, ${theme.colors.secondary} 100%)`,
+                  fontFamily: theme.fonts.body,
+                  fontSize: '1.1rem',
+                  borderRadius: 4,
+                  '&:hover': {
+                    background: `linear-gradient(135deg, ${theme.colors.secondary} 0%, ${theme.colors.primary} 100%)`,
+                  }
+                })
+              }}
               onClick={() => {
                 if (socket && sessionInfo?.session_uuid) {
                   console.log('Manual start button clicked for resumed session');
@@ -514,7 +538,7 @@ export default function Index() {
                 }
               }}
             >
-              {isKidsMode ? '🚀 Start Activity Now' : '▶️ Resume Session'}
+              {isKidsMode ? `${theme?.characters.success || '🚀'} Start Activity Now` : '▶️ Resume Session'}
             </Button>
           )}
         </Card>

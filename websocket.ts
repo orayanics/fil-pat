@@ -601,6 +601,28 @@ interface UserData {
 }
 
 const joinRoom = async (ws: WebSocket, roomId: string, userData?: UserData) => {
+  // Check if session is completed before allowing anyone to join
+  try {
+    const existingSession = await prisma.assessmentSession.findUnique({
+      where: { session_uuid: roomId },
+      select: { status: true, session_uuid: true }
+    });
+    
+    if (existingSession && existingSession.status === 'Completed') {
+      console.log(`[joinRoom] Rejecting join to completed session ${roomId}`);
+      ws.send(JSON.stringify({
+        type: 'sessionEnded',
+        sessionId: roomId,
+        message: 'This session has been completed and can no longer be accessed.',
+        timestamp: new Date().toISOString()
+      }));
+      return; // Don't allow joining
+    }
+  } catch (error) {
+    console.error('[joinRoom] Error checking session status:', error);
+    // Continue with join if we can't check status
+  }
+
   const isNewRoom = !rooms[roomId];
 
   if (isNewRoom) {
@@ -929,36 +951,41 @@ const joinRoom = async (ws: WebSocket, roomId: string, userData?: UserData) => {
         const hasClinicianAndPatient = roomParticipants.length >= 2;
         
         if (isResumed && hasClinicianAndPatient && sessionInfo.status !== 'In Progress') {
-          console.log('[Auto-start] Both parties connected for resumed session, starting automatically');
-          
-          // Update session status to In Progress
-          await prisma.assessmentSession.update({
-            where: { session_id: sessionInfo.session_id },
-            data: { status: 'In Progress' }
-          });
+          // Don't auto-start completed sessions
+          if (sessionInfo.status === 'Completed') {
+            console.log('[Auto-start] Session is completed, not auto-starting');
+          } else {
+            console.log('[Auto-start] Both parties connected for resumed session, starting automatically');
+            
+            // Update session status to In Progress
+            await prisma.assessmentSession.update({
+              where: { session_id: sessionInfo.session_id },
+              data: { status: 'In Progress' }
+            });
 
-          // Initialize room with session items
-          const items = sessionInfo.template?.session_items || [];
-          roomItemsList[roomId] = items;
+            // Initialize room with session items
+            const items = sessionInfo.template?.session_items || [];
+            roomItemsList[roomId] = items;
 
-          // Set first item as current
-          if (items.length > 0) {
-            const firstItem = items[0] as Record<string, unknown>;
-            roomCurrentItems[roomId] = {
-              ...firstItem,
-              item: Number(String(firstItem['item_number'] ?? firstItem['item_id'] ?? 1)),
-              question: String(firstItem['question'] ?? '')
-            };
+            // Set first item as current
+            if (items.length > 0) {
+              const firstItem = items[0] as Record<string, unknown>;
+              roomCurrentItems[roomId] = {
+                ...firstItem,
+                item: Number(String(firstItem['item_number'] ?? firstItem['item_id'] ?? 1)),
+                question: String(firstItem['question'] ?? '')
+              };
+            }
+
+            // Broadcast session started to room
+            const startMsg = JSON.stringify({
+              type: 'sessionStarted',
+              sessionId: roomId,
+              currentItem: roomCurrentItems[roomId],
+              timestamp: new Date().toISOString()
+            });
+            broadcastToRoom(roomId, startMsg);
           }
-
-          // Broadcast session started to room
-          const startMsg = JSON.stringify({
-            type: 'sessionStarted',
-            sessionId: roomId,
-            currentItem: roomCurrentItems[roomId],
-            timestamp: new Date().toISOString()
-          });
-          broadcastToRoom(roomId, startMsg);
         }
       }
     } catch (err) {
@@ -1455,6 +1482,18 @@ wss.on("connection", async (ws, request) => {
               break;
             }
 
+            // Don't start completed sessions
+            if (session.status === 'Completed') {
+              console.log('[Start Session] Session is already completed, cannot start');
+              ws.send(JSON.stringify({ 
+                type: "sessionEnded", 
+                sessionId: roomId,
+                message: "This session has been completed and cannot be restarted.",
+                timestamp: new Date().toISOString()
+              }));
+              break;
+            }
+
             // Update session status to In Progress
             await prisma.assessmentSession.update({
               where: { session_id: session.session_id },
@@ -1631,6 +1670,19 @@ wss.on("connection", async (ws, request) => {
 
               // Send full session state to clinician rejoining
               if (data.role === 'clinician') {
+                // Check if session is completed
+                if (existingSession.status === 'Completed') {
+                  console.log(`[Rejoin] Clinician attempted to rejoin completed session ${data.roomId} - sending sessionEnded`);
+                  ws.send(JSON.stringify({
+                    type: "sessionEnded",
+                    sessionId: data.roomId,
+                    message: "This session has been completed and cannot be resumed.",
+                    timestamp: new Date().toISOString()
+                  }));
+                  // Don't allow clinician to resume completed session
+                  break;
+                }
+                
                 // Log clinician rejoin activity
                 await logSessionActivity(data.roomId, 'clinician_rejoined', {
                   clinician_id: data.clinicianId,
@@ -1653,27 +1705,39 @@ wss.on("connection", async (ws, request) => {
                 }));
                 console.log(`[Rejoin] Clinician rejoined session ${data.roomId} - sent full session state`);
               } else {
-                // Patient rejoining active session - send sessionResumed to set sessionStarted flag
-                ws.send(JSON.stringify({
-                  type: "sessionResumed",
-                  sessionInfo: {
-                    session_uuid: existingSession.session_uuid,
-                    session_name: existingSession.session_name,
-                    status: existingSession.status,
-                    clinician_id: existingSession.clinician_id,
-                    patient_id: existingSession.patient_id,
-                    is_resumed: true,
-                    ...existingSession,
-                    template_id: existingSession.template_id,
-                    template_name: existingSession.template.name,
-                    is_for_kids: existingSession.template.is_for_kids,
-                    patient_name: existingSession.patient ? `${existingSession.patient.first_name} ${existingSession.patient.last_name}` : 'Unknown'
-                  },
-                  templateItems: items,
-                  currentItem: roomCurrentItems[data.roomId],
-                  timestamp: new Date().toISOString()
-                }));
-                console.log(`[Rejoin] Patient rejoined session ${data.roomId} - sent session resumed state`);
+                // Patient rejoining session - check if session is completed
+                if (existingSession.status === 'Completed') {
+                  // Session has ended, notify patient
+                  ws.send(JSON.stringify({
+                    type: "sessionEnded",
+                    sessionId: data.roomId,
+                    message: "This session has been completed by the clinician.",
+                    timestamp: new Date().toISOString()
+                  }));
+                  console.log(`[Rejoin] Patient attempted to rejoin completed session ${data.roomId} - sent sessionEnded`);
+                } else {
+                  // Patient rejoining active session - send sessionResumed to set sessionStarted flag
+                  ws.send(JSON.stringify({
+                    type: "sessionResumed",
+                    sessionInfo: {
+                      session_uuid: existingSession.session_uuid,
+                      session_name: existingSession.session_name,
+                      status: existingSession.status,
+                      clinician_id: existingSession.clinician_id,
+                      patient_id: existingSession.patient_id,
+                      is_resumed: true,
+                      ...existingSession,
+                      template_id: existingSession.template_id,
+                      template_name: existingSession.template.name,
+                      is_for_kids: existingSession.template.is_for_kids,
+                      patient_name: existingSession.patient ? `${existingSession.patient.first_name} ${existingSession.patient.last_name}` : 'Unknown'
+                    },
+                    templateItems: items,
+                    currentItem: roomCurrentItems[data.roomId],
+                    timestamp: new Date().toISOString()
+                  }));
+                  console.log(`[Rejoin] Patient rejoined session ${data.roomId} - sent session resumed state`);
+                }
               }
             } else {
               // New session - just send joinedRoom
@@ -2194,6 +2258,18 @@ wss.on("connection", async (ws, request) => {
               break;
             }
 
+            // Don't resume completed sessions
+            if (session.status === 'Completed') {
+              console.log('[Resume Session] Session is already completed, cannot resume');
+              ws.send(JSON.stringify({ 
+                type: "sessionEnded", 
+                sessionId: data.sessionId,
+                message: "This session has been completed and cannot be resumed.",
+                timestamp: new Date().toISOString()
+              }));
+              break;
+            }
+
             // Update session status
             await prisma.assessmentSession.update({
               where: { session_uuid: data.sessionId },
@@ -2242,8 +2318,27 @@ wss.on("connection", async (ws, request) => {
 
         case "endSession":
           try {
-            const session = await prisma.assessmentSession.updateMany({
-              where: { session_uuid: data.sessionId },
+            console.log(`[endSession] Attempting to end session ${data.sessionId}`);
+            
+            // First, get the session to ensure it exists
+            const existingSession = await prisma.assessmentSession.findFirst({
+              where: { session_uuid: data.sessionId }
+            });
+
+            if (!existingSession) {
+              console.error(`[endSession] Session not found: ${data.sessionId}`);
+              ws.send(JSON.stringify({
+                type: "error",
+                message: "Session not found"
+              }));
+              break;
+            }
+
+            console.log(`[endSession] Found session ${existingSession.session_id}, current status: ${existingSession.status}`);
+
+            // Update the session
+            const updatedSession = await prisma.assessmentSession.update({
+              where: { session_id: existingSession.session_id },
               data: { 
                 status: 'Completed',
                 end_time: new Date(),
@@ -2252,16 +2347,11 @@ wss.on("connection", async (ws, request) => {
               }
             });
 
-            // Get the session details for logging
-            const sessionDetails = await prisma.assessmentSession.findFirst({
-              where: { session_uuid: data.sessionId }
-            });
-
-            console.log(`[endSession] Session ${data.sessionId} marked as Completed`);
+            console.log(`[endSession] Session ${data.sessionId} (ID: ${updatedSession.session_id}) marked as Completed`);
 
             // Log session end activity
             await logSessionActivity(data.sessionId, 'session_ended', {
-              clinician_id: sessionDetails?.clinician_id,
+              clinician_id: updatedSession.clinician_id,
               end_time: new Date().toISOString(),
               has_notes: !!data.notes,
               has_summary: !!data.summary
@@ -2284,17 +2374,27 @@ wss.on("connection", async (ws, request) => {
             broadcastToRoom(data.sessionId, endMessage);
             broadcastToRoom(data.sessionId, completedMessage);
 
-            if (sessionDetails) {
-              await logActivity({
-                user_id: sessionDetails.clinician_id,
-                action: 'end_session',
-                entity_type: 'assessment_session',
-                entity_id: sessionDetails.session_id,
-                description: `Assessment session completed: ${data.sessionId}`
-              });
-            }
+            await logActivity({
+              user_id: updatedSession.clinician_id,
+              action: 'end_session',
+              entity_type: 'assessment_session',
+              entity_id: updatedSession.session_id,
+              description: `Assessment session completed: ${data.sessionId}`
+            });
+
+            // Send confirmation to the clinician
+            ws.send(JSON.stringify({
+              type: "sessionEndedConfirmation",
+              sessionId: data.sessionId,
+              status: "Completed"
+            }));
           } catch (error) {
-            console.error('Failed to end session:', error);
+            console.error('[endSession] Failed to end session:', error);
+            ws.send(JSON.stringify({
+              type: "error",
+              message: "Failed to end session",
+              error: error instanceof Error ? error.message : String(error)
+            }));
           }
           break;
 

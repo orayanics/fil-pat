@@ -20,6 +20,14 @@ export default function Session() {
   const isKidsMode = sessionInfo?.is_for_kids ?? false;
   const [showExitConfirm, setShowExitConfirm] = useState(false);
 
+  // Check if session is completed and redirect
+  useEffect(() => {
+    if (sessionInfo?.status === 'Completed') {
+      console.log('[Clinician Session] Session is completed, redirecting to dashboard');
+      router.push('/clinician-dashboard');
+    }
+  }, [sessionInfo?.status, router]);
+
   // Cleanup session state when component unmounts
   useEffect(() => {
     return () => {
