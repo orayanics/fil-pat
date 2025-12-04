@@ -46,6 +46,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(404).json({ error: "Session not found" });
     }
 
+    // If template is null (deleted), fetch items directly from responses
+    // This ensures we still have access to the historical session data
+    let sessionItems = session.template?.session_items || [];
+    
+    if (!session.template && session.responses.length > 0) {
+      // Template was deleted, but we can reconstruct items from responses
+      const uniqueItems = new Map();
+      session.responses.forEach(response => {
+        if (response.session_item && !uniqueItems.has(response.session_item.item_id)) {
+          uniqueItems.set(response.session_item.item_id, response.session_item);
+        }
+      });
+      sessionItems = Array.from(uniqueItems.values()).sort((a, b) => a.item_number - b.item_number);
+    }
+
     // Format the response data for PDF generation
     const formattedData = {
       session: {
@@ -77,13 +92,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         last_name: session.clinician.last_name,
         email: session.clinician.email,
       },
-      template: {
+      template: session.template ? {
         template_id: session.template.template_id,
         name: session.template.name,
         description: session.template.description,
         is_for_kids: session.template.is_for_kids,
+      } : {
+        template_id: null,
+        name: 'Deleted Template',
+        description: 'This template has been deleted',
+        is_for_kids: false,
       },
-      items: session.template.session_items.map((item) => {
+      items: sessionItems.map((item) => {
         const response = session.responses.find(
           (r) => r.session_item_id === item.item_id
         );
@@ -110,11 +130,29 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         };
       }),
       meta: {
-        totalItems: session.total_items || session.template.session_items.length,
-        completedItems: session.completed_items || session.responses.length,
-        completionPercentage: session.total_items > 0 
-          ? ((session.completed_items || session.responses.length) / session.total_items) * 100
-          : 0,
+        totalItems: session.total_items || sessionItems.length,
+        completedItems: (() => {
+          // Count items that have actual response data (not empty responses)
+          const actuallyCompleted = session.responses.filter(r => 
+            r.response_text || 
+            (r.consonants_correct !== null && r.consonants_correct !== undefined) ||
+            (r.vowels_correct !== null && r.vowels_correct !== undefined) ||
+            r.clinician_notes
+          ).length;
+          return actuallyCompleted;
+        })(),
+        completionPercentage: (() => {
+          const totalItems = session.total_items || sessionItems.length;
+          if (totalItems === 0) return 0;
+          // Count items that have actual response data
+          const actuallyCompleted = session.responses.filter(r => 
+            r.response_text || 
+            (r.consonants_correct !== null && r.consonants_correct !== undefined) ||
+            (r.vowels_correct !== null && r.vowels_correct !== undefined) ||
+            r.clinician_notes
+          ).length;
+          return (actuallyCompleted / totalItems) * 100;
+        })(),
       },
     };
 

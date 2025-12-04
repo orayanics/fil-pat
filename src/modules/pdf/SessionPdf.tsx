@@ -130,7 +130,18 @@ export default function SessionPdf() {
                     <Stop sx={{ fontSize: 16 }} /> <strong>End:</strong> {formData.sessionInfo.end_time ? new Date(formData.sessionInfo.end_time).toLocaleTimeString() : 'N/A'}
                   </Typography>
                   <Typography level="body-sm" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                    <Timer sx={{ fontSize: 16 }} /> <strong>Duration:</strong> {formData.sessionInfo.duration_minutes ? `${formData.sessionInfo.duration_minutes} minutes` : 'N/A'}
+                    <Timer sx={{ fontSize: 16 }} /> <strong>Duration:</strong> {(() => {
+                      if (formData.sessionInfo.start_time && formData.sessionInfo.end_time) {
+                        const startTime = new Date(formData.sessionInfo.start_time);
+                        const endTime = new Date(formData.sessionInfo.end_time);
+                        const durationMs = endTime.getTime() - startTime.getTime();
+                        const durationMinutes = Math.floor(durationMs / 60000);
+                        const hours = Math.floor(durationMinutes / 60);
+                        const minutes = durationMinutes % 60;
+                        return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
+                      }
+                      return formData.sessionInfo.duration_minutes ? `${formData.sessionInfo.duration_minutes} minutes` : 'N/A';
+                    })()}
                   </Typography>
                 </Box>
                 <Box sx={{ flex: 1 }}>

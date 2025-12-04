@@ -51,6 +51,7 @@ type Session = {
   session_date?: string;
   start_time?: string;
   end_time?: string;
+  duration_minutes?: number;
   status?: string;
   overall_score?: number;
   percentage_score?: number;
@@ -261,6 +262,19 @@ export default function PatientRecordPage() {
                             <Typography level="body-xs" sx={{ color: 'text.tertiary' }}>
                               {s.session_date ? new Date(s.session_date).toLocaleString() : 'Date unknown'}
                             </Typography>
+                            {s.start_time && s.end_time && (() => {
+                              const startTime = new Date(s.start_time);
+                              const endTime = new Date(s.end_time);
+                              const durationMs = endTime.getTime() - startTime.getTime();
+                              const durationMinutes = Math.floor(durationMs / 60000);
+                              const hours = Math.floor(durationMinutes / 60);
+                              const minutes = durationMinutes % 60;
+                              return (
+                                <Typography level="body-xs" sx={{ color: 'text.tertiary', fontWeight: 600 }}>
+                                  Duration: {hours > 0 ? `${hours}h ` : ''}{minutes}m
+                                </Typography>
+                              );
+                            })()}
                           </Box>
                           <Stack direction="row" spacing={1} sx={{ ml: 2 }}>
                             <Button variant="outlined" size="sm" component={Link} href={`/pdf/${s.session_uuid}`}>PDF</Button>
@@ -366,13 +380,41 @@ export default function PatientRecordPage() {
                               return null;
                             })()}
 
-                            {s.template && Array.isArray(s.template.session_items) && (
-                              <Box>
-                                <Typography level="body-sm" sx={{ fontWeight: 600, mb: 1 }}>
-                                  Assessment Items ({s.responses?.length || 0} of {s.template.session_items.length} completed)
-                                </Typography>
-                                <Stack spacing={1}>
-                                  {s.template.session_items.map((templateItem) => {
+                            {/* Assessment Items - show even if template is deleted by reconstructing from responses */}
+                            {(() => {
+                              // Get items from template if available, otherwise reconstruct from responses
+                              let items = s.template?.session_items || [];
+                              
+                              if (!s.template && s.responses && s.responses.length > 0) {
+                                // Template was deleted, reconstruct items from responses
+                                const uniqueItems = new Map();
+                                s.responses.forEach(response => {
+                                  if (response.session_item && !uniqueItems.has(response.session_item_id)) {
+                                    uniqueItems.set(response.session_item_id, {
+                                      item_id: response.session_item_id,
+                                      item_number: uniqueItems.size + 1,
+                                      question: (response as any).session_item?.question || 'N/A',
+                                      target_word: (response as any).session_item?.target_word,
+                                      sound: (response as any).session_item?.sound,
+                                      max_score: (response as any).session_item?.max_score || 1,
+                                      consonants_count: (response as any).session_item?.consonants_count,
+                                      vowels_count: (response as any).session_item?.vowels_count,
+                                    });
+                                  }
+                                });
+                                items = Array.from(uniqueItems.values()).sort((a, b) => a.item_number - b.item_number);
+                              }
+                              
+                              if (items.length === 0) return null;
+                              
+                              return (
+                                <Box>
+                                  <Typography level="body-sm" sx={{ fontWeight: 600, mb: 1 }}>
+                                    Assessment Items ({s.responses?.length || 0} of {items.length} completed)
+                                    {!s.template && ' (Template Deleted)'}
+                                  </Typography>
+                                  <Stack spacing={1}>
+                                    {items.map((templateItem) => {
                                     const response = s.responses?.find(r => r.session_item_id === templateItem.item_id);
                                     console.log(`[Patient Record] Item ${templateItem.item_number}:`, {
                                       item_id: templateItem.item_id,
@@ -465,7 +507,8 @@ export default function PatientRecordPage() {
                                   })}
                                 </Stack>
                               </Box>
-                            )}
+                            );
+                          })()}
                           </Stack>
                         </AccordionDetails>
                       </Accordion>

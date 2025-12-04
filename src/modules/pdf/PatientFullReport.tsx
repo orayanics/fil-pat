@@ -48,6 +48,10 @@ type PatientReportData = {
       score: number | null;
       max_score: number;
       time_taken_seconds: number | null;
+      consonants_correct: number | null;
+      vowels_correct: number | null;
+      consonants_count: number;
+      vowels_count: number;
       clinician_notes: string | null;
     }>;
   }>;
@@ -67,6 +71,7 @@ export default function PatientFullReport({ patientId, onClose }: PatientFullRep
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
+  const [startDate, setStartDate] = useState<string>('');
   const targetRef = useRef<HTMLDivElement>(null);
 
   const { toPDF } = usePDF({
@@ -138,17 +143,50 @@ export default function PatientFullReport({ patientId, onClose }: PatientFullRep
     );
   }
 
-  const completedSessions = data.sessions.filter(s => s.status === 'Completed').length;
-  const totalResponses = data.sessions.reduce((sum, s) => sum + s.items.length, 0);
-  const avgScore = data.sessions.length > 0
-    ? data.sessions.reduce((sum, s) => sum + (s.percentage_score || 0), 0) / data.sessions.length
-    : 0;
+  // Filter sessions by start date
+  const filteredSessions = startDate
+    ? data.sessions.filter(s => new Date(s.session_date) >= new Date(startDate))
+    : data.sessions;
+
+  const completedSessions = filteredSessions.filter(s => s.status === 'Completed').length;
+  const totalResponses = filteredSessions.reduce((sum, s) => sum + s.items.length, 0);
+  
+  // Calculate average score from actual item scores
+  const avgScore = (() => {
+    let totalScore = 0;
+    let totalMaxScore = 0;
+    
+    filteredSessions.forEach(session => {
+      session.items.forEach(item => {
+        if (item.score !== null) {
+          totalScore += item.score;
+          totalMaxScore += item.max_score;
+        }
+      });
+    });
+    
+    return totalMaxScore > 0 ? (totalScore / totalMaxScore) * 100 : 0;
+  })();
 
   return (
     <Box sx={{ maxWidth: 1400, mx: 'auto', p: 3 }}>
-      <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
         <Typography level="h3">Full Patient Report</Typography>
-        <Stack direction="row" spacing={2}>
+        <Stack direction="row" spacing={2} sx={{ alignItems: 'center' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Typography level="body-sm" sx={{ fontWeight: 600 }}>From:</Typography>
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              style={{
+                padding: '8px 12px',
+                borderRadius: '6px',
+                border: '1px solid #ccc',
+                fontSize: '14px'
+              }}
+            />
+          </Box>
           {onClose && (
             <Button variant="outlined" color="neutral" onClick={onClose}>
               Close
@@ -232,8 +270,8 @@ export default function PatientFullReport({ patientId, onClose }: PatientFullRep
           </Typography>
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
             <Sheet variant="soft" color="primary" sx={{ flex: 1, p: 3, borderRadius: 'md', textAlign: 'center' }}>
-              <Typography level="h3" sx={{ mb: 0.5 }}>{data.meta.total_sessions}</Typography>
-              <Typography level="body-sm">Total Sessions</Typography>
+              <Typography level="h3" sx={{ mb: 0.5 }}>{filteredSessions.length}</Typography>
+              <Typography level="body-sm">Total Sessions{startDate ? ' (Filtered)' : ''}</Typography>
             </Sheet>
             <Sheet variant="soft" color="success" sx={{ flex: 1, p: 3, borderRadius: 'md', textAlign: 'center' }}>
               <Typography level="h3" sx={{ mb: 0.5 }}>{completedSessions}</Typography>
@@ -257,8 +295,13 @@ export default function PatientFullReport({ patientId, onClose }: PatientFullRep
         <Divider sx={{ my: 4 }} />
 
         {/* Session Details */}
-        {data.sessions.map((session, sessionIndex) => (
-          <Box key={session.session_id} sx={{ mb: 4, pageBreakInside: 'avoid' }}>
+        {filteredSessions.length === 0 ? (
+          <Alert color="warning" variant="soft" sx={{ my: 3 }}>
+            No sessions found for the selected date range.
+          </Alert>
+        ) : (
+          filteredSessions.map((session, sessionIndex) => (
+            <Box key={session.session_id} sx={{ mb: 4, pageBreakInside: 'avoid' }}>
             <Box sx={{ mb: 2, bgcolor: 'primary.50', p: 2, borderRadius: 'md', borderLeft: '4px solid', borderColor: 'primary.500' }}>
               <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ alignItems: 'flex-start', justifyContent: 'space-between' }}>
                 <Box>
@@ -333,8 +376,9 @@ export default function PatientFullReport({ patientId, onClose }: PatientFullRep
                       <th style={{ width: '25%' }}>Question</th>
                       <th style={{ width: '20%' }}>Response</th>
                       <th style={{ width: '10%' }}>Score</th>
-                      <th style={{ width: '10%' }}>Time</th>
-                      <th style={{ width: '30%' }}>Clinician Notes</th>
+                      <th style={{ width: '10%' }}>Consonants</th>
+                      <th style={{ width: '10%' }}>Vowels</th>
+                      <th style={{ width: '20%' }}>Clinician Notes</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -361,8 +405,13 @@ export default function PatientFullReport({ patientId, onClose }: PatientFullRep
                           </Box>
                         </td>
                         <td>
-                          <Typography level="body-sm">
-                            {item.time_taken_seconds ? `${item.time_taken_seconds}s` : '—'}
+                          <Typography level="body-sm" sx={{ textAlign: 'center' }}>
+                            {item.consonants_correct !== null ? `${item.consonants_correct}/${item.consonants_count}` : '—'}
+                          </Typography>
+                        </td>
+                        <td>
+                          <Typography level="body-sm" sx={{ textAlign: 'center' }}>
+                            {item.vowels_correct !== null ? `${item.vowels_correct}/${item.vowels_count}` : '—'}
                           </Typography>
                         </td>
                         <td>
@@ -399,7 +448,7 @@ export default function PatientFullReport({ patientId, onClose }: PatientFullRep
               </Stack>
             )}
           </Box>
-        ))}
+        )))}
 
         {/* Footer */}
         <Box sx={{ mt: 4, pt: 3, borderTop: '1px solid', borderColor: 'divider', textAlign: 'center' }}>

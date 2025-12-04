@@ -120,13 +120,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           `;
         }
 
-        // Update sessions using this template: mark as completed and remove template reference
-        // This preserves all session data including responses and items for historical records
+        // Update ONLY non-completed sessions using this template: mark as completed and remove template reference
+        // Completed sessions just get their template_id cleared but keep their status
         await prisma.$executeRaw`
           UPDATE assessment_sessions 
-          SET status = 'Completed',
-              end_time = datetime('now'),
-              post_session_notes = 'Session ended due to template deletion. All session data has been preserved.',
+          SET status = CASE 
+                WHEN status != 'Completed' THEN 'Completed'
+                ELSE status
+              END,
+              end_time = CASE 
+                WHEN status != 'Completed' AND end_time IS NULL THEN datetime('now')
+                ELSE end_time
+              END,
+              post_session_notes = CASE 
+                WHEN status != 'Completed' THEN 'Session ended due to template deletion. All session data has been preserved.'
+                ELSE post_session_notes
+              END,
               template_id = NULL,
               updated_at = datetime('now')
           WHERE template_id = ${templateId}
