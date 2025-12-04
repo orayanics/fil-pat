@@ -347,7 +347,7 @@ export default function PatientRecordPage() {
                                             );
                                           })}
                                         </Stack>
-                                        {s.clinician_left_count && s.clinician_left_count > 0 && (
+                                        {s.clinician_left_count > 0 && (
                                           <Typography level="body-xs" sx={{ mt: 1, color: 'text.tertiary', fontStyle: 'italic' }}>
                                             Total pauses: {s.clinician_left_count} 
                                             {s.total_pause_duration && s.total_pause_duration > 0 && 

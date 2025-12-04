@@ -267,7 +267,12 @@ async function createOrUpdateAssessmentSession(data: AssessmentSessionInput) {
       // Get default template
       const template = await prisma.assessmentTemplate.findFirst({
         where: { is_default: true },
-        include: { session_items: true },
+        include: { 
+          session_items: {
+            where: { is_active: true },
+            orderBy: { display_order: 'asc' }
+          }
+        },
       });
 
       if (!template) {
@@ -754,7 +759,15 @@ const joinRoom = async (ws: WebSocket, roomId: string, userData?: UserData) => {
           }
         });
 
-        const template = await prisma.assessmentTemplate.findFirst({ where: { is_default: true }, include: { session_items: true } });
+        const template = await prisma.assessmentTemplate.findFirst({ 
+          where: { is_default: true }, 
+          include: { 
+            session_items: {
+              where: { is_active: true },
+              orderBy: { display_order: 'asc' }
+            }
+          } 
+        });
         if (!template) {
           console.warn(`Auto-create session: no default template found for room ${roomId}, skipping auto-creation.`);
           return;

@@ -101,19 +101,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       // If force delete, end all sessions using this template
       if (forceDelete && sessionsCount > 0) {
-        // First update sessions to mark them as cancelled
+        // Update sessions to mark them as completed and remove template reference
         await prisma.assessmentSession.updateMany({
           where: { template_id: templateId },
           data: { 
-            status: 'Cancelled',
+            status: 'Completed',
             end_time: new Date(),
-            post_session_notes: 'Session ended due to template deletion'
+            post_session_notes: 'Session ended due to template deletion',
+            template_id: null // Remove template reference to preserve session data
           }
-        });
-        
-        // Delete all sessions using this template (cascades to responses, reports, etc.)
-        await prisma.assessmentSession.deleteMany({
-          where: { template_id: templateId }
         });
       }
 

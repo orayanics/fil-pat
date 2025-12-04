@@ -29,6 +29,7 @@ import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import ChildCareIcon from '@mui/icons-material/ChildCare';
 import AssignmentIcon from '@mui/icons-material/Assignment';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
+import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import AlertSuccess from '@/components/Alert/AlertSuccess';
 import AlertError from '@/components/Alert/AlertError';
 
@@ -160,6 +161,16 @@ export default function TemplatesClient({ templates }: TemplatesClientProps) {
             startDecorator={<ArrowBackIcon />}
           >
             Back
+          </Button>
+          <Button
+            component={Link}
+            href="/clinician-dashboard/templates/seed-templates"
+            size="sm"
+            variant="soft"
+            color="success"
+            startDecorator={<CloudUploadIcon />}
+          >
+            Seed Templates
           </Button>
           <Button
             component={Link}

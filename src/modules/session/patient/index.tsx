@@ -312,7 +312,9 @@ export default function Index() {
                           ? currentItem.image_url 
                           : currentItem.image_url.startsWith('http') 
                             ? currentItem.image_url 
-                            : `data:image/png;base64,${currentItem.image_url}`)
+                            : currentItem.image_url.startsWith('/')
+                              ? currentItem.image_url  // Local Next.js path - use directly
+                              : `data:image/png;base64,${currentItem.image_url}`)
                       : 'https://placehold.co/800x520/png?text=Filipino+PAT'
                   }
                   alt={currentItem.question || 'Session image'}
