@@ -45,12 +45,14 @@ export default function SessionCard({ isKidsMode = false }: SessionCardProps) {
         sx={{width: "100%", borderRadius: "8px"}}
       >
         {(() => {
-          const imageData = (item.image as string) || (item.image_url as string) || "https://placehold.co/600x400/png?text=Filipino+PAT";
+          const imageData = (item.image as string) || (item.image_url as string) || "/images/default-filpat.svg";
           const imageSource = imageData.startsWith('data:') 
             ? imageData 
             : imageData.startsWith('http') 
               ? imageData 
-              : `data:image/png;base64,${imageData}`;
+              : imageData.startsWith('/')
+                ? imageData  // Local Next.js path - use directly
+                : `data:image/png;base64,${imageData}`;
           const isDataUri = imageSource.startsWith('data:');
           
           return isDataUri ? (

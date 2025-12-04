@@ -1,0 +1,11 @@
+<svg width="600" height="400" xmlns="http://www.w3.org/2000/svg">
+  <rect width="600" height="400" fill="#e8f4f8"/>
+  <text x="300" y="180" font-family="Arial, sans-serif" font-size="28" font-weight="bold" fill="#0066cc" text-anchor="middle">
+    Filipino PAT
+  </text>
+  <text x="300" y="220" font-family="Arial, sans-serif" font-size="18" fill="#666" text-anchor="middle">
+    Image Loading...
+  </text>
+  <circle cx="300" cy="280" r="30" fill="none" stroke="#0066cc" stroke-width="3"/>
+  <path d="M 300 260 L 300 280 L 315 280" fill="none" stroke="#0066cc" stroke-width="3" stroke-linecap="round"/>
+</svg>

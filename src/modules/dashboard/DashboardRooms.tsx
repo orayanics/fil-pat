@@ -49,6 +49,7 @@ export default function DashboardRooms({ qrGenerateQrData }: DashboardRoomsProps
   const [qrData, setQrData] = useState<string | null>(null);
   const [qrLoading, setQrLoading] = useState(false);
   const [qrLink, setQrLink] = useState<string | null>(null);
+  const [copySuccess, setCopySuccess] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string>('');
   const [templates, setTemplates] = useState<Array<{ template_id: number; name: string }>>([]);
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
@@ -594,7 +595,10 @@ export default function DashboardRooms({ qrGenerateQrData }: DashboardRoomsProps
       </Stack>
 
       {/* QR Modal */}
-      <Modal open={qrModalOpen} onClose={() => setQrModalOpen(false)}>
+      <Modal open={qrModalOpen} onClose={() => {
+        setQrModalOpen(false);
+        setCopySuccess(false);
+      }}>
         <ModalDialog
           sx={{
             maxWidth: 500,
@@ -654,12 +658,14 @@ export default function DashboardRooms({ qrGenerateQrData }: DashboardRoomsProps
                   <Button
                     size="sm"
                     variant="outlined"
-                    color="neutral"
+                    color={copySuccess ? "success" : "neutral"}
                     fullWidth
                     onClick={() => {
                       try {
                         if (navigator && navigator.clipboard && navigator.clipboard.writeText) {
                           navigator.clipboard.writeText(String(qrLink));
+                          setCopySuccess(true);
+                          setTimeout(() => setCopySuccess(false), 2000);
                         } else {
                           const ta = document.createElement('textarea');
                           ta.value = String(qrLink);
@@ -667,13 +673,15 @@ export default function DashboardRooms({ qrGenerateQrData }: DashboardRoomsProps
                           ta.select();
                           document.execCommand('copy');
                           document.body.removeChild(ta);
+                          setCopySuccess(true);
+                          setTimeout(() => setCopySuccess(false), 2000);
                         }
                       } catch (err) {
                         console.error('Copy failed:', err);
                       }
                     }}
                   >
-                    Copy Link
+                    {copySuccess ? "✓ Copied!" : "Copy Link"}
                   </Button>
                   <Button
                     size="sm"

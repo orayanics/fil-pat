@@ -13,8 +13,14 @@ export default function SessionImage() {
 
   // Handle base64 data URIs and regular URLs
   const imageSource = url && url.trim() !== ''
-    ? (url.startsWith('data:') ? url : url.startsWith('http') ? url : `data:image/png;base64,${url}`)
-    : "https://placehold.co/600x400/png?text=Filipino+PAT";
+    ? (url.startsWith('data:') 
+        ? url 
+        : url.startsWith('http') 
+          ? url 
+          : url.startsWith('/') 
+            ? url  // Local Next.js path - use directly
+            : `data:image/png;base64,${url}`)  // Assume base64
+    : "/images/default-filpat.svg";
 
   console.log('SessionImage - final url:', imageSource);
   

@@ -2,24 +2,43 @@ import { NextApiRequest, NextApiResponse } from 'next';
 import { verifyToken } from '@/lib/auth/auth';
 import { prisma } from '@/lib/database/client';
 
-// Complete 76-item Filipino Phonological Assessment Data
+// Import the complete 77-item assessment data from seedTemplates
+// This ensures consistency between CLI seeding and API seeding
 const completeAssessmentItems = [
   // Group: m
-  { item_number: 1, question: "Ito ang ginagamit natin para makakita", sound: "SIWI /m/", ipa_key: "/ma.ta/", consonant_group: "m", consonants_count: 2, vowels_count: 2, image_url: "https://i.pinimg.com/736x/00/0c/56/000c56b811f1dcd108c9280a80adbf97.jpg", expected_response: "mata", difficulty_level: "Easy", max_score: 1.0 },
-  { item_number: 2, question: "Ano ginagawa ng bata?", sound: "SFWF /m/", ipa_key: "/ʔi.nɔm/", consonant_group: "m", consonants_count: 3, vowels_count: 2, image_url: "https://i.pinimg.com/736x/e9/a1/4c/e9a14c4c6100e4c1aa467b74f67cb57e.jpg", expected_response: "inom", difficulty_level: "Easy", max_score: 1.0 },
-  { item_number: 3, question: "Ginagamit natin ito panghawak", sound: "SIWW /m/", ipa_key: "/ka.maj/", consonant_group: "m", consonants_count: 2, vowels_count: 2, image_url: "https://i.pinimg.com/736x/b5/29/0a/b5290a1c4b3c8e2a5f8d7e9c1a2b3c4d.jpg", expected_response: "kamay", difficulty_level: "Easy", max_score: 1.0 },
-  { item_number: 4, question: "Ito ay isang insekto na may walong paa at gumagawa ng web", sound: "SFWW /m/", ipa_key: "/ga.gam.ba/", consonant_group: "m", consonants_count: 4, vowels_count: 3, image_url: "https://i.pinimg.com/736x/c8/d4/3e/c8d43e5f7a9b1c2d3e4f5a6b7c8d9e0f.jpg", expected_response: "gagamba", difficulty_level: "Medium", max_score: 1.0 },
+  { item_number: 1, question: "Ito ang ginagamit natin para makakita", sound: "SIWI /m/", ipa_key: "/ma.ta/", consonant_group: "m", consonants_count: 2, vowels_count: 2, image_url: "/filpat-pictureplates/Item 1 n 27.jpg", expected_response: "mata", difficulty_level: "Easy", max_score: 1.0 },
+  { item_number: 2, question: "Ano ginagawa ng bata?", sound: "SFWF /m/", ipa_key: "/ʔi.nɔm/", consonant_group: "m", consonants_count: 3, vowels_count: 2, image_url: "/filpat-pictureplates/Item 2.jpg", expected_response: "inom", difficulty_level: "Easy", max_score: 1.0 },
+  { item_number: 3, question: "Ginagamit natin ito panghawak", sound: "SIWW /m/", ipa_key: "/ka.maj/", consonant_group: "m", consonants_count: 2, vowels_count: 2, image_url: "/filpat-pictureplates/Item 3 n 33.jpg", expected_response: "kamay", difficulty_level: "Easy", max_score: 1.0 },
+  { item_number: 4, question: "Ito ay isang insekto na may walong paa at gumagawa ng web", sound: "SFWW /m/", ipa_key: "/ga.gam.ba/", consonant_group: "m", consonants_count: 4, vowels_count: 3, image_url: "/filpat-pictureplates/Item 4.jpg", expected_response: "gagamba", difficulty_level: "Medium", max_score: 1.0 },
   
   // Group: b
-  { item_number: 5, question: "Ito ay bilog na tumatalbog", sound: "SIWI /b/", ipa_key: "/bɔ.la/", consonant_group: "b", consonants_count: 2, vowels_count: 2, image_url: "https://i.pinimg.com/736x/a1/b2/c3/a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6.jpg", expected_response: "bola", difficulty_level: "Easy", max_score: 1.0 },
-  { item_number: 6, question: "Ito ang ginagamit sa katawan pangligo", sound: "SIWW /b/ SIWI /s/", ipa_key: "/sa.bɔn/", consonant_group: "b", consonants_count: 3, vowels_count: 2, image_url: "https://i.pinimg.com/736x/d7/e8/f9/d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2.jpg", expected_response: "sabon", difficulty_level: "Easy", max_score: 1.0 },
-  { item_number: 7, question: "Anong parte ng katawan ito?", sound: "SFWW & SFWF /b/", ipa_key: "/dib.dib/", consonant_group: "b", consonants_count: 4, vowels_count: 2, image_url: "https://i.pinimg.com/736x/b3/c4/d5/b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8.jpg", expected_response: "dibdib", difficulty_level: "Medium", max_score: 1.0 },
+  { item_number: 5, question: "Ito ay bilog na tumatalbog", sound: "SIWI /b/", ipa_key: "/bɔ.la/", consonant_group: "b", consonants_count: 2, vowels_count: 2, image_url: "/filpat-pictureplates/Item 5.jpg", expected_response: "bola", difficulty_level: "Easy", max_score: 1.0 },
+  { item_number: 6, question: "Ito ang ginagamit sa katawan pangligo", sound: "SIWW /b/ SIWI /s/", ipa_key: "/sa.bɔn/", consonant_group: "b", consonants_count: 3, vowels_count: 2, image_url: "/filpat-pictureplates/Item 6 n 48.jpg", expected_response: "sabon", difficulty_level: "Easy", max_score: 1.0 },
+  { item_number: 7, question: "Anong parte ng katawan ito?", sound: "SFWW & SFWF /b/", ipa_key: "/dib.dib/", consonant_group: "b", consonants_count: 4, vowels_count: 2, image_url: "/filpat-pictureplates/Item 7.jpg", expected_response: "dibdib", difficulty_level: "Medium", max_score: 1.0 },
   
   // Group: p
-  { item_number: 8, question: "Ito ay nagsasabi ng 'meow'", sound: "SIWI /p/", ipa_key: "/pu.saʔ/", consonant_group: "p", consonants_count: 2, vowels_count: 2, image_url: "https://i.pinimg.com/736x/e5/f6/a7/e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0.jpg", expected_response: "pusa", difficulty_level: "Easy", max_score: 1.0 },
-  { item_number: 9, question: "Ito ay makikita sa langit na kulay white", sound: "SFWF /p/", ipa_key: "/ʔu.lap/", consonant_group: "p", consonants_count: 2, vowels_count: 2, image_url: "https://i.pinimg.com/736x/c1/d2/e3/c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6.jpg", expected_response: "ulap", difficulty_level: "Easy", max_score: 1.0 },
-  { item_number: 10, question: "Ito ay ginagamit pang drawing", sound: "SIWI /l/ SIWW /p/", ipa_key: "/la.pis/", consonant_group: "p", consonants_count: 3, vowels_count: 2, image_url: "https://i.pinimg.com/736x/f7/a8/b9/f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2.jpg", expected_response: "lapis", difficulty_level: "Easy", max_score: 1.0 },
-  { item_number: 11, question: "Ito ay maliit na cake na may icing sa ibabaw", sound: "SFWW /p/", ipa_key: "/kʌp.kɛɪk/", consonant_group: "p", consonants_count: 3, vowels_count: 2, image_url: "https://i.pinimg.com/736x/a9/b0/c1/a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4.jpg", expected_response: "cupcake", difficulty_level: "Medium", max_score: 1.0 },
+  { item_number: 8, question: "Ito ay nagsasabi ng \"meow\"", sound: "SIWI /p/", ipa_key: "/pu.saʔ/", consonant_group: "p", consonants_count: 3, vowels_count: 2, image_url: "/filpat-pictureplates/Item 8.jpg", expected_response: "pusa", difficulty_level: "Easy", max_score: 1.0 },
+  { item_number: 9, question: "Ito ay makikita sa langit na kulay white", sound: "SFWF /p/", ipa_key: "/ʔu.lap/", consonant_group: "p", consonants_count: 3, vowels_count: 2, image_url: "/filpat-pictureplates/Item 9.jpg", expected_response: "ulap", difficulty_level: "Easy", max_score: 1.0 },
+  { item_number: 10, question: "Ito ay ginagamit pang drawing", sound: "SIWI /l/ SIWW /p/", ipa_key: "/la.pis/", consonant_group: "p", consonants_count: 3, vowels_count: 2, image_url: "/filpat-pictureplates/Item 10.jpg", expected_response: "lapis", difficulty_level: "Easy", max_score: 1.0 },
+  { item_number: 11, question: "Ito ay maliit na cake na may icing sa ibabaw", sound: "SFWW /p/", ipa_key: "/kʌp.kɛɪk/", consonant_group: "p", consonants_count: 4, vowels_count: 2, image_url: "/filpat-pictureplates/Item 11.jpg", expected_response: "cupcake", difficulty_level: "Medium", max_score: 1.0 },
+  
+  // Group: n
+  { item_number: 12, question: "Ito ang tatay. Ito ay ang _____", sound: "SIWI /n/", ipa_key: "/na.naj/", consonant_group: "n", consonants_count: 2, vowels_count: 2, image_url: "/filpat-pictureplates/Item 12.jpg", expected_response: "nanay", difficulty_level: "Easy", max_score: 1.0 },
+  { item_number: 13, question: "Ito ang kinakain natin kasama ng ulam", sound: "SFWF /n/", ipa_key: "/ka.nin/", consonant_group: "n", consonants_count: 3, vowels_count: 2, image_url: "/filpat-pictureplates/Item 13.jpg", expected_response: "kanin", difficulty_level: "Easy", max_score: 1.0 },
+  { item_number: 14, question: "Ito ay matangkad at matigas na halaman", sound: "SIWW /n/", ipa_key: "/pu.nɔʔ/", consonant_group: "n", consonants_count: 3, vowels_count: 2, image_url: "/filpat-pictureplates/Item 14.jpg", expected_response: "puno", difficulty_level: "Easy", max_score: 1.0 },
+  { item_number: 15, question: "Ito ay noodles na may sahog tulad ng karne at gulay", sound: "SFWW /n/", ipa_key: "/pan.sit/", consonant_group: "n", consonants_count: 4, vowels_count: 2, image_url: "/filpat-pictureplates/Item 15.jpg", expected_response: "pancit", difficulty_level: "Medium", max_score: 1.0 },
+  
+  // Group: d
+  { item_number: 16, question: "Ito ay ang tawag sa taong gumagamot sayo tuwing may sakit ka", sound: "SIWI /d/ & SFWF /r/", ipa_key: "/dɔk.tɔr/", consonant_group: "d", consonants_count: 4, vowels_count: 2, image_url: "/filpat-pictureplates/Item 16 n 53.jpg", expected_response: "doktor", difficulty_level: "Medium", max_score: 1.0 },
+  { item_number: 17, question: "Parte ng katawan na nakasandal sa upuan", sound: "SFWF /d/ & SIWW /k/", ipa_key: "/lɪ.kɔd/", consonant_group: "d", consonants_count: 3, vowels_count: 2, image_url: "/filpat-pictureplates/Item 17 n 35.jpg", expected_response: "likod", difficulty_level: "Medium", max_score: 1.0 },
+  { item_number: 18, question: "Ito ay isang uri ng hayop na naninirahan sa dagat", sound: "SIWW /d/", ipa_key: "/is.daʔ/", consonant_group: "d", consonants_count: 3, vowels_count: 2, image_url: "/filpat-pictureplates/Item 18.jpg", expected_response: "isda", difficulty_level: "Easy", max_score: 1.0 },
+  
+  // Group: w
+  { item_number: 19, question: "Ginagamit sa panglinis", sound: "SIWI /w/", ipa_key: "/wa.lis/", consonant_group: "w", consonants_count: 3, vowels_count: 2, image_url: "/filpat-pictureplates/Item 19.jpg", expected_response: "walis", difficulty_level: "Easy", max_score: 1.0 },
+  { item_number: 20, question: "Kapag mainit, tumutulo ang ___?", sound: "SIWW /w/", ipa_key: "/pa.wɪs/", consonant_group: "w", consonants_count: 3, vowels_count: 2, image_url: "/filpat-pictureplates/Item 20.jpg", expected_response: "pawis", difficulty_level: "Easy", max_score: 1.0 },
+  
+  // Group: j
+  { item_number: 21, question: "Pwede rito manood ng mga videos", sound: "SIWI /j/", ipa_key: "/ju.tub/", consonant_group: "j", consonants_count: 3, vowels_count: 2, image_url: "/filpat-pictureplates/Item 21.jpg", expected_response: "youtube", difficulty_level: "Easy", max_score: 1.0 },
   
   // Group: n
   { item_number: 12, question: "Ito ang tatay. Ito ay ang _____", sound: "SIWI /n/", ipa_key: "/na.naj/", consonant_group: "n", consonants_count: 2, vowels_count: 2, image_url: "https://i.pinimg.com/736x/d3/e4/f5/d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8.jpg", expected_response: "nanay", difficulty_level: "Easy", max_score: 1.0 },
@@ -143,10 +162,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     console.log(`Creating comprehensive templates for clinician: ${user.clinician_id}`);
 
-    // Create Standard Template (76 items)
+    // Create Standard Template (77 items)
     const standardTemplate = await prisma.assessmentTemplate.create({
       data: {
-        name: 'Complete Filipino Phonological Assessment (76 Items)',
+        name: 'Complete Filipino Phonological Assessment (77 Items)',
         description: 'Comprehensive assessment covering all Filipino phonemes: 21 consonants, 5 vowels, and 5 diphthongs. Standardized for clinical use.',
         is_default: true,
         is_for_kids: false,
@@ -156,7 +175,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     console.log(`Created standard template: ID ${standardTemplate.template_id}`);
 
-    // Insert all 76 items for standard template
+    // Insert all 77 items for standard template
     for (const item of completeAssessmentItems) {
       await prisma.sessionItem.create({
         data: {
@@ -167,12 +186,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
 
-    console.log('Added all 76 items to standard template');
+    console.log('Added all 77 items to standard template');
 
-    // Create Kids Template (76 items)
+    // Create Kids Template (77 items)
     const kidsTemplate = await prisma.assessmentTemplate.create({
       data: {
-        name: 'Filipino Phonological Assessment - Kids Mode (76 Items)',
+        name: 'Filipino Phonological Assessment - Kids Mode (77 Items)',
         description: 'Complete phonological assessment with child-friendly interface and engaging visual themes. Same comprehensive coverage as standard template.',
         is_default: false,
         is_for_kids: true,
@@ -182,7 +201,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     console.log(`Created kids template: ID ${kidsTemplate.template_id}`);
 
-    // Insert all 76 items for kids template
+    // Insert all 77 items for kids template
     for (const item of completeAssessmentItems) {
       await prisma.sessionItem.create({
         data: {
@@ -193,7 +212,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
 
-    console.log('Added all 76 items to kids template');
+    console.log('Added all 77 items to kids template');
 
     return res.status(200).json({
       success: true,
@@ -202,12 +221,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         standard: {
           id: standardTemplate.template_id,
           name: standardTemplate.name,
-          items: 76
+          items: 77
         },
         kids: {
           id: kidsTemplate.template_id,
           name: kidsTemplate.name,
-          items: 76
+          items: 77
         }
       }
     });

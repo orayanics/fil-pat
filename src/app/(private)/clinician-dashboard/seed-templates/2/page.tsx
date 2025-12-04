@@ -36,13 +36,13 @@ export default function SeedComprehensiveTemplatesPage() {
         </Typography>
         
         <Typography level="body-md" sx={{ mb: 3 }}>
-          This will create two comprehensive Filipino Phonological Assessment templates with 76 items each:
+          This will create two comprehensive Filipino Phonological Assessment templates with 77 items each:
         </Typography>
 
         <Stack spacing={2} sx={{ mb: 3, pl: 2 }}>
           <Box>
             <Typography level="title-md" sx={{ mb: 0.5 }}>
-              Complete Filipino Phonological Assessment (76 Items)
+              Complete Filipino Phonological Assessment (77 Items)
             </Typography>
             <Typography level="body-sm" sx={{ color: 'text.secondary' }}>
               Comprehensive assessment covering all Filipino phonemes: 21 consonants, 5 vowels, and 5 diphthongs. 
@@ -52,7 +52,7 @@ export default function SeedComprehensiveTemplatesPage() {
 
           <Box>
             <Typography level="title-md" sx={{ mb: 0.5 }}>
-              Filipino Phonological Assessment - Kids Mode (76 Items)
+              Filipino Phonological Assessment - Kids Mode (77 Items)
             </Typography>
             <Typography level="body-sm" sx={{ color: 'text.secondary' }}>
               Complete phonological assessment with child-friendly interface and engaging visual themes. 
@@ -63,7 +63,7 @@ export default function SeedComprehensiveTemplatesPage() {
 
         <Alert sx={{ mb: 3 }} color="warning">
           <Typography level="body-sm">
-            ⚠️ This will create 152 items in total (76 items × 2 templates). 
+            ⚠️ This will create 154 items in total (77 items × 2 templates). 
             The comprehensive templates provide complete phonological assessment coverage and replace the need for basic 20-item templates.
           </Typography>
         </Alert>
@@ -75,7 +75,7 @@ export default function SeedComprehensiveTemplatesPage() {
           disabled={loading}
           fullWidth
         >
-          {loading ? 'Creating Comprehensive Templates...' : 'Create Comprehensive Templates (76 Items Each)'}
+          {loading ? 'Creating Comprehensive Templates...' : 'Create Comprehensive Templates (77 Items Each)'}
         </Button>
 
         {result && (
@@ -96,7 +96,7 @@ export default function SeedComprehensiveTemplatesPage() {
                       ✅ Kids Template: ID {result.templates.kids.id} ({result.templates.kids.items} items)
                     </Typography>
                     <Typography level="body-sm" sx={{ mt: 1, fontWeight: 'bold' }}>
-                      Total Items Created: 152
+                      Total Items Created: 154
                     </Typography>
                   </Stack>
                 )}
