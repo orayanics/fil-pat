@@ -12,6 +12,24 @@ export const spaceExplorerTheme = {
     secondary: '#FFD93D',    // Sunny yellow
     accent: '#FF6B6B',       // Coral red
     background: '#FFF5E6',   // Light peach
+    backgroundPattern: `
+      radial-gradient(circle at 15% 20%, rgba(255, 217, 61, 0.3) 0%, transparent 25%),
+      radial-gradient(circle at 85% 80%, rgba(168, 230, 207, 0.3) 0%, transparent 25%),
+      radial-gradient(circle at 50% 50%, rgba(255, 107, 107, 0.15) 0%, transparent 20%),
+      radial-gradient(3px 3px at 20% 30%, white, transparent),
+      radial-gradient(2px 2px at 60% 70%, white, transparent),
+      radial-gradient(2px 2px at 50% 50%, white, transparent),
+      radial-gradient(1px 1px at 80% 10%, white, transparent),
+      radial-gradient(3px 3px at 90% 60%, white, transparent),
+      radial-gradient(2px 2px at 33% 75%, white, transparent),
+      radial-gradient(2px 2px at 70% 35%, white, transparent),
+      radial-gradient(1px 1px at 15% 90%, white, transparent),
+      radial-gradient(2px 2px at 45% 15%, white, transparent),
+      radial-gradient(1px 1px at 88% 45%, white, transparent),
+      radial-gradient(2px 2px at 25% 60%, white, transparent),
+      linear-gradient(to bottom, #FFF5E6 0%, #FFE5D9 100%)
+    `,
+    backgroundSize: 'auto, auto, auto, 200% 200%, 200% 200%, 300% 300%, 250% 250%, 280% 280%, 290% 290%, 310% 310%, 220% 220%, 260% 260%, 240% 240%, 270% 270%',
     surface: '#FFFFFF',
     text: {
       primary: '#2D3436',    // Dark gray

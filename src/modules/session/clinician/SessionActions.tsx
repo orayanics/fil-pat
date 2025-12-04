@@ -38,6 +38,7 @@ export default function SessionActions() {
   const [qrData, setQrData] = useState<string | null>(null);
   const [qrLink, setQrLink] = useState<string | null>(null);
   const [qrLoading, setQrLoading] = useState(false);
+  const [copyLinkSuccess, setCopyLinkSuccess] = useState(false);
   
   // Save feedback state
   const [showSaveAlert, setShowSaveAlert] = useState(false);
@@ -81,30 +82,44 @@ export default function SessionActions() {
     if (!qrLink) return;
     
     try {
-      // Check if clipboard API is available (not available in SSR)
-      if (typeof window !== 'undefined' && typeof navigator !== 'undefined' && navigator.clipboard && navigator.clipboard.writeText) {
-        await navigator.clipboard.writeText(qrLink);
+      const textToCopy = qrLink;
+      
+      // Method 1: Modern Clipboard API
+      if (navigator?.clipboard?.writeText) {
+        await navigator.clipboard.writeText(textToCopy);
+        setCopyLinkSuccess(true);
+        setTimeout(() => setCopyLinkSuccess(false), 2000);
         console.log('Link copied to clipboard');
+        return;
+      }
+      
+      // Method 2: Create temporary input element (more reliable than textarea)
+      const input = document.createElement('input');
+      input.value = textToCopy;
+      input.style.position = 'absolute';
+      input.style.opacity = '0';
+      input.style.left = '-9999px';
+      document.body.appendChild(input);
+      
+      // Select the text
+      input.select();
+      input.setSelectionRange(0, 99999); // For mobile devices
+      
+      // Copy the text
+      const successful = document.execCommand('copy');
+      document.body.removeChild(input);
+      
+      if (successful) {
+        setCopyLinkSuccess(true);
+        setTimeout(() => setCopyLinkSuccess(false), 2000);
+        console.log('Link copied using fallback method');
       } else {
-        // Fallback for older browsers or SSR
-        const textArea = document.createElement('textarea');
-        textArea.value = qrLink;
-        textArea.style.position = 'fixed';
-        textArea.style.left = '-999999px';
-        textArea.style.top = '-999999px';
-        document.body.appendChild(textArea);
-        textArea.focus();
-        textArea.select();
-        try {
-          document.execCommand('copy');
-          console.log('Link copied using fallback method');
-        } catch (err) {
-          console.error('Fallback copy failed:', err);
-        }
-        document.body.removeChild(textArea);
+        throw new Error('execCommand returned false');
       }
     } catch (err) {
       console.error('Failed to copy:', err);
+      // Show the link in a prompt as final fallback
+      window.prompt('Copy this link manually:', qrLink);
     }
   };
 
@@ -379,11 +394,13 @@ export default function SessionActions() {
                   <Button
                     size="sm"
                     variant="soft"
+                    color={copyLinkSuccess ? "success" : "primary"}
                     fullWidth
                     sx={{ mt: 1 }}
                     onClick={copyToClipboard}
+                    startDecorator={copyLinkSuccess ? <CheckCircle /> : undefined}
                   >
-                    Copy Link
+                    {copyLinkSuccess ? "✓ Copied!" : "Copy Link"}
                   </Button>
                 </Box>
               )}

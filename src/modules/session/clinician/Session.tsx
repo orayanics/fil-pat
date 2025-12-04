@@ -10,6 +10,7 @@ import SessionCard from "./SessionCard";
 import SessionForm from "./SessionForm";
 import SessionActions from "./SessionActions";
 import SessionStatus from "./SessionStatus";
+import ThemeSelector from "./ThemeSelector";
 // import PatientLinkCard from "./PatientLinkCard"; // Unused component
 import { useSocketStore } from "@/context/socketStore";
 
@@ -118,6 +119,9 @@ export default function Session() {
 
       {/* Session Status Alert */}
       <SessionStatus />
+
+      {/* Theme Selector (only shows in kids mode) */}
+      <ThemeSelector />
 
       {/* Session Controls - Full Width Redesign */}
       <SessionActions />

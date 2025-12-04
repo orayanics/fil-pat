@@ -26,20 +26,42 @@ export default function PatientLinkCard() {
 
   const handleCopy = async () => {
     try {
-      if (navigator && navigator.clipboard && navigator.clipboard.writeText) {
-        await navigator.clipboard.writeText(patientUrl);
-      } else {
-        const ta = document.createElement('textarea');
-        ta.value = patientUrl;
-        document.body.appendChild(ta);
-        ta.select();
-        document.execCommand('copy');
-        document.body.removeChild(ta);
+      const textToCopy = patientUrl;
+      
+      // Method 1: Modern Clipboard API
+      if (navigator?.clipboard?.writeText) {
+        await navigator.clipboard.writeText(textToCopy);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+        return;
       }
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      
+      // Method 2: Create temporary input element (more reliable than textarea)
+      const input = document.createElement('input');
+      input.value = textToCopy;
+      input.style.position = 'absolute';
+      input.style.opacity = '0';
+      input.style.left = '-9999px';
+      document.body.appendChild(input);
+      
+      // Select the text
+      input.select();
+      input.setSelectionRange(0, 99999); // For mobile devices
+      
+      // Copy the text
+      const successful = document.execCommand('copy');
+      document.body.removeChild(input);
+      
+      if (successful) {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      } else {
+        throw new Error('execCommand returned false');
+      }
     } catch (err) {
       console.error('Failed to copy:', err);
+      // Show the link in a prompt as final fallback
+      window.prompt('Copy this link manually:', patientUrl);
     }
   };
 
@@ -290,9 +312,19 @@ export default function PatientLinkCard() {
                 />
               </Box>
             )}
-            <Typography level="body-xs" sx={{ color: 'text.tertiary', textAlign: 'center' }}>
+            <Typography level="body-xs" sx={{ color: 'text.tertiary', textAlign: 'center', wordBreak: 'break-all' }}>
               {patientUrl}
             </Typography>
+            <Button
+              size="sm"
+              variant="soft"
+              color={copied ? "success" : "primary"}
+              fullWidth
+              onClick={handleCopy}
+              startDecorator={copied ? <CheckCircle /> : <ContentCopy />}
+            >
+              {copied ? "✓ Copied!" : "Copy Link"}
+            </Button>
           </Stack>
         </ModalDialog>
       </Modal>

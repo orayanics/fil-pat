@@ -12,6 +12,14 @@ export const jungleAdventureTheme = {
     secondary: '#FFD93D',    // Bright yellow
     accent: '#FF6B6B',       // Coral red
     background: '#FFF9E6',   // Cream/light yellow background
+    backgroundPattern: `
+      radial-gradient(circle at 20% 80%, rgba(107, 203, 119, 0.25) 0%, transparent 50%),
+      radial-gradient(circle at 80% 20%, rgba(255, 217, 61, 0.25) 0%, transparent 50%),
+      radial-gradient(circle at 40% 40%, rgba(76, 175, 80, 0.15) 0%, transparent 30%),
+      radial-gradient(circle at 60% 90%, rgba(107, 203, 119, 0.2) 0%, transparent 40%),
+      radial-gradient(circle at 10% 50%, rgba(255, 217, 61, 0.18) 0%, transparent 35%),
+      linear-gradient(to bottom, #FFF9E6 0%, #FFF5DC 100%)
+    `,
     surface: '#FFFFFF',
     text: {
       primary: '#2D3436',    // Dark gray

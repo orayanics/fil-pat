@@ -403,6 +403,10 @@ export default function SocketProvider({ children }: { children: ReactNode }) {
               });
             }
             break;
+          case 'changeKidsTheme':
+            console.log('SocketProvider - received changeKidsTheme:', data.theme);
+            useSocketStore.getState().setKidsTheme(data.theme);
+            break;
           case 'joinedRoom':
             setHasJoinedRoom(true);
             setRoomParticipants(data.participantCount || 1);

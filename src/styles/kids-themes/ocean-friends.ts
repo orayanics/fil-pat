@@ -12,6 +12,32 @@ export const oceanFriendsTheme = {
     secondary: '#A8E6CF',    // Mint green
     accent: '#FFD93D',       // Sunny yellow
     background: '#F0F8FF',   // Alice blue (very light)
+    backgroundPattern: `
+      repeating-linear-gradient(
+        0deg,
+        rgba(78, 205, 196, 0.12) 0px,
+        rgba(78, 205, 196, 0.12) 3px,
+        transparent 3px,
+        transparent 40px
+      ),
+      repeating-linear-gradient(
+        90deg,
+        rgba(168, 230, 207, 0.12) 0px,
+        rgba(168, 230, 207, 0.12) 3px,
+        transparent 3px,
+        transparent 40px
+      ),
+      repeating-linear-gradient(
+        45deg,
+        transparent 0px,
+        transparent 60px,
+        rgba(78, 205, 196, 0.08) 60px,
+        rgba(78, 205, 196, 0.08) 61px
+      ),
+      radial-gradient(circle at 20% 30%, rgba(78, 205, 196, 0.15) 0%, transparent 50%),
+      radial-gradient(circle at 80% 70%, rgba(149, 225, 211, 0.15) 0%, transparent 50%),
+      linear-gradient(to bottom, #F0F8FF 0%, #E6F3FF 100%)
+    `,
     surface: '#FFFFFF',
     text: {
       primary: '#2D3436',    // Dark gray

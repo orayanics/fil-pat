@@ -129,6 +129,7 @@ export interface SocketState {
   patientConnected: boolean;
   patientList: Record<string, { patientId: string; patientName: string }>;
   isKidsMode: boolean;
+  kidsTheme: 'jungle' | 'ocean' | 'space' | null;
   sessionStarted: boolean;
   sessionPaused: boolean;
   // persisting flag while saving session responses
@@ -156,6 +157,7 @@ export interface SocketState {
   setPatientList: (list: Record<string, { patientId: string; patientName: string }>) => void;
   setPatientConnected: (connected: boolean) => void;
   setIsKidsMode: (mode: boolean) => void;
+  setKidsTheme: (theme: 'jungle' | 'ocean' | 'space' | null) => void;
   setSessionStarted: (started: boolean) => void;
   setSessionPaused: (paused: boolean) => void;
   setQrData: (data: { qrData: string; sessionId: string } | null) => void;
@@ -186,6 +188,7 @@ export const useSocketStore = create<SocketState>((set) => ({
   patientConnected: false,
   patientList: {},
   isKidsMode: false,
+  kidsTheme: null,
   sessionStarted: false,
   sessionPaused: false,
   qrData: null,
@@ -210,6 +213,7 @@ export const useSocketStore = create<SocketState>((set) => ({
   setPatientConnected: (connected: boolean) => set({ patientConnected: connected }),
   setPatientList: (list: Record<string, { patientId: string; patientName: string }>) => set({ patientList: list }),
   setIsKidsMode: (mode: boolean) => set({ isKidsMode: mode }),
+  setKidsTheme: (theme: 'jungle' | 'ocean' | 'space' | null) => set({ kidsTheme: theme }),
   setSessionStarted: (started: boolean) => set({ sessionStarted: started }),
   setSessionPaused: (paused: boolean) => set({ sessionPaused: paused }),
   setQrData: (data: { qrData: string; sessionId: string } | null) => set({ qrData: data }),

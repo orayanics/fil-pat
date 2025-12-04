@@ -1707,6 +1707,24 @@ wss.on("connection", async (ws, request) => {
           }
           break;
         }
+        case 'changeKidsTheme': {
+          try {
+            const roomId = data.sessionId;
+            const theme = data.theme; // 'jungle', 'ocean', or 'space'
+            
+            // Broadcast theme change to all participants in the room
+            const msg = JSON.stringify({
+              type: 'changeKidsTheme',
+              sessionId: roomId,
+              theme,
+              timestamp: new Date().toISOString()
+            });
+            broadcastToRoom(roomId, msg);
+          } catch (err) {
+            console.error('Failed to change kids theme:', err);
+          }
+          break;
+        }
         case "joinRoom":
           // Enforce 1:1 patient binding inside joinRoom
           await joinRoom(ws, data.roomId, {

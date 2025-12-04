@@ -19,6 +19,7 @@ import {
   FormControl,
   FormLabel,
 } from "@mui/joy";
+import { CheckCircle, ContentCopy } from "@mui/icons-material";
 import getLocalIp from "@/utils/getLocalIp";
 import QRCodeLib from "qrcode";
 import { useSocketContext } from "@/context/SocketProvider";
@@ -649,26 +650,47 @@ export default function DashboardRooms({ qrGenerateQrData }: DashboardRoomsProps
                     variant="outlined"
                     color={copySuccess ? "success" : "neutral"}
                     fullWidth
-                    onClick={() => {
+                    onClick={async () => {
                       try {
-                        if (navigator && navigator.clipboard && navigator.clipboard.writeText) {
-                          navigator.clipboard.writeText(String(qrLink));
+                        const textToCopy = String(qrLink);
+                        
+                        // Method 1: Modern Clipboard API
+                        if (navigator?.clipboard?.writeText) {
+                          await navigator.clipboard.writeText(textToCopy);
+                          setCopySuccess(true);
+                          setTimeout(() => setCopySuccess(false), 2000);
+                          return;
+                        }
+                        
+                        // Method 2: Create temporary input element
+                        const input = document.createElement('input');
+                        input.value = textToCopy;
+                        input.style.position = 'absolute';
+                        input.style.opacity = '0';
+                        input.style.left = '-9999px';
+                        document.body.appendChild(input);
+                        
+                        // Select the text
+                        input.select();
+                        input.setSelectionRange(0, 99999); // For mobile devices
+                        
+                        // Copy the text
+                        const successful = document.execCommand('copy');
+                        document.body.removeChild(input);
+                        
+                        if (successful) {
                           setCopySuccess(true);
                           setTimeout(() => setCopySuccess(false), 2000);
                         } else {
-                          const ta = document.createElement('textarea');
-                          ta.value = String(qrLink);
-                          document.body.appendChild(ta);
-                          ta.select();
-                          document.execCommand('copy');
-                          document.body.removeChild(ta);
-                          setCopySuccess(true);
-                          setTimeout(() => setCopySuccess(false), 2000);
+                          throw new Error('execCommand returned false');
                         }
                       } catch (err) {
                         console.error('Copy failed:', err);
+                        // Show the link in a prompt as final fallback
+                        window.prompt('Copy this link manually:', String(qrLink));
                       }
                     }}
+                    startDecorator={copySuccess ? <CheckCircle /> : <ContentCopy />}
                   >
                     {copySuccess ? "✓ Copied!" : "Copy Link"}
                   </Button>

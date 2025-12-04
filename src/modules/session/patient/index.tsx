@@ -92,6 +92,7 @@ export default function Index() {
   const sessionStarted = useSocketStore((s) => s.sessionStarted);
   const sessionInfo = useSocketStore((s) => s.sessionInfo);
   const currentItem = useSocketStore((s) => s.currentItem);
+  const kidsThemeSelection = useSocketStore((s) => s.kidsTheme);
   const [sessionEnded, setSessionEnded] = useState(false);
   const [noClinicianPresent, setNoClinicianPresent] = useState(false);
   const [itemKey, setItemKey] = useState(0); // Key to trigger re-animation on item change
@@ -103,11 +104,20 @@ export default function Index() {
   // Check if this is a kids template
   const isKidsMode = sessionInfo?.is_for_kids ?? false;
   
-  // Randomly select a theme for this session (memoized so it stays consistent)
+  // Get theme based on clinician selection or default to jungle
   const theme = useMemo(() => {
     if (!isKidsMode) return null;
-    return kidsThemes[Math.floor(Math.random() * kidsThemes.length)];
-  }, [isKidsMode, sessionId]); // Re-pick theme per session
+    
+    console.log('[Patient] Current kidsThemeSelection:', kidsThemeSelection);
+    
+    // If clinician selected a theme, use it
+    if (kidsThemeSelection === 'jungle') return jungleAdventureTheme;
+    if (kidsThemeSelection === 'ocean') return oceanFriendsTheme;
+    if (kidsThemeSelection === 'space') return spaceExplorerTheme;
+    
+    // Default to jungle theme if no selection
+    return jungleAdventureTheme;
+  }, [isKidsMode, kidsThemeSelection]);
 
   // Check if session has started before (localStorage persistence)
   useEffect(() => {
@@ -172,6 +182,12 @@ export default function Index() {
           console.log('[Patient] Target word toggle:', data.show, data.targetWord);
           setShowTargetWord(data.show);
           setTargetWord(data.targetWord || '');
+        }
+        
+        // Handle theme change
+        if (data.type === 'changeKidsTheme') {
+          console.log('[Patient] Theme changed:', data.theme);
+          // Theme will update automatically via the store
         }
         
         // Handle session completed - close WebSocket to prevent reconnection
@@ -277,7 +293,9 @@ export default function Index() {
 
   // If no clinician present, show waiting message
   if (noClinicianPresent) {
-    const bgColor = isKidsMode && theme ? theme.colors.background : '#F8F9FA';
+    const bgStyle = isKidsMode && theme 
+      ? { background: theme.colors.backgroundPattern || theme.colors.background }
+      : { background: '#F8F9FA' };
     
     return (
       <Box
@@ -289,7 +307,7 @@ export default function Index() {
           minHeight: '100dvh',
           gap: 3,
           p: 3,
-          background: bgColor,
+          ...bgStyle,
           animation: `${fadeIn} 0.6s ease-out`,
         }}
       >
@@ -349,7 +367,9 @@ export default function Index() {
   
   // If session has ended, show completion message
   if (sessionEnded) {
-    const bgColor = isKidsMode && theme ? theme.colors.background : '#F8F9FA';
+    const bgStyle = isKidsMode && theme 
+      ? { background: theme.colors.backgroundPattern || theme.colors.background }
+      : { background: '#F8F9FA' };
     
     return (
       <Box
@@ -361,7 +381,7 @@ export default function Index() {
           minHeight: '100dvh',
           gap: 3,
           p: 3,
-          background: bgColor,
+          ...bgStyle,
           animation: `${fadeIn} 0.6s ease-out`,
         }}
       >
@@ -421,7 +441,9 @@ export default function Index() {
   
   // If session started show the item (image + question)
   if (sessionStarted && currentItem) {
-    const bgColor = isKidsMode && theme ? theme.colors.background : '#F8F9FA';
+    const bgStyle = isKidsMode && theme 
+      ? { background: theme.colors.backgroundPattern || theme.colors.background }
+      : { background: '#F8F9FA' };
     
     return (
       <>
@@ -429,7 +451,7 @@ export default function Index() {
           key={itemKey}
           sx={{
             minHeight: '100dvh',
-            background: bgColor,
+            ...bgStyle,
             py: 4,
             px: { xs: 2, md: 4 },
             position: 'relative',
@@ -622,8 +644,8 @@ export default function Index() {
                       fontSize: { xs: '2rem', md: '2.5rem' },
                       fontWeight: 800,
                       lineHeight: 1.3,
-                      background: isKidsMode
-                        ? 'linear-gradient(135deg, #FF6B6B 0%, #FFD93D 50%, #6BCB77 100%)'
+                      background: isKidsMode && theme
+                        ? `linear-gradient(135deg, ${theme.colors.primary} 0%, ${theme.colors.secondary} 50%, ${theme.colors.accent} 100%)`
                         : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                       backgroundClip: 'text',
                       WebkitBackgroundClip: 'text',
@@ -641,8 +663,8 @@ export default function Index() {
                     sx={{
                       p: 3,
                       borderRadius: 3,
-                      background: isKidsMode
-                        ? 'linear-gradient(135deg, #FFD93D 0%, #FFC93D 100%)'
+                      background: isKidsMode && theme
+                        ? `linear-gradient(135deg, ${theme.colors.secondary} 0%, ${theme.colors.accent} 100%)`
                         : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                       textAlign: 'center',
                       boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
@@ -653,7 +675,7 @@ export default function Index() {
                       sx={{
                         fontSize: '0.9rem',
                         fontWeight: 600,
-                        color: isKidsMode ? '#8B4513' : 'white',
+                        color: isKidsMode && theme ? theme.colors.text : 'white',
                         opacity: 0.9,
                         mb: 0.5,
                         textTransform: 'uppercase',
@@ -666,7 +688,7 @@ export default function Index() {
                       sx={{
                         fontSize: { xs: '2rem', md: '2.5rem' },
                         fontWeight: 900,
-                        color: isKidsMode ? '#2D3436' : 'white',
+                        color: isKidsMode && theme ? theme.colors.text : 'white',
                         textShadow: isKidsMode ? 'none' : '0 2px 8px rgba(0,0,0,0.2)',
                       }}
                     >
@@ -708,7 +730,9 @@ export default function Index() {
   }
 
   // Lobby view while waiting for clinician to assign template and start
-  const bgColor = isKidsMode && theme ? theme.colors.background : '#F8F9FA';
+  const bgStyle = isKidsMode && theme 
+    ? { background: theme.colors.backgroundPattern || theme.colors.background }
+    : { background: '#F8F9FA' };
   
   return (
     <>
@@ -721,7 +745,7 @@ export default function Index() {
           minHeight: '100dvh',
           gap: 3,
           p: 3,
-          background: bgColor,
+          ...bgStyle,
           animation: `${fadeIn} 0.6s ease-out`,
         }}
       >
