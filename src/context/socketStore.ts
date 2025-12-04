@@ -24,6 +24,8 @@ export interface SessionInfo {
   is_practice_session: boolean;
   is_for_kids?: boolean;
   patientUrl?: string;
+  patient_id?: number;
+  is_resumed?: boolean;
 }
 
 export interface PatientInfo {
@@ -40,6 +42,7 @@ export interface AssessmentItem {
   item_id: number;
   item_number: number;
   question: string;
+  target_word?: string;
   sound?: string;
   ipa_key?: string;
   consonant_group?: string;

@@ -7,14 +7,23 @@ declare global {
 
 // Determine database path based on environment
 const getDatabasePath = () => {
-  if (process.env.NODE_ENV === 'production') {
-    // In production (Electron), store database in app data directory
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { app } = require('electron');
-    const userData = app.getPath('userData');
-    return join(userData, 'filpat.db');
+  // Check if running in Electron environment (not during Next.js build)
+  const isElectron = process.versions && process.versions.electron;
+  
+  if (process.env.NODE_ENV === 'production' && isElectron) {
+    // In production Electron runtime, store database in app data directory
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const { app } = require('electron');
+      const userData = app.getPath('userData');
+      return join(userData, 'filpat.db');
+    } catch (e) {
+      // Fallback if electron not available
+      console.warn('Failed to get Electron app path, using fallback');
+      return join(process.cwd(), 'prisma', 'filpat.db');
+    }
   }
-  // In development, use project root
+  // In development or Next.js build, use project root
   return join(process.cwd(), 'prisma', 'filpat.db');
 };
 

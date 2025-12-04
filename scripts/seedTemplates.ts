@@ -14,8 +14,8 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 // Helper function to extract target word from expected_response
-function extractTargetWord(item: any): string {
-  return item.expected_response || item.question.split(' ')[0];
+function extractTargetWord(item: { expected_response?: string; question?: string }): string {
+  return item.expected_response || item.question?.split(' ')[0] || '';
 }
 
 // Complete 77-item Filipino Phonological Assessment Data (Fil-PAT)
@@ -257,7 +257,7 @@ async function main() {
         target_word: extractTargetWord(item),
         template_id: standardTemplate.template_id,
         display_order: item.item_number,
-      } as any
+      }
     });
   }
   console.log('   ✅ Added all 77 items');
@@ -287,7 +287,7 @@ async function main() {
         target_word: extractTargetWord(item),
         template_id: kidsTemplate.template_id,
         display_order: item.item_number,
-      } as any
+      }
     });
   }
   console.log('   ✅ Added all 77 items');

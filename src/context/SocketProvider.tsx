@@ -1,7 +1,7 @@
 "use client";
 import { createContext, useContext, useEffect, useCallback, useState, ReactNode } from "react";
 import { useSocketStore } from "./socketStore";
-import type { WebSocketMessage, SessionSettings, SessionResponsePayload, SocketContextType, PatientInfo, AssessmentItem } from "./socketStore";
+import type { WebSocketMessage, SessionSettings, SessionResponsePayload, SocketContextType, PatientInfo, AssessmentItem, SessionInfo } from "./socketStore";
 import { useParams, useRouter } from "next/navigation";
 import useWebSocket from "@/lib/useWebSocket";
 
@@ -305,10 +305,10 @@ export default function SocketProvider({ children }: { children: ReactNode }) {
               console.log('[SocketProvider] Updating sessionInfo with template:', updatedInfo);
               setSessionInfo(updatedInfo);
             } else if (templateName && sessionId) {
-              const newInfo = {
+              const newInfo: SessionInfo = {
                 session_id: 0,
                 session_uuid: sessionId,
-                session_mode: 'Standard',
+                session_mode: 'Standard' as const,
                 status: 'Scheduled',
                 total_items: totalItems,
                 completed_items: 0,
@@ -712,6 +712,7 @@ export default function SocketProvider({ children }: { children: ReactNode }) {
                 session_mode: data.session_mode || 'Standard',
                 total_items: data.total_items || 0,
                 completed_items: data.completed_items || 0,
+                template_name: data.template_name || 'Unknown',
                 is_practice_session: false
               });
               setSessionStarted(false);

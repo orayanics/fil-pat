@@ -177,7 +177,7 @@ export default function KidsThemePreview({
                   }}
                 >
                   <Typography sx={{ fontWeight: 600 }}>
-                    {getFeedback('correct').icon} {getFeedback('correct').message}
+                    {getFeedback('correct').icon} {(getFeedback('correct') as any).message}
                   </Typography>
                 </Box>
 
@@ -190,7 +190,7 @@ export default function KidsThemePreview({
                   }}
                 >
                   <Typography sx={{ fontWeight: 600 }}>
-                    {getFeedback('incorrect').icon} {getFeedback('incorrect').message}
+                    {getFeedback('incorrect').icon} {(getFeedback('incorrect') as any).message}
                   </Typography>
                 </Box>
 
@@ -203,7 +203,7 @@ export default function KidsThemePreview({
                   }}
                 >
                   <Typography sx={{ fontWeight: 600 }}>
-                    {getFeedback('encouragement').icon} {getFeedback('encouragement').messages[0]}
+                    {getFeedback('encouragement').icon} {(getFeedback('encouragement') as any).messages?.[0]}
                   </Typography>
                 </Box>
               </Stack>

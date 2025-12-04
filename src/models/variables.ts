@@ -2,6 +2,7 @@
 export type ExportedSessionData = {
   session: {
     [key: string]: {
+      target_word?: string;
       ipa_key: string;
       group: string;
       childResponse: string;

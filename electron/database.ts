@@ -1,7 +1,20 @@
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcrypt";
+import { app } from "electron";
+import * as path from "path";
 
-const prisma = new PrismaClient();
+// Configure Prisma for packaged app
+const isDev = !app.isPackaged;
+const prismaConfig = isDev ? {} : {
+  // In production, point to unpacked Prisma binaries
+  __internal: {
+    engine: {
+      binaryPath: path.join(process.resourcesPath, 'app.asar.unpacked', 'node_modules', '.prisma', 'client')
+    }
+  }
+};
+
+const prisma = new PrismaClient(prismaConfig as any);
 
 // --- Register a new clinician ---
 export async function registerClinician(username: string, password: string) {

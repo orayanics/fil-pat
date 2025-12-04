@@ -362,7 +362,7 @@ export default function PatientRecordPage() {
                                             );
                                           })}
                                         </Stack>
-                                        {s.clinician_left_count > 0 && (
+                                        {s.clinician_left_count != null && s.clinician_left_count > 0 && (
                                           <Typography level="body-xs" sx={{ mt: 1, color: 'text.tertiary', fontStyle: 'italic' }}>
                                             Total pauses: {s.clinician_left_count} 
                                             {s.total_pause_duration && s.total_pause_duration > 0 && 
@@ -389,7 +389,7 @@ export default function PatientRecordPage() {
                                 // Template was deleted, reconstruct items from responses
                                 const uniqueItems = new Map();
                                 s.responses.forEach(response => {
-                                  if (response.session_item && !uniqueItems.has(response.session_item_id)) {
+                                  if (response.session_item_id && !uniqueItems.has(response.session_item_id)) {
                                     uniqueItems.set(response.session_item_id, {
                                       item_id: response.session_item_id,
                                       item_number: uniqueItems.size + 1,

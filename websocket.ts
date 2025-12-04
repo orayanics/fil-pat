@@ -428,6 +428,11 @@ async function saveSessionResponse(
       return;
     }
 
+    if (!session.template) {
+      console.warn(`Template not found for session: ${sessionId}`);
+      return;
+    }
+
     // Find the actual session_item_id from the template based on item_number
     const sessionItem = session.template.session_items.find(
       (item) => item.item_number === itemData.item
@@ -1742,14 +1747,9 @@ wss.on("connection", async (ws, request) => {
                   ws.send(JSON.stringify({
                     type: "sessionResumed",
                     sessionInfo: {
-                      session_uuid: existingSession.session_uuid,
-                      session_name: existingSession.session_name,
-                      status: existingSession.status,
-                      clinician_id: existingSession.clinician_id,
-                      patient_id: existingSession.patient_id,
-                      is_resumed: true,
                       ...existingSession,
-                      template_id: existingSession.template_id,
+                      session_name: existingSession.session_name,
+                      is_resumed: true,
                       template_name: existingSession.template.name,
                       is_for_kids: existingSession.template.is_for_kids,
                       patient_name: existingSession.patient ? `${existingSession.patient.first_name} ${existingSession.patient.last_name}` : 'Unknown'

@@ -17,7 +17,7 @@ import { jungleAdventureTheme } from './jungle-adventure';
 import { spaceExplorerTheme } from './space-explorer';
 import { oceanFriendsTheme } from './ocean-friends';
 
-export type KidsTheme = typeof jungleAdventureTheme;
+export type KidsTheme = typeof jungleAdventureTheme | typeof spaceExplorerTheme | typeof oceanFriendsTheme;
 
 export const kidsThemes = {
   'jungle-adventure': jungleAdventureTheme,
@@ -31,7 +31,7 @@ export const kidsThemesList = [
   jungleAdventureTheme,
   spaceExplorerTheme,
   oceanFriendsTheme,
-];
+] as const;
 
 // Helper function to get a theme by ID
 export const getKidsTheme = (themeId: KidsThemeId): KidsTheme => {

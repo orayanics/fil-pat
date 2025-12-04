@@ -261,14 +261,12 @@ export default function PatientNamePrompt({ open, onClose, onConfirm }: PatientN
                         handleSelectExistingPatient(value);
                       }
                     }}
-                    renderOption={(props, option) => {
-                      const { key, ...otherProps } = props;
-                      return (
-                        <AutocompleteOption key={key} {...otherProps}>
-                          <Stack>
-                            <Typography level="title-sm">
-                              {option.first_name} {option.last_name}
-                            </Typography>
+                    renderOption={(props, option) => (
+                      <AutocompleteOption {...props}>
+                        <Stack>
+                          <Typography level="title-sm">
+                            {option.first_name} {option.last_name}
+                          </Typography>
                             <Stack direction="row" spacing={1} sx={{ mt: 0.5 }}>
                               {option.age && (
                                 <Chip size="sm" variant="soft">
@@ -286,8 +284,7 @@ export default function PatientNamePrompt({ open, onClose, onConfirm }: PatientN
                             </Stack>
                           </Stack>
                         </AutocompleteOption>
-                      );
-                    }}
+                    )}
                     endDecorator={
                       loadingPatients ? (
                         <CircularProgress size="sm" sx={{ bgcolor: 'background.surface' }} />

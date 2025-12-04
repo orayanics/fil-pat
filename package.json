@@ -1,6 +1,8 @@
 {
   "name": "fil-path",
   "version": "0.1.0",
+  "description": "Filipino Phonological Assessment Tool - Speech-language pathology assessment application",
+  "author": "UST College of Rehabilitation Sciences",
   "private": true,
   "scripts": {
     "dev": "nodemon",
@@ -82,6 +84,10 @@
     "appId": "com.ust.filpat",
     "productName": "FIL-PAT",
     "asar": true,
+    "asarUnpack": [
+      "node_modules/@prisma/**/*",
+      "node_modules/.prisma/**/*"
+    ],
     "files": [
       ".next/**/*",
       "dist/**/*",
@@ -93,7 +99,9 @@
       "package.json",
       "!node_modules/**/*",
       "node_modules/@prisma/**/*",
-      "node_modules/.prisma/**/*"
+      "node_modules/.prisma/**/*",
+      "!node_modules/@img/sharp-darwin-*/**/*",
+      "!node_modules/@img/sharp-linux-*/**/*"
     ],
     "extraResources": [
       {
@@ -117,8 +125,7 @@
       "main": "dist-electron/main.js"
     },
     "directories": {
-      "output": "release",
-      "buildResources": "assets"
+      "output": "release"
     },
     "win": {
       "target": [
@@ -131,11 +138,11 @@
           "arch": ["x64"]
         }
       ],
-      "icon": "assets/icons/icon.ico",
       "artifactName": "${productName}-${version}-${arch}-${os}.${ext}",
-      "publisherName": "UST College of Rehabilitation Sciences",
       "requestedExecutionLevel": "requireAdministrator",
-      "forceCodeSigning": false
+      "forceCodeSigning": false,
+      "signAndEditExecutable": false,
+      "verifyUpdateCodeSignature": false
     },
     "nsis": {
       "oneClick": false,

@@ -57,18 +57,18 @@ export const useKidsTheme = (options: UseKidsThemeOptions = {}) => {
   };
 
   // Get animation style with optional disable
-  const getAnimation = (animationKey: keyof KidsTheme['animations']) => {
+  const getAnimation = (animationKey: string) => {
     if (!animationsEnabled) return {};
     
-    const animation = theme.animations[animationKey];
+    const animation = (theme.animations as any)[animationKey];
     return {
       animation: animation?.animation || 'none',
     };
   };
 
   // Get component style
-  const getComponentStyle = (componentKey: keyof KidsTheme['components']) => {
-    return theme.components[componentKey];
+  const getComponentStyle = (componentKey: string) => {
+    return (theme.components as any)[componentKey];
   };
 
   // Get themed button style
@@ -98,8 +98,8 @@ export const useKidsTheme = (options: UseKidsThemeOptions = {}) => {
   };
 
   // Get character emoji
-  const getCharacter = (type: keyof KidsTheme['characters']) => {
-    return theme.characters[type];
+  const getCharacter = (type: string) => {
+    return (theme.characters as any)[type];
   };
 
   // Get random decorative emoji

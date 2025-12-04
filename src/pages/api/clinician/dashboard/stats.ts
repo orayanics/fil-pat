@@ -63,13 +63,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       },
     });
 
-    // Get recent sessions (last 5) - only sessions with active patients
-    const recentSessions = await prisma.assessmentSession.findMany({
+    // Get recent sessions (last 5) - filter sessions with templates
+    const allRecentSessions = await prisma.assessmentSession.findMany({
       where: { 
         clinician_id: clinicianId,
-        patient_id: { not: null }, // Must have a patient assigned
+        patient_id: { not: null },
         patient: {
-          is_active: true // Patient must be active
+          is_active: true
         }
       },
       include: {
@@ -81,17 +81,34 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             age: true,
           },
         },
-        template: {
-          select: {
-            template_id: true,
-            name: true,
-            is_for_kids: true,
-          },
-        },
       },
       orderBy: { created_at: 'desc' },
-      take: 5,
+      take: 10, // Get more to filter
     });
+
+    // Filter sessions with valid templates and manually fetch template data
+    const recentSessions = await Promise.all(
+      allRecentSessions
+        .filter(s => s.template_id !== null)
+        .slice(0, 5)
+        .map(async (session) => {
+          const template = session.template_id 
+            ? await prisma.assessmentTemplate.findUnique({
+                where: { template_id: session.template_id },
+                select: {
+                  template_id: true,
+                  name: true,
+                  is_for_kids: true,
+                },
+              })
+            : null;
+          
+          return {
+            ...session,
+            template,
+          };
+        })
+    );
 
     // Delete orphaned sessions (no patient or inactive patient)
     try {

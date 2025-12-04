@@ -45,6 +45,7 @@ interface RecentSession {
   session_uuid: string;
   status: string;
   created_at: string;
+  activity_log?: string;
   patient: {
     patient_id: number;
     name: string;

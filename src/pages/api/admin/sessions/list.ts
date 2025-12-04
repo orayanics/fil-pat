@@ -10,6 +10,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     // Verify admin
     const token = req.cookies["auth_token"];
+    if (!token) {
+      return res.status(401).json({ error: "No token provided" });
+    }
     const userData = await verifyToken(token);
     if (!userData || !userData.is_admin) {
       return res.status(403).json({ error: "Unauthorized" });
