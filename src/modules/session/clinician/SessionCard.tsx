@@ -81,6 +81,12 @@ export default function SessionCard({ isKidsMode = false }: SessionCardProps) {
           {item.question}
         </Typography>
 
+        {item.target_word && (
+          <Typography level="body-md" sx={{ mb: 0.5, color: 'primary.500', fontWeight: 600 }}>
+            Target Word: {item.target_word}
+          </Typography>
+        )}
+
         <Typography level="body-md" sx={{mb: 1}}>
           {item.sound}
         </Typography>

@@ -11,6 +11,7 @@ import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline";
 
 type TemplateItem = {
   question: string;
+  target_word: string;
   sound: string;
   ipa_key: string;
   group: string;
@@ -22,6 +23,7 @@ type TemplateItem = {
 
 type SessionItemInput = {
   question?: string;
+  target_word?: string;
   sound?: string;
   ipa_key?: string;
   consonant_group?: string;
@@ -60,6 +62,7 @@ export default function TemplateMaker({ template }: TemplateMakerProps) {
   const [items, setItems] = useState<TemplateItem[]>(
     template?.session_items?.length ? template.session_items.map((it: SessionItemInput) => ({
       question: it.question || '',
+      target_word: it.target_word || '',
       sound: it.sound || '',
       ipa_key: it.ipa_key || '',
       group: it.consonant_group || '',
@@ -67,7 +70,7 @@ export default function TemplateMaker({ template }: TemplateMakerProps) {
       vowel: it.vowels_count ?? 0,
       image: it.image_url || '',
       item_number: it.item_number
-    })) : [{ question: "", sound: "", ipa_key: "", group: "", consonants: 0, vowel: 0, image: "" }]
+    })) : [{ question: "", target_word: "", sound: "", ipa_key: "", group: "", consonants: 0, vowel: 0, image: "" }]
   );
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -118,7 +121,7 @@ export default function TemplateMaker({ template }: TemplateMakerProps) {
           setIsForKids(false);
           setDifficulty("Standard");
           setEstimatedDuration("");
-          setItems([{ question: "", sound: "", ipa_key: "", group: "", consonants: 0, vowel: 0, image: "" }]);
+          setItems([{ question: "", target_word: "", sound: "", ipa_key: "", group: "", consonants: 0, vowel: 0, image: "" }]);
         } else {
           // small delay then redirect to templates list so the user sees update message
           setTimeout(() => router.push('/clinician-dashboard/templates'), 900);
@@ -148,7 +151,7 @@ export default function TemplateMaker({ template }: TemplateMakerProps) {
     reader.readAsDataURL(file);
   };
   const handleAddItem = () => {
-    setItems(items => [...items, { question: "", sound: "", ipa_key: "", group: "", consonants: 0, vowel: 0, image: "" }]);
+    setItems(items => [...items, { question: "", target_word: "", sound: "", ipa_key: "", group: "", consonants: 0, vowel: 0, image: "" }]);
   };
   const handleRemoveItem = (idx: number) => {
     setItems(items => items.length > 1 ? items.filter((_, i) => i !== idx) : items);
@@ -221,6 +224,12 @@ export default function TemplateMaker({ template }: TemplateMakerProps) {
                     <Typography level="title-md" sx={{ mb: 0.5, fontWeight: 600 }}>Question / Prompt *</Typography>
                     <Tooltip title="The main question or instruction the patient will see" arrow placement="top">
                       <Textarea required minRows={2} placeholder="e.g., Sabihin ang 'pusa'" value={item.question} onChange={e => handleItemChange(idx, "question", e.target.value)} sx={{ mb: 1, width: '100%' }} />
+                    </Tooltip>
+                  </Grid>
+                  <Grid xs={12}>
+                    <Typography level="title-sm" sx={{ mb: 0.5 }}>Target Word (Optional)</Typography>
+                    <Tooltip title="The specific word being assessed (e.g., 'pusa', 'bola')" arrow placement="top">
+                      <Input fullWidth placeholder="e.g., pusa" value={item.target_word} onChange={e => handleItemChange(idx, "target_word", e.target.value)} sx={{ mb: 1 }} />
                     </Tooltip>
                   </Grid>
                   <Grid xs={12} sm={6}>

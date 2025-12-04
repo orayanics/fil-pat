@@ -16,6 +16,7 @@ type SessionItem = {
   item_id: number;
   item_number: number;
   question: string;
+  target_word?: string;
   sound?: string;
   max_score?: number;
   image_url?: string;
@@ -417,6 +418,12 @@ export default function PatientRecordPage() {
                                               {!isAnswered ? "Unanswered" : isCorrect ? "✓ Correct" : "✗ Wrong"}
                                             </Chip>
                                           </Box>
+                                          
+                                          {templateItem.target_word && (
+                                            <Typography level="body-xs" sx={{ color: 'text.secondary' }}>
+                                              <strong>Target Word:</strong> {templateItem.target_word}
+                                            </Typography>
+                                          )}
                                           
                                           {templateItem.sound && (
                                             <Typography level="body-xs" sx={{ color: 'text.secondary' }}>

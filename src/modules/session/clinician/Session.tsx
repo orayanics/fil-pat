@@ -25,6 +25,8 @@ export default function Session() {
     if (sessionInfo?.status === 'Completed') {
       console.log('[Clinician Session] Session is completed, redirecting to dashboard');
       router.push('/clinician-dashboard');
+      // Force refresh the dashboard after navigation
+      router.refresh();
     }
   }, [sessionInfo?.status, router]);
 
@@ -49,6 +51,8 @@ export default function Session() {
   const handleConfirmExit = () => {
     setShowExitConfirm(false);
     router.push('/clinician-dashboard');
+    // Force refresh the dashboard after navigation
+    router.refresh();
   };
 
   return (

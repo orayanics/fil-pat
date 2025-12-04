@@ -35,6 +35,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         estimated_duration_minutes?: number;
         items?: Array<{
           question?: string;
+          target_word?: string;
           sound?: string;
           ipa_key?: string;
           group?: string;
@@ -63,6 +64,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             create: items.map((it, idx) => ({
               item_number: it.item_number ?? (idx + 1),
               question: it.question || '',
+              target_word: it.target_word || null,
               sound: it.sound || null,
               ipa_key: it.ipa_key || null,
               consonant_group: it.group || null,
@@ -101,22 +103,46 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       // If force delete, end all sessions using this template
       if (forceDelete && sessionsCount > 0) {
-        // Update sessions to mark them as completed and remove template reference
-        await prisma.assessmentSession.updateMany({
+        // Get all session items for this template to clear current_item_id references
+        const sessionItems = await prisma.sessionItem.findMany({
           where: { template_id: templateId },
-          data: { 
-            status: 'Completed',
-            end_time: new Date(),
-            post_session_notes: 'Session ended due to template deletion',
-            template_id: null // Remove template reference to preserve session data
-          }
+          select: { item_id: true }
         });
-      }
+        const itemIds = sessionItems.map(item => item.item_id);
 
-      // Delete related session items first
-      await prisma.sessionItem.deleteMany({ where: { template_id: templateId } });
+        // Clear current_item_id for any sessions pointing to items from this template
+        if (itemIds.length > 0) {
+          await prisma.$executeRaw`
+            UPDATE assessment_sessions 
+            SET current_item_id = NULL,
+                updated_at = datetime('now')
+            WHERE current_item_id IN (${itemIds.join(',')})
+          `;
+        }
+
+        // Update sessions using this template: mark as completed and remove template reference
+        // This preserves all session data including responses and items for historical records
+        await prisma.$executeRaw`
+          UPDATE assessment_sessions 
+          SET status = 'Completed',
+              end_time = datetime('now'),
+              post_session_notes = 'Session ended due to template deletion. All session data has been preserved.',
+              template_id = NULL,
+              updated_at = datetime('now')
+          WHERE template_id = ${templateId}
+        `;
+
+        // Clear template_id from session_items to disconnect them from the template
+        // This preserves the items for historical session data while allowing template deletion
+        await prisma.$executeRaw`
+          UPDATE session_items 
+          SET template_id = NULL,
+              updated_at = datetime('now')
+          WHERE template_id = ${templateId}
+        `;
+      }
       
-      // Then delete the template
+      // Delete the template (session_items are preserved with template_id = NULL)
       await prisma.assessmentTemplate.delete({ where: { template_id: templateId } });
       
       return res.status(200).json({ 

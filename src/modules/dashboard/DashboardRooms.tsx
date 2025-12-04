@@ -89,27 +89,16 @@ export default function DashboardRooms({ qrGenerateQrData }: DashboardRoomsProps
     
     // Check if WebSocket is closed or closing, and reconnect if needed
     if (!socket || socket.readyState === WebSocket.CLOSED || socket.readyState === WebSocket.CLOSING) {
-      console.log('[Create Session] WebSocket is closed or closing, attempting to reconnect...');
-      setErrorMessage('Reconnecting...');
+      console.log('[Create Session] WebSocket is closed or closing, waiting for reconnection...');
+      setErrorMessage('Waiting for connection...');
       
-      try {
-        // Trigger reconnection using the reconnect function from context
-        if (reconnect) {
-          reconnect();
-        }
-        
-        // Wait for connection to establish
-        await new Promise((resolve) => setTimeout(resolve, 2000));
-        
-        // Check if we're now connected
-        if (connectionStatus !== 'connected') {
-          setErrorMessage('Failed to reconnect. Please try again or refresh the page.');
-          setSessionLoading(false);
-          return;
-        }
-      } catch (err) {
-        console.error('Failed to reconnect WebSocket:', err);
-        setErrorMessage('Connection failed. Please try again or refresh the page.');
+      // Wait for the automatic reconnection to happen (don't trigger manual reconnect here)
+      // The useWebSocket hook already has auto-reconnect logic
+      await new Promise((resolve) => setTimeout(resolve, 3000));
+      
+      // Check if we're now connected
+      if (!socket || socket.readyState !== WebSocket.OPEN) {
+        setErrorMessage('Connection unavailable. Please refresh the page.');
         setSessionLoading(false);
         return;
       }

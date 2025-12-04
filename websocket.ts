@@ -335,6 +335,12 @@ async function updateSessionProgress(sessionId: string, itemData: SessionItemDat
       return;
     }
 
+    // Don't update progress for completed sessions
+    if (session.status === 'Completed') {
+      console.log(`[updateSessionProgress] Skipping progress update for completed session ${sessionId}`);
+      return;
+    }
+
     // Get the actual item_id from item_number
     let currentItemId: number | null = null;
     if (itemData.item) {
@@ -1507,10 +1513,13 @@ wss.on("connection", async (ws, request) => {
               break;
             }
 
-            // Update session status to In Progress
+            // Update session status to In Progress and set start_time
             await prisma.assessmentSession.update({
               where: { session_id: session.session_id },
-              data: { status: 'In Progress' }
+              data: { 
+                status: 'In Progress',
+                start_time: new Date()
+              }
             });
 
             // Log session start activity
@@ -2004,12 +2013,54 @@ wss.on("connection", async (ws, request) => {
               ws.send(JSON.stringify({ type: 'error', message: 'Missing sessionId for completeSession' }));
               break;
             }
+            
+            // Get session to calculate duration
+            const session = await prisma.assessmentSession.findUnique({
+              where: { session_uuid: data.sessionId }
+            });
+            
+            const endTime = new Date();
+            let durationMinutes = null;
+            
+            if (session?.start_time) {
+              const startTime = new Date(session.start_time);
+              const durationMs = endTime.getTime() - startTime.getTime();
+              durationMinutes = Math.round(durationMs / 60000); // Convert to minutes
+            }
+            
             await prisma.assessmentSession.updateMany({
               where: { session_uuid: data.sessionId },
-              data: { status: 'Completed', end_time: new Date() }
+              data: { 
+                status: 'Completed', 
+                end_time: endTime,
+                duration_minutes: durationMinutes
+              }
             });
+            
             const msg = JSON.stringify({ type: 'sessionCompleted', sessionId: data.sessionId, timestamp: new Date().toISOString() });
             broadcastToRoom(data.sessionId, msg);
+            
+            // Close all patient connections to prevent them from affecting session status
+            if (rooms[data.sessionId]) {
+              const clients = Array.from(rooms[data.sessionId]);
+              for (const client of clients) {
+                const connInfo = connectionMap.get(client);
+                if (connInfo?.userType === 'patient' || connInfo?.role === 'patient') {
+                  console.log(`[completeSession] Closing patient connection for session ${data.sessionId}`);
+                  try {
+                    client.close(1000, 'Session completed');
+                  } catch (err) {
+                    console.error('[completeSession] Failed to close patient connection:', err);
+                  }
+                }
+              }
+              
+              // Clean up room data structures to prevent auto-save from running
+              console.log(`[completeSession] Cleaning up room data for session ${data.sessionId}`);
+              delete roomCurrentItems[data.sessionId];
+              delete roomPatient[data.sessionId];
+              delete roomItemsList[data.sessionId];
+            }
           } catch (err) {
             console.error('Failed to complete session:', err);
             ws.send(JSON.stringify({ type: 'error', message: 'Failed to complete session' }));
@@ -2386,6 +2437,28 @@ wss.on("connection", async (ws, request) => {
             
             broadcastToRoom(data.sessionId, endMessage);
             broadcastToRoom(data.sessionId, completedMessage);
+            
+            // Close all patient connections to prevent them from affecting session status
+            if (rooms[data.sessionId]) {
+              const clients = Array.from(rooms[data.sessionId]);
+              for (const client of clients) {
+                const connInfo = connectionMap.get(client);
+                if (connInfo?.userType === 'patient' || connInfo?.role === 'patient') {
+                  console.log(`[endSession] Closing patient connection for session ${data.sessionId}`);
+                  try {
+                    client.close(1000, 'Session completed');
+                  } catch (err) {
+                    console.error('[endSession] Failed to close patient connection:', err);
+                  }
+                }
+              }
+              
+              // Clean up room data structures to prevent auto-save from running
+              console.log(`[endSession] Cleaning up room data for session ${data.sessionId}`);
+              delete roomCurrentItems[data.sessionId];
+              delete roomPatient[data.sessionId];
+              delete roomItemsList[data.sessionId];
+            }
 
             await logActivity({
               user_id: updatedSession.clinician_id,

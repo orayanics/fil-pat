@@ -150,6 +150,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       await prisma.sessionItem.create({
         data: {
           ...item,
+          target_word: item.expected_response || item.question,
           template_id: standardTemplate.template_id,
           display_order: item.item_number,
         }
@@ -172,6 +173,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       await prisma.sessionItem.create({
         data: {
           ...item,
+          target_word: item.expected_response || item.question,
           template_id: kidsTemplate.template_id,
           display_order: item.item_number,
         }

@@ -151,6 +151,7 @@ model SessionItem {
   template_id             Int?
   item_number             Int
   question                String
+  target_word             String?   // The specific word being assessed
   sound                   String?
   ipa_key                 String?
   consonant_group         String?
@@ -194,7 +195,7 @@ model AssessmentSession {
   session_uuid            String    @unique
   patient_id              Int?
   clinician_id            Int
-  template_id             Int
+  template_id             Int?
   
   // Session Details
   session_name            String?
@@ -246,7 +247,7 @@ model AssessmentSession {
   // Relations
   patient                 Patient?  @relation(fields: [patient_id], references: [patient_id])
   clinician               Clinician @relation(fields: [clinician_id], references: [clinician_id])
-  template                AssessmentTemplate @relation(fields: [template_id], references: [template_id])
+  template                AssessmentTemplate? @relation(fields: [template_id], references: [template_id])
   current_item            SessionItem? @relation(fields: [current_item_id], references: [item_id])
   responses               SessionResponse[]
   reports                 Report[]

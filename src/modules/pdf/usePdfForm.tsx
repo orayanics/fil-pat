@@ -60,6 +60,7 @@ export function usePdfForm(sessionId: string) {
             const vowelsCorrect = item.response?.vowels_correct ?? 0;
             
             acc[item.item_number] = {
+              target_word: item.target_word || '',
               ipa_key: item.ipa_key || '',
               group: item.consonant_group || '',
               childResponse: item.response?.response_text || '',

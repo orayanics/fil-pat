@@ -5,6 +5,13 @@
 
 import { prisma } from '../src/lib/database/client';
 
+// Helper function to extract target word from question
+function extractTargetWord(question: string): string {
+  // Extract word before parenthesis, e.g., "Pusa (Cat)" -> "Pusa"
+  const match = question.match(/^([^(]+)/);
+  return match ? match[1].trim() : question;
+}
+
 // Filipino sounds and phonemes for assessment
 const filipinoConsonants = {
   stops: ['p', 'b', 't', 'd', 'k', 'g', 'ʔ'], // glottal stop
@@ -601,14 +608,16 @@ async function createTemplates(clinicianId: number) {
   // Insert Kids Template Items
   console.log('   Adding 20 items to Kids Template...');
   for (const item of kidsTemplateItems) {
+    const { target_word, ...itemData } = item as any;
     await prisma.sessionItem.create({
       data: {
-        ...item,
+        ...itemData,
+        target_word: target_word || extractTargetWord(item.question),
         template_id: kidsTemplate.template_id,
         is_active: true,
         image_alt_text: item.question,
         background_color: '#FFFFFF',
-        text_size: 'Large',
+        text_size: 'Medium',
         time_limit_seconds: null,
       },
     });
@@ -633,9 +642,11 @@ async function createTemplates(clinicianId: number) {
   // Insert General Template Items
   console.log('   Adding 20 items to General Template...');
   for (const item of generalTemplateItems) {
+    const { target_word, ...itemData } = item as any;
     await prisma.sessionItem.create({
       data: {
-        ...item,
+        ...itemData,
+        target_word: target_word || extractTargetWord(item.question),
         template_id: generalTemplate.template_id,
         is_active: true,
         image_alt_text: item.question,

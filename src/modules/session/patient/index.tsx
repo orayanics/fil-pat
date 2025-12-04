@@ -45,6 +45,17 @@ export default function Index() {
           window.location.reload();
         }
         
+        // Handle session completed - close WebSocket to prevent reconnection
+        if (data.type === 'sessionCompleted' || data.type === 'sessionEnded') {
+          console.log('[Patient] Session completed, closing WebSocket connection');
+          setSessionEnded(true);
+          try {
+            socket.close(1000, 'Session completed');
+          } catch (err) {
+            console.error('[Patient] Failed to close socket:', err);
+          }
+        }
+        
         // Handle no clinician present
         if (data.type === 'error' && data.message === 'noClinicianPresent') {
           console.log('[Patient] No clinician present in session');

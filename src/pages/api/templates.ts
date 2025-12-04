@@ -21,6 +21,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       estimated_duration_minutes?: number;
       items?: Array<{
         question?: string;
+        target_word?: string;
         sound?: string;
         ipa_key?: string;
         group?: string;
@@ -46,6 +47,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             create: items.map((it, idx) => ({
               item_number: it.item_number ?? (idx + 1),
               question: it.question || '',
+              target_word: it.target_word || null,
               sound: it.sound || null,
               ipa_key: it.ipa_key || null,
               consonant_group: it.group || null,

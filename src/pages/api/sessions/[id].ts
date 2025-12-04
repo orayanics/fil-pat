@@ -91,6 +91,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           item_id: item.item_id,
           item_number: item.item_number,
           question: item.question,
+          target_word: item.target_word,
           ipa_key: item.ipa_key,
           consonant_group: item.consonant_group,
           consonants_count: item.consonants_count,
@@ -111,7 +112,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       meta: {
         totalItems: session.total_items || session.template.session_items.length,
         completedItems: session.completed_items || session.responses.length,
-        completionPercentage: session.percentage_score || 0,
+        completionPercentage: session.total_items > 0 
+          ? ((session.completed_items || session.responses.length) / session.total_items) * 100
+          : 0,
       },
     };
 

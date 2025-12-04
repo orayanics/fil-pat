@@ -208,14 +208,15 @@ export default function SessionPdf() {
               >
                 <thead>
                   <tr>
-                    <th style={{ width: '5%' }}>Item #</th>
-                    <th style={{ width: '8%' }}>Phoneme Group</th>
-                    <th style={{ width: '12%' }}>IPA Key</th>
-                    <th style={{ width: '15%' }}>{responseLabel}</th>
-                    <th style={{ width: '8%' }}>Consonants</th>
-                    <th style={{ width: '8%' }}>Vowels</th>
-                    <th style={{ width: '10%' }}>Phoneme Accuracy</th>
-                    <th style={{ width: '8%' }}>Time (sec)</th>
+                    <th style={{ width: '4%' }}>Item #</th>
+                    <th style={{ width: '10%' }}>Target Word</th>
+                    <th style={{ width: '7%' }}>Phoneme Group</th>
+                    <th style={{ width: '10%' }}>IPA Key</th>
+                    <th style={{ width: '13%' }}>{responseLabel}</th>
+                    <th style={{ width: '7%' }}>Consonants</th>
+                    <th style={{ width: '7%' }}>Vowels</th>
+                    <th style={{ width: '9%' }}>Phoneme Accuracy</th>
+                    <th style={{ width: '7%' }}>Score</th>
                     <th style={{ width: '26%' }}>Clinical Notes</th>
                   </tr>
                 </thead>
@@ -232,6 +233,11 @@ export default function SessionPdf() {
                       <tr key={key}>
                         <td style={{ textAlign: 'center' }}>
                           <Typography level="body-sm" sx={{ fontWeight: 700 }}>{index + 1}</Typography>
+                        </td>
+                        <td>
+                          <Typography level="body-sm" sx={{ fontWeight: 600, fontSize: '0.75rem' }}>
+                            {value.target_word || '—'}
+                          </Typography>
                         </td>
                         <td>
                           <Chip size="sm" variant="soft" color="neutral" sx={{ fontSize: '0.7rem', minHeight: 'auto', py: 0.25 }}>
@@ -301,8 +307,8 @@ export default function SessionPdf() {
                           </Box>
                         </td>
                         <td style={{ textAlign: 'center' }}>
-                          <Typography level="body-sm" sx={{ fontSize: '0.75rem', fontWeight: 600 }}>
-                            {value.timeTaken ? `${value.timeTaken}s` : '—'}
+                          <Typography level="body-sm" sx={{ fontSize: '0.75rem', fontWeight: 700 }}>
+                            {accuracyPercentage === 100 ? '1' : '0'}
                           </Typography>
                         </td>
                         <td>
