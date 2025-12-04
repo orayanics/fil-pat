@@ -1,6 +1,6 @@
 /**
  * Ocean Friends Theme
- * A calming underwater adventure theme with sea creatures and ocean elements
+ * A light, calming underwater theme inspired by modern kids apps
  */
 
 export const oceanFriendsTheme = {
@@ -8,20 +8,20 @@ export const oceanFriendsTheme = {
   id: 'ocean-friends',
   
   colors: {
-    primary: '#0288D1',      // Ocean blue
-    secondary: '#00ACC1',    // Cyan wave
-    accent: '#FF7043',       // Coral orange
-    background: '#E1F5FE',   // Light ocean
-    surface: '#B3E5FC',      // Water surface
+    primary: '#4ECDC4',      // Turquoise
+    secondary: '#A8E6CF',    // Mint green
+    accent: '#FFD93D',       // Sunny yellow
+    background: '#F0F8FF',   // Alice blue (very light)
+    surface: '#FFFFFF',
     text: {
-      primary: '#01579B',    // Deep ocean
-      secondary: '#0277BD',
-      light: '#4FC3F7'
+      primary: '#2D3436',    // Dark gray
+      secondary: '#636E72',
+      light: '#B2BEC3'
     },
-    success: '#26A69A',
-    warning: '#FFA726',
-    danger: '#EF5350',
-    interactive: '#29B6F6'
+    success: '#4ECDC4',
+    warning: '#FFD93D',
+    danger: '#FF6B6B',
+    interactive: '#95E1D3'
   },
 
   fonts: {

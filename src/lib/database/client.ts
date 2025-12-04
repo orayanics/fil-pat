@@ -5,10 +5,32 @@ declare global {
   var __prisma: PrismaClient | undefined;
 }
 
+// Configure Prisma query engine for packaged Electron app
+const isElectron = process.versions && process.versions.electron;
+if (process.env.NODE_ENV === 'production' && isElectron && !process.env.PRISMA_QUERY_ENGINE_LIBRARY) {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const path = require('path');
+    // Use type assertion for Electron's process.resourcesPath
+    const resourcesPath = (process as any).resourcesPath || '';
+    const queryEnginePath = path.join(
+      resourcesPath,
+      'app.asar.unpacked',
+      'node_modules',
+      '.prisma',
+      'client',
+      'query_engine-windows.dll.node'
+    );
+    process.env.PRISMA_QUERY_ENGINE_LIBRARY = queryEnginePath;
+    process.env.PRISMA_CLI_QUERY_ENGINE_TYPE = 'library';
+  } catch (err) {
+    console.error('Failed to set Prisma engine path:', err);
+  }
+}
+
 // Determine database path based on environment
 const getDatabasePath = () => {
   // Check if running in Electron environment (not during Next.js build)
-  const isElectron = process.versions && process.versions.electron;
   
   if (process.env.NODE_ENV === 'production' && isElectron) {
     // In production Electron runtime, store database in app data directory
@@ -17,9 +39,9 @@ const getDatabasePath = () => {
       const { app } = require('electron');
       const userData = app.getPath('userData');
       return join(userData, 'filpat.db');
-    } catch (e) {
+    } catch (err) {
       // Fallback if electron not available
-      console.warn('Failed to get Electron app path, using fallback');
+      console.warn('Failed to get Electron app path, using fallback', err);
       return join(process.cwd(), 'prisma', 'filpat.db');
     }
   }

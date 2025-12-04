@@ -1,6 +1,6 @@
 /**
  * Jungle Adventure Theme
- * A fun, vibrant jungle theme with animal characters and nature elements
+ * A light, playful jungle theme inspired by modern kids apps
  */
 
 export const jungleAdventureTheme = {
@@ -8,20 +8,20 @@ export const jungleAdventureTheme = {
   id: 'jungle-adventure',
   
   colors: {
-    primary: '#4CAF50',      // Jungle green
-    secondary: '#FFA726',    // Sunset orange
-    accent: '#FFD54F',       // Banana yellow
-    background: '#E8F5E9',   // Light green background
+    primary: '#6BCB77',      // Soft green
+    secondary: '#FFD93D',    // Bright yellow
+    accent: '#FF6B6B',       // Coral red
+    background: '#FFF9E6',   // Cream/light yellow background
     surface: '#FFFFFF',
     text: {
-      primary: '#2E7D32',    // Dark green
-      secondary: '#558B2F',
-      light: '#81C784'
+      primary: '#2D3436',    // Dark gray
+      secondary: '#636E72',
+      light: '#B2BEC3'
     },
-    success: '#66BB6A',
-    warning: '#FFA726',
-    danger: '#EF5350',
-    interactive: '#8BC34A'
+    success: '#6BCB77',
+    warning: '#FFD93D',
+    danger: '#FF6B6B',
+    interactive: '#4ECDC4'
   },
 
   fonts: {

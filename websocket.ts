@@ -1642,6 +1642,71 @@ wss.on("connection", async (ws, request) => {
           }
           break;
         }
+        case 'jumpToItem': {
+          try {
+            const roomId = data.sessionId;
+            const targetItemNumber = data.itemNumber;
+            const items = roomItemsList[roomId] || [];
+            if (!items || items.length === 0) break;
+            
+            // Find the item with the matching item_number or item_id
+            const targetItem = items.find((it) => 
+              (it.item_number && it.item_number === targetItemNumber) || 
+              (it.item_id && it.item_id === targetItemNumber)
+            );
+            
+            if (!targetItem) {
+              console.error(`Item ${targetItemNumber} not found in session ${roomId}`);
+              break;
+            }
+            
+            const targetItemRecord = targetItem as Record<string, unknown>;
+            const targetItemId = Number(String(targetItemRecord['item_number'] ?? targetItemRecord['item_id'] ?? 0));
+            const targetQuestion = String(targetItemRecord['question'] ?? '');
+            
+            // Store full item data including image_url and all properties
+            roomCurrentItems[roomId] = {
+              ...targetItemRecord,
+              item: targetItemId,
+              question: targetQuestion
+            };
+            
+            // Broadcast the full item object with all properties
+            const msg = JSON.stringify({ 
+              type: 'changeAssessmentItem', 
+              item: roomCurrentItems[roomId], 
+              sessionId: roomId, 
+              timestamp: new Date().toISOString() 
+            });
+            broadcastToRoom(roomId, msg);
+            
+            // Persist progress
+            await updateSessionProgress(roomId, { item: targetItemId });
+          } catch (err) {
+            console.error('Failed to jump to item:', err);
+          }
+          break;
+        }
+        case 'toggleTargetWord': {
+          try {
+            const roomId = data.sessionId;
+            const show = data.show;
+            const targetWord = data.targetWord;
+            
+            // Broadcast target word visibility to all participants in the room
+            const msg = JSON.stringify({
+              type: 'toggleTargetWord',
+              sessionId: roomId,
+              show,
+              targetWord,
+              timestamp: new Date().toISOString()
+            });
+            broadcastToRoom(roomId, msg);
+          } catch (err) {
+            console.error('Failed to toggle target word:', err);
+          }
+          break;
+        }
         case "joinRoom":
           // Enforce 1:1 patient binding inside joinRoom
           await joinRoom(ws, data.roomId, {

@@ -1,6 +1,6 @@
 /**
  * Space Explorer Theme
- * An exciting cosmic adventure theme with planets, stars, and space elements
+ * A light, playful space theme inspired by modern kids apps
  */
 
 export const spaceExplorerTheme = {
@@ -8,20 +8,20 @@ export const spaceExplorerTheme = {
   id: 'space-explorer',
   
   colors: {
-    primary: '#5C6BC0',      // Deep space blue
-    secondary: '#7E57C2',    // Purple nebula
-    accent: '#FFD740',       // Star gold
-    background: '#1A237E',   // Deep space
-    surface: '#283593',      // Space surface
+    primary: '#A8E6CF',      // Mint green
+    secondary: '#FFD93D',    // Sunny yellow
+    accent: '#FF6B6B',       // Coral red
+    background: '#FFF5E6',   // Light peach
+    surface: '#FFFFFF',
     text: {
-      primary: '#FFFFFF',    // White text
-      secondary: '#E8EAF6',
-      light: '#C5CAE9'
+      primary: '#2D3436',    // Dark gray
+      secondary: '#636E72',
+      light: '#B2BEC3'
     },
-    success: '#66BB6A',
-    warning: '#FFB74D',
-    danger: '#EF5350',
-    interactive: '#7986CB'
+    success: '#6BCB77',
+    warning: '#FFD93D',
+    danger: '#FF6B6B',
+    interactive: '#95E1D3'
   },
 
   fonts: {

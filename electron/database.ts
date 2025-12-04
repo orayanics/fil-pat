@@ -5,16 +5,21 @@ import * as path from "path";
 
 // Configure Prisma for packaged app
 const isDev = !app.isPackaged;
-const prismaConfig = isDev ? {} : {
-  // In production, point to unpacked Prisma binaries
-  __internal: {
-    engine: {
-      binaryPath: path.join(process.resourcesPath, 'app.asar.unpacked', 'node_modules', '.prisma', 'client')
-    }
-  }
-};
 
-const prisma = new PrismaClient(prismaConfig as any);
+// Set environment variable for Prisma to find the query engine
+if (!isDev) {
+  const queryEnginePath = path.join(
+    process.resourcesPath,
+    'app.asar.unpacked',
+    'node_modules',
+    '.prisma',
+    'client',
+    'query_engine-windows.dll.node'
+  );
+  process.env.PRISMA_QUERY_ENGINE_LIBRARY = queryEnginePath;
+}
+
+const prisma = new PrismaClient();
 
 // --- Register a new clinician ---
 export async function registerClinician(username: string, password: string) {
