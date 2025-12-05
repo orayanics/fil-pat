@@ -25,10 +25,11 @@
     "db:reset": "prisma migrate reset && npm run db:seed",
     "build:electron": "tsc -p tsconfig.electron.json",
     "dev:electron": "npm run build:electron && electron dist-electron/main.js",
-    "package:electron": "npm run build && npm run build:electron && electron-builder --win --x64",
-    "dist": "npm run build && npm run build:electron && electron-builder",
-    "dist:portable": "npm run build && npm run build:electron && electron-builder --win portable",
-    "dist:installer": "npm run build && npm run build:electron && electron-builder --win nsis",
+    "prebuild:electron": "node scripts/prebuild-electron.js",
+    "package:electron": "npm run prebuild:electron && npm run build && npm run build:electron && electron-builder --win --x64",
+    "dist": "npm run prebuild:electron && npm run build && npm run build:electron && electron-builder",
+    "dist:portable": "npm run prebuild:electron && npm run build && npm run build:electron && electron-builder --win portable",
+    "dist:installer": "npm run prebuild:electron && npm run build && npm run build:electron && electron-builder --win nsis",
     "clean:dist": "if exist release rmdir /s /q release && if exist dist-electron rmdir /s /q dist-electron && if exist dist rmdir /s /q dist",
     "rebuild:dist": "npm run clean:dist && npm run dist",
     "dev:electron:watch": "tsc -p tsconfig.electron.json --watch",
@@ -43,6 +44,7 @@
     "@mui/joy": "^5.0.0-beta.52",
     "@prisma/client": "^5.22.0",
     "@types/ws": "^8.18.1",
+    "bcrypt": "^6.0.0",
     "bcryptjs": "^2.4.3",
     "better-sqlite3": "^12.2.0",
     "cookie": "^0.7.2",
@@ -85,40 +87,49 @@
     "productName": "FIL-PAT",
     "asar": true,
     "asarUnpack": [
+      "node_modules/.prisma/**/*",
       "node_modules/@prisma/**/*",
-      "node_modules/.prisma/**/*"
+      "node_modules/better-sqlite3/**/*",
+      "node_modules/bcrypt/**/*",
+      "node_modules/ws/**/*"
     ],
+    "afterPack": "./electron-builder-afterPack.js",
     "files": [
       ".next/**/*",
       "dist/**/*",
       "dist-electron/**/*",
-      "prisma/schema.prisma",
-      "prisma/filpat.db",
+      "prisma/**/*",
       "public/**/*",
       "assets/**/*",
       "package.json",
       "!node_modules/**/*",
-      "node_modules/@prisma/**/*",
-      "node_modules/.prisma/**/*",
+      "node_modules/bcrypt/**/*",
+      "node_modules/bcryptjs/**/*",
+      "node_modules/jsonwebtoken/**/*",
+      "node_modules/ws/**/*",
+      "node_modules/node-gyp-build/**/*",
+      "node_modules/node-addon-api/**/*",
+      "node_modules/bindings/**/*",
+      "node_modules/prebuild-install/**/*",
       "!node_modules/@img/sharp-darwin-*/**/*",
       "!node_modules/@img/sharp-linux-*/**/*"
     ],
     "extraResources": [
       {
-        "from": ".next",
-        "to": "app/.next"
-      },
-      {
-        "from": "dist",
-        "to": "app/dist"
-      },
-      {
         "from": "prisma",
-        "to": "app/prisma"
+        "to": "prisma"
       },
       {
-        "from": "public",
-        "to": "app/public"
+        "from": "node_modules/.prisma",
+        "to": "node_modules/.prisma"
+      },
+      {
+        "from": "node_modules/@prisma/client",
+        "to": "node_modules/@prisma/client"
+      },
+      {
+        "from": "node_modules/@prisma/engines",
+        "to": "node_modules/@prisma/engines"
       }
     ],
     "extraMetadata": {

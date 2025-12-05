@@ -3,8 +3,37 @@ import * as path from 'path';
 import { spawn, ChildProcess, exec } from 'child_process';
 import * as os from 'os';
 import { ipcMain } from 'electron';
-import { registerClinician, loginClinician } from './database';
 import * as fs from 'fs';
+
+// CRITICAL: Set Prisma paths BEFORE any imports that use Prisma
+if (app.isPackaged) {
+  const queryEnginePath = path.join(
+    process.resourcesPath,
+    'app.asar.unpacked',
+    'node_modules',
+    '.prisma',
+    'client',
+    'query_engine-windows.dll.node'
+  );
+  const schemaPath = path.join(
+    process.resourcesPath,
+    'app.asar.unpacked',
+    'node_modules',
+    '.prisma',
+    'client',
+    'schema.prisma'
+  );
+  
+  process.env.PRISMA_QUERY_ENGINE_LIBRARY = queryEnginePath;
+  process.env.PRISMA_SCHEMA_PATH = schemaPath;
+  process.env.PRISMA_ENGINES_CHECKSUM_IGNORE_MISSING = '1';
+  
+  console.log('Prisma engine path:', queryEnginePath);
+  console.log('Prisma schema path:', schemaPath);
+}
+
+// NOW import database functions after Prisma env vars are set
+import { registerClinician, loginClinician } from './database';
 import { initializeDatabase, ensureDatabaseDirectory } from './initDatabase';
 
 function getLocalIp(): string {

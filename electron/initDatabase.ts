@@ -25,7 +25,7 @@ export async function initializeDatabase(isDev: boolean): Promise<void> {
 
   const dbPath = isDev
     ? path.join(__dirname, '..', 'prisma', 'filpat.db')
-    : path.join(process.resourcesPath, 'app', 'prisma', 'filpat.db');
+    : path.join(process.resourcesPath, 'prisma', 'filpat.db');
 
   const dbExists = databaseExists(dbPath);
 
@@ -33,13 +33,36 @@ export async function initializeDatabase(isDev: boolean): Promise<void> {
     console.log('📦 Fresh installation detected - initializing database...');
     console.log('');
     
-    await runDatabaseSetup(isDev);
+    if (isDev) {
+      // Development: run full setup
+      await runDatabaseSetup(isDev);
+    } else {
+      // Production: Copy pre-built database from resources
+      await copyPrebuiltDatabase();
+    }
     
     console.log('');
     console.log('✅ Database initialized successfully!');
   } else {
     console.log('✓ Database already exists');
   }
+}
+
+/**
+ * Copy pre-built database file to userData directory (production only)
+ */
+async function copyPrebuiltDatabase(): Promise<void> {
+  console.log('📋 Copying pre-built database...');
+  
+  const sourceDb = path.join(process.resourcesPath, 'prisma', 'filpat.db');
+  const targetDb = path.join(process.resourcesPath, 'prisma', 'filpat.db');
+  
+  if (!fs.existsSync(sourceDb)) {
+    throw new Error(`Source database not found at: ${sourceDb}`);
+  }
+  
+  // Database is already in the right location in resources/prisma
+  console.log('✓ Database ready at:', targetDb);
 }
 
 /**
