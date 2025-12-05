@@ -99,7 +99,7 @@ export default function SessionCard({ isKidsMode = false }: SessionCardProps) {
       type: 'toggleTargetWord',
       sessionId,
       show: newState,
-      targetWord: item.target_word
+      targetWord: item?.target_word || ''
     }));
   };
 
@@ -218,9 +218,9 @@ export default function SessionCard({ isKidsMode = false }: SessionCardProps) {
             }}
             renderValue={(option) => {
               if (!option) return null;
-              const itemNum = option.value;
+              const itemNum = Number(option.value);
               const templateItem = Array.isArray(templateItems) 
-                ? templateItems.find((t: any) => (t.item_number || t.item_id) === itemNum)
+                ? templateItems.find((t) => (t.item_number || t.item_id) === itemNum)
                 : null;
               const status = itemStatuses[itemNum] || 'unanswered';
               
@@ -229,14 +229,14 @@ export default function SessionCard({ isKidsMode = false }: SessionCardProps) {
                   {getStatusIcon(status)}
                   <Typography>
                     Item {itemNum}
-                    {templateItem?.target_word && ` - ${templateItem.target_word}`}
+                    {templateItem?.target_word ? ` - ${String(templateItem.target_word)}` : ''}
                   </Typography>
                 </Stack>
               );
             }}
           >
-            {Array.isArray(templateItems) && templateItems.map((templateItem: any) => {
-              const itemNum = templateItem.item_number || templateItem.item_id;
+            {Array.isArray(templateItems) && templateItems.map((templateItem) => {
+              const itemNum = Number(templateItem.item_number || templateItem.item_id);
               const status = itemStatuses[itemNum] || 'unanswered';
               
               return (
@@ -252,7 +252,7 @@ export default function SessionCard({ isKidsMode = false }: SessionCardProps) {
                   {getStatusIcon(status)}
                   <Typography sx={{ flex: 1 }}>
                     Item {itemNum}
-                    {templateItem.target_word && ` - ${templateItem.target_word}`}
+                    {templateItem.target_word ? ` - ${String(templateItem.target_word)}` : ''}
                   </Typography>
                   <Chip
                     size="sm"
@@ -291,7 +291,6 @@ export default function SessionCard({ isKidsMode = false }: SessionCardProps) {
             onClick={async () => {
               // If this is the last item, prompt to end session instead of simply advancing
               if (item.item === length) {
-                // Open the global End Session modal which will handle saving and ending
                 setShowEndModal(true);
                 return;
               }

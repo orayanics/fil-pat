@@ -45,9 +45,9 @@
     "@types/ws": "^8.18.1",
     "bcryptjs": "^2.4.3",
     "better-sqlite3": "^12.2.0",
-    "cookie": "^0.6.0",
+    "cookie": "^0.7.2",
     "jsonwebtoken": "^9.0.2",
-    "next": "15.3.5",
+    "next": "^15.5.7",
     "nodemon": "^3.1.10",
     "qrcode": "^1.5.4",
     "react": "^19.0.0",
@@ -131,11 +131,15 @@
       "target": [
         {
           "target": "portable",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         },
         {
           "target": "nsis",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ],
       "artifactName": "${productName}-${version}-${arch}-${os}.${ext}",
