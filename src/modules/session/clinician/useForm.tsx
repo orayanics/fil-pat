@@ -2,7 +2,6 @@
 
 import {useState, useEffect, useCallback} from "react";
 import {useSocketState, useSocketDispatch} from "@/context/SocketProvider";
-import {sampleData} from "@/data/data";
 
 export interface ItemFormData {
   ipa_key: string;
@@ -49,7 +48,6 @@ export function useSessionForm(currentItemId?: number) {
     if (!currentItemId) return;
 
     const itemKey = String(currentItemId);
-    const sampleItem = sampleData.find((s) => s.item === Number(currentItemId));
 
     const ctxEntry = (contextFormData as Record<string, unknown>)?.[itemKey];
     const baseData = createDefaultFormData();
@@ -58,21 +56,7 @@ export function useSessionForm(currentItemId?: number) {
 
     if (ctxEntry && typeof ctxEntry === "object") {
       updatedData = {...baseData, ...(ctxEntry as ItemFormData)};
-
-      if (!updatedData.ipa_key && sampleItem?.ipa_key) {
-        updatedData.ipa_key = sampleItem.ipa_key;
-        needsContextUpdate = true;
-      }
-
-      if (!updatedData.group && sampleItem?.group) {
-        updatedData.group = sampleItem.group;
-        needsContextUpdate = true;
-      }
     } else {
-      if (sampleItem) {
-        updatedData.ipa_key = sampleItem.ipa_key || "";
-        updatedData.group = sampleItem.group || "";
-      }
       needsContextUpdate = true;
     }
 
@@ -115,17 +99,6 @@ export function useSessionForm(currentItemId?: number) {
 
     const existing = formDataMap.get(currentItemId);
     if (existing) return existing;
-
-    // seed ipa_key and group from sampleData for the current item when no entry exists yet
-    const sampleItem = sampleData.find(
-      (s) => s.item === (currentItemId as number)
-    );
-    if (sampleItem) {
-      const seeded = createDefaultFormData();
-      seeded.ipa_key = sampleItem.ipa_key || "";
-      seeded.group = sampleItem.group || "";
-      return seeded;
-    }
 
     return createDefaultFormData();
   }
@@ -229,7 +202,7 @@ export function useSessionForm(currentItemId?: number) {
 
   // returns meta of total items, completed items, completion percentage
   function getCompletionStats() {
-    const totalItems = sampleData.length;
+    const totalItems = formDataMap.size;
     const completedItems = Array.from(formDataMap.values()).filter(
       (data) =>
         data.childResponse.length > 0 ||
@@ -275,7 +248,7 @@ export function useSessionForm(currentItemId?: number) {
       const parsedData = localData ? JSON.parse(localData) : null;
 
       // get total items from localData
-      const totalItems = sampleData.length;
+      const totalItems = formDataMap.size || 0;
       // count parsedData object
       const completedItems = parsedData ? Object.keys(parsedData).length : 0;
 
