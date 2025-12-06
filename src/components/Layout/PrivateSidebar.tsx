@@ -28,6 +28,11 @@ export default function PrivateSidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const displayName = user?.first_name ? `${user.first_name} ${user.last_name ?? ''}`.trim() : (user?.username || 'Unknown');
+  const avatarInitials = user?.first_name || user?.last_name
+    ? `${user?.first_name?.[0] ?? ''}${user?.last_name?.[0] ?? ''}`.trim() || 'U'
+    : (user?.username?.[0]?.toUpperCase() || 'U');
+  const avatarSrc = user?.profile_picture_path || undefined;
 
   // Detect mobile layout
   useEffect(() => {
@@ -104,10 +109,12 @@ export default function PrivateSidebar() {
             <Avatar
               variant="outlined"
               size="sm"
-              src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=286"
-            />
+              src={avatarSrc}
+            >
+              {avatarInitials}
+            </Avatar>
             <Box sx={{ flex: 1, ml: 1 }}>
-              <Typography level="title-sm">{user?.username || "Unknown"}</Typography>
+              <Typography level="title-sm">{displayName}</Typography>
               <Typography level="body-xs">UST-CRS Clinician</Typography>
             </Box>
             <IconButton
@@ -201,10 +208,12 @@ export default function PrivateSidebar() {
             <Avatar
               variant="outlined"
               size="sm"
-              src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=286"
-            />
+              src={avatarSrc}
+            >
+              {avatarInitials}
+            </Avatar>
             <Box sx={{ flexGrow: 1 }}>
-              <Typography level="title-sm">{user?.username || "Unknown"}</Typography>
+              <Typography level="title-sm">{displayName}</Typography>
               <Typography level="body-xs">UST-CRS Clinician</Typography>
             </Box>
             <IconButton

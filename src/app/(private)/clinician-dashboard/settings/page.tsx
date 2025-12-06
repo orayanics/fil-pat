@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, ChangeEvent } from "react";
 import {
   Box,
   Card,
@@ -48,6 +48,7 @@ interface ClinicianSettings {
   postal_code: string;
   years_of_experience: number;
   is_active: boolean;
+  profile_picture_path: string;
 }
 
 interface PasswordChange {
@@ -73,6 +74,7 @@ export default function SettingsPage() {
     postal_code: "",
     years_of_experience: 0,
     is_active: true,
+    profile_picture_path: "",
   });
   
   const [passwordData, setPasswordData] = useState<PasswordChange>({
@@ -86,6 +88,13 @@ export default function SettingsPage() {
   const [savingPassword, setSavingPassword] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'danger', text: string } | null>(null);
   const [passwordMessage, setPasswordMessage] = useState<{ type: 'success' | 'danger', text: string } | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [pendingPhoto, setPendingPhoto] = useState<string | null>(null);
+  const [photoMessage, setPhotoMessage] = useState<{ type: 'success' | 'danger', text: string } | null>(null);
+  const [photoUploading, setPhotoUploading] = useState(false);
+  const [photoRemoving, setPhotoRemoving] = useState(false);
+  const currentPhoto = photoPreview || (settings.profile_picture_path ? settings.profile_picture_path : null);
 
   useEffect(() => {
     if (user?.clinician_id) {
@@ -116,7 +125,10 @@ export default function SettingsPage() {
           postal_code: data.postal_code || "",
           years_of_experience: data.years_of_experience || 0,
           is_active: data.is_active !== undefined ? data.is_active : true,
+          profile_picture_path: data.profile_picture_path || "",
         });
+        setPhotoPreview(data.profile_picture_path || null);
+        setPendingPhoto(null);
       }
     } catch (err) {
       console.error('Failed to fetch settings:', err);
@@ -155,9 +167,16 @@ export default function SettingsPage() {
           postal_code: updatedData.postal_code || "",
           years_of_experience: updatedData.years_of_experience || 0,
           is_active: updatedData.is_active !== undefined ? updatedData.is_active : true,
+          profile_picture_path: updatedData.profile_picture_path || "",
         };
         
         setSettings(sanitizedData);
+        setPhotoPreview((prev) => {
+          if (pendingPhoto) {
+            return prev;
+          }
+          return updatedData.profile_picture_path || null;
+        });
         
         // Update user context immediately - this will cause dashboard to re-render
         const refreshedUser = await refreshUser();
@@ -174,6 +193,114 @@ export default function SettingsPage() {
       setMessage({ type: 'danger', text: 'An error occurred while saving' });
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handlePhotoSelected = (event: ChangeEvent<HTMLInputElement>) => {
+    setPhotoMessage(null);
+    const file = event.target.files?.[0];
+    if (!file) {
+      return;
+    }
+
+    if (!file.type.startsWith("image/")) {
+      setPhotoMessage({ type: 'danger', text: 'Please choose a valid image file' });
+      event.target.value = "";
+      return;
+    }
+
+    if (file.size > 2 * 1024 * 1024) {
+      setPhotoMessage({ type: 'danger', text: 'Image must be 2MB or smaller' });
+      event.target.value = "";
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const base64 = reader.result as string;
+      setPhotoPreview(base64);
+      setPendingPhoto(base64);
+    };
+    reader.readAsDataURL(file);
+
+    // Allow selecting the same file again
+    event.target.value = "";
+  };
+
+  const handleUploadPhoto = async () => {
+    if (!pendingPhoto) {
+      setPhotoMessage({ type: 'danger', text: 'Please choose a photo first' });
+      return;
+    }
+
+    setPhotoUploading(true);
+    setPhotoMessage(null);
+    try {
+      const response = await fetch('/api/clinician/profile-picture', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ imageData: pendingPhoto }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setSettings((prev) => ({
+          ...prev,
+          profile_picture_path: data.profile_picture_path || "",
+        }));
+        setPhotoPreview(data.profile_picture_path || null);
+        setPendingPhoto(null);
+        await refreshUser();
+        setPhotoMessage({ type: 'success', text: 'Profile photo updated successfully!' });
+        setTimeout(() => setPhotoMessage(null), 5000);
+      } else {
+        const error = await response.json().catch(() => null);
+        setPhotoMessage({ type: 'danger', text: error?.error || 'Failed to upload photo' });
+      }
+    } catch (err) {
+      console.error('Failed to upload profile photo:', err);
+      setPhotoMessage({ type: 'danger', text: 'An error occurred while uploading' });
+    } finally {
+      setPhotoUploading(false);
+    }
+  };
+
+  const handleRemovePhoto = async () => {
+    if (pendingPhoto) {
+      setPendingPhoto(null);
+      setPhotoPreview(settings.profile_picture_path ? settings.profile_picture_path : null);
+      return;
+    }
+
+    if (!settings.profile_picture_path) {
+      return;
+    }
+
+    setPhotoRemoving(true);
+    setPhotoMessage(null);
+    try {
+      const response = await fetch('/api/clinician/profile-picture', {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+
+      if (response.ok) {
+        setSettings((prev) => ({ ...prev, profile_picture_path: "" }));
+        setPhotoPreview(null);
+        setPendingPhoto(null);
+        await refreshUser();
+        setPhotoMessage({ type: 'success', text: 'Profile photo removed' });
+        setTimeout(() => setPhotoMessage(null), 5000);
+      } else {
+        const error = await response.json().catch(() => null);
+        setPhotoMessage({ type: 'danger', text: error?.error || 'Failed to remove photo' });
+      }
+    } catch (err) {
+      console.error('Failed to remove profile photo:', err);
+      setPhotoMessage({ type: 'danger', text: 'An error occurred while removing' });
+    } finally {
+      setPhotoRemoving(false);
     }
   };
 
@@ -440,23 +567,62 @@ export default function SettingsPage() {
           <Stack spacing={3}>
             {/* Profile Picture Card */}
             <Card variant="outlined" sx={{ p: 3 }}>
-              <Stack spacing={2} alignItems="center">
+              <Stack spacing={2} alignItems="center" sx={{ width: '100%' }}>
                 <Typography level="title-md">Profile Picture</Typography>
                 <Avatar
+                  src={currentPhoto || undefined}
                   sx={{ width: 120, height: 120 }}
                 >
                   {settings.first_name?.[0]}{settings.last_name?.[0]}
                 </Avatar>
-                <Button
-                  variant="outlined"
-                  size="sm"
-                  startDecorator={<PhotoCamera />}
-                  disabled
-                >
-                  Upload Photo (Coming Soon)
-                </Button>
+                <input
+                  type="file"
+                  accept="image/*"
+                  ref={fileInputRef}
+                  style={{ display: 'none' }}
+                  onChange={handlePhotoSelected}
+                />
+                {photoMessage && (
+                  <Alert
+                    color={photoMessage.type}
+                    size="sm"
+                    startDecorator={photoMessage.type === 'success' ? <CheckCircle /> : <ErrorIcon />}
+                    sx={{ width: '100%' }}
+                  >
+                    {photoMessage.text}
+                  </Alert>
+                )}
+                <Stack direction="row" spacing={1} flexWrap="wrap" justifyContent="center" sx={{ width: '100%' }}>
+                  <Button
+                    variant="outlined"
+                    size="sm"
+                    startDecorator={<PhotoCamera />}
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    {pendingPhoto ? 'Choose Another Photo' : 'Choose Photo'}
+                  </Button>
+                  <Button
+                    variant="solid"
+                    size="sm"
+                    onClick={handleUploadPhoto}
+                    disabled={!pendingPhoto || photoUploading}
+                    loading={photoUploading}
+                  >
+                    Save Photo
+                  </Button>
+                  <Button
+                    variant="plain"
+                    size="sm"
+                    color="danger"
+                    onClick={handleRemovePhoto}
+                    disabled={!currentPhoto || photoRemoving}
+                    loading={photoRemoving}
+                  >
+                    {pendingPhoto ? 'Clear Selection' : 'Remove'}
+                  </Button>
+                </Stack>
                 <Typography level="body-xs" sx={{ color: 'text.secondary', textAlign: 'center' }}>
-                  Recommended: Square image, at least 400x400px
+                  Recommended: Square image, at least 400x400px (max 2MB)
                 </Typography>
               </Stack>
             </Card>

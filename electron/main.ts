@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog } from 'electron';
+import { app, BrowserWindow, dialog, session } from 'electron';
 import * as path from 'path';
 import { spawn, ChildProcess, exec } from 'child_process';
 import * as os from 'os';
@@ -51,6 +51,58 @@ function getLocalIp(): string {
 const isDev = !app.isPackaged;
 const APP_PORT = 3000;
 const WS_PORT = 8080;
+const APP_USER_MODEL_ID = 'com.ust.filpat';
+const PRODUCT_DISPLAY_NAME = 'Filipino Phonological Assessment Tool';
+
+function resolveAssetPath(...segments: string[]): string {
+  if (isDev) {
+    return path.join(__dirname, '..', ...segments);
+  }
+  return path.join(process.resourcesPath, 'app', ...segments);
+}
+
+const appIconPath = resolveAssetPath('assets', 'icons', 'icon.ico');
+
+app.name = PRODUCT_DISPLAY_NAME;
+
+if (process.platform === 'win32') {
+  app.setAppUserModelId(APP_USER_MODEL_ID);
+}
+
+function registerDownloadHandler() {
+  app.whenReady().then(() => {
+    const electronSession = session.defaultSession;
+    if (!electronSession) {
+      console.warn('[Download] No default session found; skipping download handler.');
+      return;
+    }
+
+    electronSession.on('will-download', (event, item) => {
+      const filename = item.getFilename();
+      if (!filename.toLowerCase().endsWith('.pdf')) {
+        return; // Let non-PDF downloads use default behavior
+      }
+
+      const downloadsPath = app.getPath('downloads');
+      const targetPath = path.join(downloadsPath, filename);
+      item.setSavePath(targetPath);
+
+      console.log(`[Download] Saving ${filename} to ${targetPath}`);
+
+      item.once('done', (_, state) => {
+        if (state === 'completed') {
+          console.log(`[Download] ${filename} saved successfully`);
+        } else {
+          console.warn(`[Download] ${filename} failed with state: ${state}`);
+        }
+      });
+    });
+  }).catch((err) => {
+    console.warn('[Download] Failed to register handler:', err);
+  });
+}
+
+registerDownloadHandler();
 
 let mainWindow: BrowserWindow | null = null;
 let serverProcess: ChildProcess | null = null;
@@ -144,7 +196,7 @@ function createWindow() {
   const win = new BrowserWindow({
     width: 1280,
     height: 800,
-    icon: path.join(__dirname, '..', 'assets', 'icons', 'icon.ico'),
+    icon: appIconPath,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'), 
       nodeIntegration: false,

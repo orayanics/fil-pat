@@ -21,7 +21,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         last_name: true, 
         email: true, 
         is_active: true,
-        is_admin: true
+        is_admin: true,
+        profile_picture_path: true
       }
     });
 

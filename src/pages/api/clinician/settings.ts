@@ -36,6 +36,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           postal_code: true,
           years_of_experience: true,
           is_active: true,
+          profile_picture_path: true,
         },
       });
 
@@ -117,6 +118,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           postal_code: true,
           years_of_experience: true,
           is_active: true,
+          profile_picture_path: true,
         },
       });
 

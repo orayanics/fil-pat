@@ -8,6 +8,7 @@ export interface AuthUser {
   last_name: string;
   is_admin: boolean;
   is_active: boolean;
+  profile_picture_path?: string | null;
 }
 
 export interface SessionInfo {

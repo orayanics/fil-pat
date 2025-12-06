@@ -13,6 +13,7 @@ export interface AuthUser {
   last_name: string;
   is_admin: boolean;
   is_active: boolean;
+  profile_picture_path?: string | null;
 }
 
 export async function hashPassword(password: string): Promise<string> {
@@ -87,7 +88,8 @@ export async function authenticateUser(username: string, password: string): Prom
       first_name: clinician.first_name,
       last_name: clinician.last_name,
       is_admin: clinician.is_admin,
-      is_active: clinician.is_active
+      is_active: clinician.is_active,
+      profile_picture_path: clinician.profile_picture_path ?? null
     };
   } catch (error) {
     console.error('Authentication error:', error);

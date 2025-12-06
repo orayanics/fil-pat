@@ -1,5 +1,5 @@
 "use client";
-import {useState, useEffect} from "react";
+import {useState, useEffect, useCallback} from "react";
 import {Margin, usePDF} from "react-to-pdf";
 
 import {ExportedSessionData} from "@/models/variables";
@@ -9,18 +9,62 @@ export function usePdfForm(sessionId: string) {
   const [formData, setFormData] = useState<ExportedSessionData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [pdfFilename, setPdfFilename] = useState(`session_${sessionId}.pdf`);
+  const [downloadStatus, setDownloadStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const [downloadMessage, setDownloadMessage] = useState('');
 
   const {toPDF, targetRef} = usePDF({
     filename: `session_${sessionId}.pdf`,
     page: {margin: Margin.MEDIUM, format: "letter", orientation: "portrait"},
   });
 
-  const savePdf = () => {
+  const buildPdfFilename = useCallback((data: ExportedSessionData | null) => {
+    const safe = (value?: string | null) =>
+      value
+        ? value
+            .toString()
+            .trim()
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/gi, "_")
+            .replace(/^_+|_+$/g, "")
+        : undefined;
+
+    if (!data) {
+      return `session_${sessionId}.pdf`;
+    }
+
+    const lastName = safe(data.patientInfo?.last_name);
+    const sessionName = safe(data.sessionInfo?.session_name);
+    const sessionUuid = safe(data.sessionInfo?.session_uuid || sessionId);
+    const dateStamp = new Date().toISOString().split('T')[0];
+
+    if (lastName && sessionName) {
+      return `${lastName}_${sessionName}.pdf`;
+    }
+
+    if (sessionUuid) {
+      return `${lastName ? `${lastName}_` : ""}${sessionUuid}_${dateStamp}.pdf`;
+    }
+
+    return `session_${sessionId}_${dateStamp}.pdf`;
+  }, [sessionId]);
+
+  const resetDownloadStatus = useCallback(() => {
+    setDownloadStatus('idle');
+    setDownloadMessage('');
+  }, []);
+
+  const savePdf = async () => {
     try {
       setIsSave(true);
-      toPDF();
+      resetDownloadStatus();
+      await toPDF({ filename: pdfFilename });
+      setDownloadStatus('success');
+      setDownloadMessage(`PDF saved as ${pdfFilename}`);
     } catch (error) {
       console.error("Error generating PDF:", error);
+      setDownloadStatus('error');
+      setDownloadMessage('Failed to generate PDF. Please try again.');
     } finally {
       setIsSave(false);
     }
@@ -87,6 +131,7 @@ export function usePdfForm(sessionId: string) {
         };
         
         setFormData(transformedData);
+        setPdfFilename(buildPdfFilename(transformedData));
         setError(null);
       } catch (err) {
         console.error("Failed to fetch session data:", err);
@@ -98,7 +143,7 @@ export function usePdfForm(sessionId: string) {
     };
 
     fetchSessionData();
-  }, [sessionId]);
+  }, [sessionId, buildPdfFilename]);
 
   return {
     formData,
@@ -109,6 +154,10 @@ export function usePdfForm(sessionId: string) {
     toPDF,
     targetRef,
     savePdf,
+    pdfFilename,
+    downloadStatus,
+    downloadMessage,
+    resetDownloadStatus,
 
     // states
     isSave,

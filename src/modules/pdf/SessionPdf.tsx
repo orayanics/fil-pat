@@ -1,6 +1,6 @@
 import {useParams} from "next/navigation";
 
-import {Box, Button, Alert, Table, CircularProgress, Typography, Sheet, Stack, Divider, Chip, Card} from "@mui/joy";
+import {Box, Button, Alert, Table, CircularProgress, Typography, Sheet, Stack, Divider, Chip, Card, Snackbar} from "@mui/joy";
 import {usePdfForm} from "./usePdfForm";
 // import {ExportedSessionData} from "@/models/variables"; // Unused type
 import {CheckCircle, Cancel, Warning, Person, Cake, Wc, CalendarToday, Timer, PlayArrow, Stop} from "@mui/icons-material";
@@ -8,7 +8,17 @@ import {CheckCircle, Cancel, Warning, Person, Cake, Wc, CalendarToday, Timer, Pl
 export default function SessionPdf() {
   const params = useParams();
   const sessionId = params?.id as string;
-  const {formData, loading, error, isSave, savePdf, targetRef} = usePdfForm(sessionId);
+  const {
+    formData,
+    loading,
+    error,
+    isSave,
+    savePdf,
+    targetRef,
+    downloadStatus,
+    downloadMessage,
+    resetDownloadStatus,
+  } = usePdfForm(sessionId);
 
   if (loading) {
     return (
@@ -42,6 +52,18 @@ export default function SessionPdf() {
 
   return (
     <Box sx={{ maxWidth: 1200, mx: 'auto', p: 3 }}>
+      <Snackbar
+        open={downloadStatus === 'success' || downloadStatus === 'error'}
+        color={downloadStatus === 'success' ? 'success' : 'danger'}
+        variant="soft"
+        autoHideDuration={4000}
+        onClose={(_, reason) => {
+          if (reason === 'clickaway') return;
+          resetDownloadStatus();
+        }}
+      >
+        {downloadMessage}
+      </Snackbar>
       <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <Typography level="h3">Session Report</Typography>
         <Button

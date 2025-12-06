@@ -222,41 +222,12 @@ export default function SocketProvider({ children }: { children: ReactNode }) {
               first_name: 'Patient',
               last_name: 'Connected'
             });
-            // show a short, non-blocking in-app toast for clinician UX
+            // show a short, non-blocking in-app toast for clinician UX; avoid OS notifications
             try {
               setToast({ open: true, message: `Patient connected to session ${data.sessionId || sessionId}` });
               setTimeout(() => setToast({ open: false, message: '' }), 4000);
             } catch (e) {
               console.warn('Toast failed', e);
-            }
-            // Prompt the clinician visually: try Notification API first. If not
-            // available or denied, fall back to an in-app UI update (no blocking
-            // alert) — we avoid native alert() because browsers sometimes prefix
-            // it with the origin (eg. "localhost says:") which is noisy.
-            try {
-              if (typeof window !== 'undefined' && 'Notification' in window) {
-                if (Notification.permission === 'granted') {
-                  new Notification('Patient connected', { body: `A patient connected to session ${data.sessionId || sessionId}` });
-                } else if (Notification.permission !== 'denied') {
-                  Notification.requestPermission().then((perm) => {
-                    if (perm === 'granted') {
-                      new Notification('Patient connected', { body: `A patient connected to session ${data.sessionId || sessionId}` });
-                    } else {
-                      // Permission denied — rely on visible UI state (patientConnected)
-                      console.log(`Patient connected to session ${data.sessionId || sessionId}`);
-                    }
-                  });
-                } else {
-                  // Permission already denied — rely on UI state instead of alert
-                  console.log(`Patient connected to session ${data.sessionId || sessionId}`);
-                }
-              } else {
-                // Notifications not available; rely on UI state (no native alert)
-                console.log(`Patient connected to session ${data.sessionId || sessionId}`);
-              }
-            } catch (e) {
-              // Best-effort: don't break message handling
-              console.warn('Notification error', e);
             }
             break;
           case 'patientRejected':

@@ -5,10 +5,15 @@ import { join } from 'path';
  * This must happen before the @prisma/client import
  */
 export const configurePrismaForElectron = () => {
-  const isElectron = process.versions && process.versions.electron;
-  
-  if (!isElectron) {
-    return; // Not in Electron, no configuration needed
+  const isElectron = !!(process.versions && process.versions.electron);
+  // Child Node processes spawned by Electron (eg. Next.js/Prisma server) inherit
+  // the electron version flag but don't have process.type or the electron module
+  // available. Bail out early in that environment to avoid noisy require errors.
+  const electronProcess = process as NodeJS.Process & { type?: string };
+  const hasElectronContext = typeof electronProcess.type === 'string';
+
+  if (!isElectron || !hasElectronContext) {
+    return; // Not running inside an Electron main/renderer context
   }
 
   if (process.env.NODE_ENV === 'production') {

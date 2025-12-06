@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState, useRef } from 'react';
-import { Box, Button, Typography, Sheet, Stack, Divider, Chip, Table, CircularProgress, Alert } from '@mui/joy';
+import { useEffect, useState, useMemo } from 'react';
+import { Box, Button, Typography, Sheet, Stack, Divider, Chip, Table, CircularProgress, Alert, Snackbar } from '@mui/joy';
 import { CheckCircle, Cancel, Assessment, CalendarToday, Schedule, Person } from '@mui/icons-material';
 import { usePDF, Margin } from 'react-to-pdf';
 
@@ -72,12 +72,39 @@ export default function PatientFullReport({ patientId, onClose }: PatientFullRep
   const [error, setError] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
   const [startDate, setStartDate] = useState<string>('');
-  const targetRef = useRef<HTMLDivElement>(null);
+  const [downloadStatus, setDownloadStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const [downloadMessage, setDownloadMessage] = useState('');
+  const [pdfFilename, setPdfFilename] = useState(`patient_${patientId}_full_report.pdf`);
 
-  const { toPDF } = usePDF({
-    filename: `patient_${patientId}_full_report.pdf`,
+  const { toPDF, targetRef } = usePDF({
+    filename: pdfFilename,
     page: { margin: Margin.MEDIUM, format: 'letter', orientation: 'portrait' },
   });
+
+  const sanitize = useMemo(() => (value?: string | null) =>
+    value
+      ? value
+          .toString()
+          .trim()
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/gi, '_')
+          .replace(/^_+|_+$/g, '')
+      : undefined,
+    []
+  );
+
+  useEffect(() => {
+    if (!data) {
+      setPdfFilename(`patient_${patientId}_full_report.pdf`);
+      return;
+    }
+
+    const lastName = sanitize(data.patient?.last_name);
+    const stamp = new Date().toISOString().split('T')[0];
+    const fromStamp = startDate || stamp;
+    const filenameBase = lastName ? `${lastName}_full-report_${fromStamp}` : `patient_${patientId}_full-report_${fromStamp}`;
+    setPdfFilename(`${filenameBase}.pdf`);
+  }, [data, patientId, startDate, sanitize]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -109,10 +136,15 @@ export default function PatientFullReport({ patientId, onClose }: PatientFullRep
   const handleGeneratePDF = async () => {
     try {
       setGenerating(true);
-      await toPDF();
+      setDownloadStatus('idle');
+      setDownloadMessage('');
+      await toPDF({ filename: pdfFilename });
+      setDownloadStatus('success');
+      setDownloadMessage(`PDF saved as ${pdfFilename}`);
     } catch (err) {
       console.error('Failed to generate PDF:', err);
-      alert('Failed to generate PDF');
+      setDownloadStatus('error');
+      setDownloadMessage('Failed to generate PDF. Please try again.');
     } finally {
       setGenerating(false);
     }
@@ -170,6 +202,19 @@ export default function PatientFullReport({ patientId, onClose }: PatientFullRep
 
   return (
     <Box sx={{ maxWidth: 1400, mx: 'auto', p: 3 }}>
+      <Snackbar
+        open={downloadStatus === 'success' || downloadStatus === 'error'}
+        color={downloadStatus === 'success' ? 'success' : 'danger'}
+        variant="soft"
+        autoHideDuration={4000}
+        onClose={(_, reason) => {
+          if (reason === 'clickaway') return;
+          setDownloadStatus('idle');
+          setDownloadMessage('');
+        }}
+      >
+        {downloadMessage}
+      </Snackbar>
       <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
         <Typography level="h3">Full Patient Report</Typography>
         <Stack direction="row" spacing={2} sx={{ alignItems: 'center' }}>

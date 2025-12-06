@@ -1,7 +1,7 @@
 {
-  "name": "fil-path",
-  "version": "0.1.0",
-  "description": "Filipino Phonological Assessment Tool - Speech-language pathology assessment application",
+  "name": "fil-pat",
+  "version": "1.2.0",
+  "description": "Filipino Phonological Assessment Tool Application",
   "author": "UST College of Rehabilitation Sciences",
   "private": true,
   "scripts": {
@@ -149,7 +149,7 @@
       "uninstallerIcon": "assets/icons/icon.ico",
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "FIL-PAT",
+      "shortcutName": "Filipino Phonological Assessment Tool",
       "include": "scripts/installer.nsh"
     },
     "portable": {

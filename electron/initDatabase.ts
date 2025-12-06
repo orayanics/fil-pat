@@ -8,6 +8,7 @@
 import { spawn } from 'child_process';
 import * as path from 'path';
 import * as fs from 'fs';
+import { app } from 'electron';
 
 /**
  * Check if database file exists
@@ -23,11 +24,10 @@ export function databaseExists(dbPath: string): boolean {
 export async function initializeDatabase(isDev: boolean): Promise<void> {
   console.log('🔍 Checking database status...');
 
-  const dbPath = isDev
-    ? path.join(__dirname, '..', 'prisma', 'filpat.db')
-    : path.join(process.resourcesPath, 'prisma', 'filpat.db');
+  const bundledDbPath = getBundledDatabasePath(isDev);
+  const runtimeDbPath = getRuntimeDatabasePath(isDev);
 
-  const dbExists = databaseExists(dbPath);
+  const dbExists = databaseExists(runtimeDbPath);
 
   if (!dbExists) {
     console.log('📦 Fresh installation detected - initializing database...');
@@ -37,8 +37,8 @@ export async function initializeDatabase(isDev: boolean): Promise<void> {
       // Development: run full setup
       await runDatabaseSetup(isDev);
     } else {
-      // Production: Copy pre-built database from resources
-      await copyPrebuiltDatabase();
+      // Production: Copy pre-built database from resources to userData
+      await copyBundledDatabaseToRuntime(bundledDbPath, runtimeDbPath);
     }
     
     console.log('');
@@ -51,17 +51,16 @@ export async function initializeDatabase(isDev: boolean): Promise<void> {
 /**
  * Copy pre-built database file to userData directory (production only)
  */
-async function copyPrebuiltDatabase(): Promise<void> {
-  console.log('📋 Copying pre-built database...');
-  
-  const sourceDb = path.join(process.resourcesPath, 'prisma', 'filpat.db');
-  const targetDb = path.join(process.resourcesPath, 'prisma', 'filpat.db');
-  
+async function copyBundledDatabaseToRuntime(sourceDb: string, targetDb: string): Promise<void> {
+  console.log('📋 Copying pre-built database to user data...');
+
   if (!fs.existsSync(sourceDb)) {
     throw new Error(`Source database not found at: ${sourceDb}`);
   }
-  
-  // Database is already in the right location in resources/prisma
+
+  fs.mkdirSync(path.dirname(targetDb), { recursive: true });
+  fs.copyFileSync(sourceDb, targetDb);
+
   console.log('✓ Database ready at:', targetDb);
 }
 
@@ -166,12 +165,38 @@ function runCommand(command: string, args: string[], cwd: string): Promise<void>
  * Ensure database directory exists
  */
 export function ensureDatabaseDirectory(isDev: boolean): void {
-  const dbDir = isDev
-    ? path.join(__dirname, '..', 'prisma')
-    : path.join(process.resourcesPath, 'app', 'prisma');
-
-  if (!fs.existsSync(dbDir)) {
-    console.log('Creating database directory:', dbDir);
-    fs.mkdirSync(dbDir, { recursive: true });
+  if (isDev) {
+    const devDir = path.join(__dirname, '..', 'prisma');
+    if (!fs.existsSync(devDir)) {
+      console.log('Creating database directory:', devDir);
+      fs.mkdirSync(devDir, { recursive: true });
+    }
+    return;
   }
+
+  const bundledDir = path.join(process.resourcesPath, 'prisma');
+  if (!fs.existsSync(bundledDir)) {
+    console.log('Creating bundled database directory:', bundledDir);
+    fs.mkdirSync(bundledDir, { recursive: true });
+  }
+
+  const runtimeDir = path.dirname(getRuntimeDatabasePath(false));
+  if (!fs.existsSync(runtimeDir)) {
+    console.log('Creating runtime database directory:', runtimeDir);
+    fs.mkdirSync(runtimeDir, { recursive: true });
+  }
+}
+
+function getBundledDatabasePath(isDev: boolean): string {
+  return isDev
+    ? path.join(__dirname, '..', 'prisma', 'filpat.db')
+    : path.join(process.resourcesPath, 'prisma', 'filpat.db');
+}
+
+function getRuntimeDatabasePath(isDev: boolean): string {
+  if (isDev) {
+    return path.join(__dirname, '..', 'prisma', 'filpat.db');
+  }
+  const userData = app.getPath('userData');
+  return path.join(userData, 'filpat.db');
 }
