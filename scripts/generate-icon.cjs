@@ -1,0 +1,46 @@
+#!/usr/bin/env node
+const fs = require('fs/promises');
+const path = require('path');
+const sharp = require('sharp');
+const pngToIcoModule = require('png-to-ico');
+const pngToIco = typeof pngToIcoModule === 'function' ? pngToIcoModule : pngToIcoModule.default;
+
+const sizes = [16, 24, 32, 48, 64, 128, 256];
+const workspaceRoot = path.resolve(__dirname, '..');
+const source = path.join(workspaceRoot, 'assets', 'icons', 'icon.png');
+const target = path.join(workspaceRoot, 'assets', 'icons', 'icon.ico');
+
+async function ensureSource() {
+  try {
+    await fs.access(source);
+  } catch (error) {
+    throw new Error(`Source PNG not found at ${source}`);
+  }
+}
+
+async function createResizedBuffers(inputBuffer) {
+  return Promise.all(
+    sizes.map(async (size) => {
+      const buffer = await sharp(inputBuffer)
+        .resize(size, size, { fit: 'cover' })
+        .png({ compressionLevel: 9, adaptiveFiltering: true })
+        .toBuffer();
+      return buffer;
+    })
+  );
+}
+
+async function main() {
+  await ensureSource();
+  const input = await fs.readFile(source);
+  const resizedBuffers = await createResizedBuffers(input);
+  const icoBuffer = await pngToIco(resizedBuffers);
+  await fs.writeFile(target, icoBuffer);
+  console.log(`Generated icon at ${target}`);
+  console.log(`Included sizes: ${sizes.join(', ')}px`);
+}
+
+main().catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});

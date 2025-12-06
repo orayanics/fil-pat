@@ -58,7 +58,19 @@ function resolveAssetPath(...segments: string[]): string {
   if (isDev) {
     return path.join(__dirname, '..', ...segments);
   }
-  return path.join(process.resourcesPath, 'app', ...segments);
+
+  const unpackedPath = path.join(process.resourcesPath, 'app.asar.unpacked', ...segments);
+  if (fs.existsSync(unpackedPath)) {
+    return unpackedPath;
+  }
+
+  const appPath = app.getAppPath();
+  const withinAsar = path.join(appPath, ...segments);
+  if (fs.existsSync(withinAsar)) {
+    return withinAsar;
+  }
+
+  return path.join(process.resourcesPath, ...segments);
 }
 
 const appIconPath = resolveAssetPath('assets', 'icons', 'icon.ico');
@@ -279,10 +291,30 @@ function startProductionServer(): Promise<void> {
         resolve();
       }, 3000);
     } else {
-      // In production, fork the server directly (no asar, all files unpacked)
+      // In production, run the compiled Next.js server that we copied to resources dir
       const { fork } = require('child_process');
-      const serverPath = path.join(process.resourcesPath, 'app', 'dist', 'server.js');
-      
+      const packagedAppPath = app.getAppPath();
+      const resourcesPath = process.resourcesPath;
+      const unpackedPath = path.join(resourcesPath, 'app.asar.unpacked');
+      const serverCandidates = [
+        path.join(resourcesPath, 'dist', 'server.js'), // preferred: copied via extraResources
+        path.join(unpackedPath, 'dist', 'server.js'),  // fallback when unpacked copy exists
+        path.join(packagedAppPath, 'dist', 'server.js'), // fallback to asar
+      ];
+      const serverPath = serverCandidates.find((candidate) => fs.existsSync(candidate));
+      const workingDir = resourcesPath;
+
+      if (!serverPath) {
+        console.error('Server bundle not found at expected locations:', serverCandidates);
+        reject(new Error('Server bundle missing. Please reinstall the application.'));
+        return;
+      }
+
+      const nodeModulePaths = [path.join(packagedAppPath, 'node_modules')];
+      if (process.env.NODE_PATH) {
+        nodeModulePaths.push(process.env.NODE_PATH);
+      }
+
       const env = {
         ...process.env,
         NODE_ENV: 'production',
@@ -290,15 +322,16 @@ function startProductionServer(): Promise<void> {
         APP_PORT: APP_PORT.toString(),
         WEBSOCKET_PORT: WS_PORT.toString(),
         WEBSOCKET_HOST: '0.0.0.0',
+        NODE_PATH: nodeModulePaths.join(path.delimiter),
       };
 
       console.log('Server path:', serverPath);
-      console.log('Working directory:', path.join(process.resourcesPath, 'app'));
+      console.log('Working directory:', workingDir);
 
       try {
         serverProcess = fork(serverPath, [], {
           env: env as NodeJS.ProcessEnv,
-          cwd: path.join(process.resourcesPath, 'app'),
+          cwd: workingDir,
           stdio: 'pipe',
         });
 

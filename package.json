@@ -70,7 +70,9 @@
     "electron-builder": "^26.0.12",
     "eslint": "^9",
     "eslint-config-next": "15.3.5",
+    "png-to-ico": "^3.0.1",
     "prisma": "^5.22.0",
+    "sharp": "^0.34.5",
     "tailwindcss": "^4",
     "ts-node": "^10.9.2",
     "tsx": "^4.19.2",
@@ -79,7 +81,12 @@
   "build": {
     "appId": "com.ust.filpat",
     "productName": "FIL-PAT",
-    "asar": false,
+    "asar": true,
+    "asarUnpack": [
+      "node_modules/.prisma/**",
+      "node_modules/@prisma/client/**",
+      "**/*.node"
+    ],
     "beforeBuild": "scripts/before-build.js",
     "afterPack": "./electron-builder-afterPack.js",
     "npmRebuild": false,
@@ -111,13 +118,26 @@
       {
         "from": "node_modules/@prisma/engines",
         "to": "node_modules/@prisma/engines"
+      },
+      {
+        "from": ".next",
+        "to": ".next"
+      },
+      {
+        "from": "dist",
+        "to": "dist"
+      },
+      {
+        "from": "public",
+        "to": "public"
       }
     ],
     "extraMetadata": {
       "main": "dist-electron/main.js"
     },
     "directories": {
-      "output": "release"
+      "output": "release",
+      "buildResources": "assets"
     },
     "win": {
       "icon": "assets/icons/icon.ico",
