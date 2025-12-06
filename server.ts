@@ -28,12 +28,12 @@ app.prepare().then(() => {
 ╔══════════════════════════════════════════════════════════╗
 ║                 FIL-PAT Server Running                   ║
 ╠══════════════════════════════════════════════════════════╣
-║  Mode:        ${dev ? 'Development' : 'Production'}                              ║
-║  Listening:   http://${hostname}:${port}                  ║
+║  Mode:        ${dev ? 'Development' : 'Production'}      ║
+║  Listening:   http://${hostname}:${port}                 ║
 ║  WebSocket:   Port 8080                                  ║
 ╠══════════════════════════════════════════════════════════╣
-║  ✓ Ready to accept connections from network devices     ║
-║  ✓ Patient devices can connect via QR code              ║
+║  ✓ Ready to accept connections from network devices      ║
+║  ✓ Patient devices can connect via QR code               ║
 ╚══════════════════════════════════════════════════════════╝
     `);
   });
