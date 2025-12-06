@@ -7,14 +7,11 @@
   "scripts": {
     "dev": "nodemon",
     "dev:next": "next dev --turbopack",
-    "dev:lan": "next dev --hostname 0.0.0.0 --port 3000 --turbopack",
     "dev:websocket": "nodemon --config nodemon.websocket.json",
     "fullstack": "concurrently \"npm run dev:next\" \"npm run dev:websocket\"",
-    "fullstack:lan": "concurrently \"npm run dev:lan\" \"npm run dev:websocket\"",
     "build": "next build && tsc --project tsconfig.server.json",
     "build:server": "tsc --project tsconfig.server.json",
     "start": "node dist/server.js",
-    "start:lan": "cross-env APP_HOSTNAME=0.0.0.0 WEBSOCKET_HOST=0.0.0.0 node dist/server.js",
     "lint": "next lint",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
@@ -31,10 +28,7 @@
     "dist:portable": "npm run prebuild:electron && npm run build && npm run build:electron && electron-builder --win portable",
     "dist:installer": "npm run prebuild:electron && npm run build && npm run build:electron && electron-builder --win nsis",
     "clean:dist": "if exist release rmdir /s /q release && if exist dist-electron rmdir /s /q dist-electron && if exist dist rmdir /s /q dist",
-    "rebuild:dist": "npm run clean:dist && npm run dist",
-    "dev:electron:watch": "tsc -p tsconfig.electron.json --watch",
-    "dev:electron:start": "nodemon --config nodemon.electron.json",
-    "dev:electron:full": "concurrently \"npm run dev:electron:watch\" \"npm run dev:electron:start\""
+    "clean:fresh": "powershell -NoProfile -Command \"if (Test-Path node_modules) { Remove-Item node_modules -Recurse -Force }; if (Test-Path dist) { Remove-Item dist -Recurse -Force }; if (Test-Path dist-electron) { Remove-Item dist-electron -Recurse -Force }; if (Test-Path release) { Remove-Item release -Recurse -Force }\""
   },
   "dependencies": {
     "@emotion/cache": "^11.14.0",
@@ -44,10 +38,11 @@
     "@mui/joy": "^5.0.0-beta.52",
     "@prisma/client": "^5.22.0",
     "@types/ws": "^8.18.1",
-    "bcrypt": "^6.0.0",
     "bcryptjs": "^2.4.3",
     "better-sqlite3": "^12.2.0",
+    "canvg": "^4.0.3",
     "cookie": "^0.7.2",
+    "dompurify": "^3.3.0",
     "jsonwebtoken": "^9.0.2",
     "next": "^15.5.7",
     "nodemon": "^3.1.10",
@@ -61,7 +56,6 @@
   "devDependencies": {
     "@eslint/eslintrc": "^3",
     "@tailwindcss/postcss": "^4",
-    "@types/bcrypt": "^6.0.0",
     "@types/bcryptjs": "^2.4.6",
     "@types/better-sqlite3": "^7.6.13",
     "@types/cookie": "^0.6.0",
@@ -85,15 +79,10 @@
   "build": {
     "appId": "com.ust.filpat",
     "productName": "FIL-PAT",
-    "asar": true,
-    "asarUnpack": [
-      "node_modules/.prisma/**/*",
-      "node_modules/@prisma/**/*",
-      "node_modules/better-sqlite3/**/*",
-      "node_modules/bcrypt/**/*",
-      "node_modules/ws/**/*"
-    ],
+    "asar": false,
+    "beforeBuild": "scripts/before-build.js",
     "afterPack": "./electron-builder-afterPack.js",
+    "npmRebuild": false,
     "files": [
       ".next/**/*",
       "dist/**/*",
@@ -102,15 +91,7 @@
       "public/**/*",
       "assets/**/*",
       "package.json",
-      "!node_modules/**/*",
-      "node_modules/bcrypt/**/*",
-      "node_modules/bcryptjs/**/*",
-      "node_modules/jsonwebtoken/**/*",
-      "node_modules/ws/**/*",
-      "node_modules/node-gyp-build/**/*",
-      "node_modules/node-addon-api/**/*",
-      "node_modules/bindings/**/*",
-      "node_modules/prebuild-install/**/*",
+      "node_modules/**/*",
       "!node_modules/@img/sharp-darwin-*/**/*",
       "!node_modules/@img/sharp-linux-*/**/*"
     ],
@@ -139,6 +120,7 @@
       "output": "release"
     },
     "win": {
+      "icon": "assets/icons/icon.ico",
       "target": [
         {
           "target": "portable",

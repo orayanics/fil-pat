@@ -1,4 +1,0 @@
-Failed to start application: Error: Source database not found at: C:\Users\HomePC\Documents\GitHub\fil-pat\release\win-unpacked\resources\prisma\filpat.db
-    at copyPrebuiltDatabase (C:\Users\HomePC\Documents\GitHub\fil-pat\release\win-unpacked\resources\app.asar\dist-electron\initDatabase.js:90:15)
-    at initializeDatabase (C:\Users\HomePC\Documents\GitHub\fil-pat\release\win-unpacked\resources\app.asar\dist-electron\initDatabase.js:73:19)
-    at C:\Users\HomePC\Documents\GitHub\fil-pat\release\win-unpacked\resources\app.asar\dist-electron\main.js:308:53

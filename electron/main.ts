@@ -9,7 +9,7 @@ import * as fs from 'fs';
 if (app.isPackaged) {
   const queryEnginePath = path.join(
     process.resourcesPath,
-    'app.asar.unpacked',
+    'app',
     'node_modules',
     '.prisma',
     'client',
@@ -17,7 +17,7 @@ if (app.isPackaged) {
   );
   const schemaPath = path.join(
     process.resourcesPath,
-    'app.asar.unpacked',
+    'app',
     'node_modules',
     '.prisma',
     'client',
@@ -189,54 +189,101 @@ function startProductionServer(): Promise<void> {
   return new Promise((resolve, reject) => {
     console.log('Starting Next.js server...');
     
-    const serverPath = isDev 
-      ? path.join(__dirname, '..', 'server.ts')
-      : path.join(process.resourcesPath, 'app', 'dist', 'server.js');
+    if (isDev) {
+      // In dev mode, spawn as separate process
+      const serverPath = path.join(__dirname, '..', 'server.ts');
+      
+      if (!fs.existsSync(serverPath)) {
+        console.error('Server file not found at:', serverPath);
+        reject(new Error('Server files not found. Please rebuild the application.'));
+        return;
+      }
 
-    // Check if server file exists
-    if (!fs.existsSync(serverPath)) {
-      console.error('Server file not found at:', serverPath);
-      reject(new Error('Server files not found. Please rebuild the application.'));
-      return;
+      serverProcess = spawn('node', [serverPath], {
+        env: process.env as NodeJS.ProcessEnv,
+        cwd: path.join(__dirname, '..'),
+        stdio: 'pipe',
+      });
+
+      serverProcess.stdout?.on('data', (data) => {
+        console.log(`[Server] ${data.toString()}`);
+      });
+
+      serverProcess.stderr?.on('data', (data) => {
+        console.error(`[Server Error] ${data.toString()}`);
+      });
+
+      serverProcess.on('error', (error) => {
+        console.error('Failed to start server:', error);
+        reject(error);
+      });
+
+      serverProcess.on('close', (code) => {
+        console.log(`Server process exited with code ${code}`);
+      });
+
+      setTimeout(() => {
+        console.log('✓ Server started');
+        resolve();
+      }, 3000);
+    } else {
+      // In production, fork the server directly (no asar, all files unpacked)
+      const { fork } = require('child_process');
+      const serverPath = path.join(process.resourcesPath, 'app', 'dist', 'server.js');
+      
+      const env = {
+        ...process.env,
+        NODE_ENV: 'production',
+        APP_HOSTNAME: '0.0.0.0',
+        APP_PORT: APP_PORT.toString(),
+        WEBSOCKET_PORT: WS_PORT.toString(),
+        WEBSOCKET_HOST: '0.0.0.0',
+      };
+
+      console.log('Server path:', serverPath);
+      console.log('Working directory:', path.join(process.resourcesPath, 'app'));
+
+      try {
+        serverProcess = fork(serverPath, [], {
+          env: env as NodeJS.ProcessEnv,
+          cwd: path.join(process.resourcesPath, 'app'),
+          stdio: 'pipe',
+        });
+
+        if (serverProcess) {
+          serverProcess.stdout?.on('data', (data) => {
+            console.log(`[Server] ${data.toString()}`);
+          });
+
+          serverProcess.stderr?.on('data', (data) => {
+            console.error(`[Server Error] ${data.toString()}`);
+          });
+
+          serverProcess.on('error', (error) => {
+            console.error('Failed to start server:', error);
+            reject(error);
+          });
+
+          serverProcess.on('close', (code) => {
+            console.log(`Server process exited with code ${code}`);
+            if (code !== 0 && code !== null) {
+              reject(new Error(`Server exited with code ${code}`));
+            }
+          });
+
+          // Give server time to initialize
+          setTimeout(() => {
+            console.log('✓ Server started');
+            resolve();
+          }, 3000);
+        } else {
+          reject(new Error('Failed to fork server process'));
+        }
+      } catch (error) {
+        console.error('Failed to fork server:', error);
+        reject(error);
+      }
     }
-
-    const env = {
-      ...process.env,
-      NODE_ENV: 'production',
-      APP_HOSTNAME: '0.0.0.0', // Listen on all interfaces for LAN access
-      APP_PORT: APP_PORT.toString(),
-      WEBSOCKET_PORT: WS_PORT.toString(),
-      WEBSOCKET_HOST: '0.0.0.0',
-    };
-
-    serverProcess = spawn('node', [serverPath], {
-      env: env as NodeJS.ProcessEnv,
-      cwd: isDev ? path.join(__dirname, '..') : path.join(process.resourcesPath, 'app'),
-      stdio: 'pipe',
-    });
-
-    serverProcess.stdout?.on('data', (data) => {
-      console.log(`[Server] ${data.toString()}`);
-    });
-
-    serverProcess.stderr?.on('data', (data) => {
-      console.error(`[Server Error] ${data.toString()}`);
-    });
-
-    serverProcess.on('error', (error) => {
-      console.error('Failed to start server:', error);
-      reject(error);
-    });
-
-    serverProcess.on('close', (code) => {
-      console.log(`Server process exited with code ${code}`);
-    });
-
-    // Wait for server to be ready
-    setTimeout(() => {
-      console.log('✓ Server started');
-      resolve();
-    }, 3000);
   });
 }
 

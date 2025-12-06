@@ -5,8 +5,11 @@ const path = require('path');
 
 console.log('=== Pre-build: Generating Prisma Client ===');
 
+// Get the project root (parent of scripts directory)
+const projectRoot = path.join(__dirname, '..');
+
 // Clean existing Prisma client
-const prismaClientPath = path.join(__dirname, 'node_modules', '.prisma');
+const prismaClientPath = path.join(projectRoot, 'node_modules', '.prisma');
 if (fs.existsSync(prismaClientPath)) {
   console.log('Removing existing Prisma client...');
   fs.rmSync(prismaClientPath, { recursive: true, force: true });
@@ -17,6 +20,7 @@ console.log('Generating Prisma client for Windows...');
 try {
   execSync('npx prisma generate', {
     stdio: 'inherit',
+    cwd: projectRoot,
     env: {
       ...process.env,
       PRISMA_CLI_QUERY_ENGINE_TYPE: 'library',
@@ -27,7 +31,7 @@ try {
   
   // Verify query engine exists
   const queryEnginePath = path.join(
-    __dirname, 
+    projectRoot, 
     'node_modules', 
     '.prisma', 
     'client',
@@ -41,7 +45,7 @@ try {
   } else {
     console.error('✗ Query engine binary NOT found at:', queryEnginePath);
     console.error('  Available files in .prisma/client:');
-    const clientDir = path.join(__dirname, 'node_modules', '.prisma', 'client');
+    const clientDir = path.join(projectRoot, 'node_modules', '.prisma', 'client');
     if (fs.existsSync(clientDir)) {
       fs.readdirSync(clientDir).forEach(file => {
         console.error('  -', file);
