@@ -79,6 +79,19 @@ export default function PatientFullReport({ patientId, onClose }: PatientFullRep
   const { toPDF, targetRef } = usePDF({
     filename: pdfFilename,
     page: { margin: Margin.MEDIUM, format: 'letter', orientation: 'portrait' },
+    canvas: {
+      mimeType: 'image/png',
+      qualityRatio: 1,
+    },
+    overrides: {
+      canvas: {
+        windowWidth: 1400,
+        windowHeight: 1600,
+        backgroundColor: '#ffffff',
+        removeContainer: true,
+        logging: false,
+      }
+    }
   });
 
   const sanitize = useMemo(() => (value?: string | null) =>
@@ -249,7 +262,17 @@ export default function PatientFullReport({ patientId, onClose }: PatientFullRep
         </Stack>
       </Box>
 
-      <Box ref={targetRef} sx={{ bgcolor: 'white', p: 4, borderRadius: 'md', boxShadow: 'lg' }}>
+      <Box 
+        ref={targetRef} 
+        sx={{ 
+          bgcolor: '#ffffff',
+          p: 4, 
+          borderRadius: 'md', 
+          boxShadow: 'lg',
+          position: 'relative',
+          isolation: 'isolate',
+        }}
+      >
         {/* Header Section */}
         <Box sx={{ textAlign: 'center', mb: 4, pb: 3, borderBottom: '3px solid', borderColor: 'primary.500' }}>
           <Typography level="h2" sx={{ color: 'primary.700', fontWeight: 800, mb: 1 }}>
@@ -401,29 +424,38 @@ export default function PatientFullReport({ patientId, onClose }: PatientFullRep
                   size="sm"
                   variant="plain"
                   sx={{
+                    tableLayout: 'fixed',
+                    width: '100%',
                     '& thead th': {
                       bgcolor: 'neutral.100',
                       fontWeight: 700,
-                      py: 1,
-                      fontSize: '0.75rem'
+                      py: 0.75,
+                      px: 0.75,
+                      fontSize: '0.7rem',
+                      lineHeight: 1.2,
+                      whiteSpace: 'normal',
+                      wordBreak: 'break-word'
                     },
                     '& tbody td': {
-                      py: 1,
-                      fontSize: '0.75rem',
+                      py: 0.75,
+                      px: 0.75,
+                      fontSize: '0.7rem',
+                      lineHeight: 1.3,
                       wordBreak: 'break-word',
-                      whiteSpace: 'normal'
+                      whiteSpace: 'normal',
+                      verticalAlign: 'top'
                     },
                   }}
                 >
                   <thead>
                     <tr>
-                      <th style={{ width: '5%' }}>#</th>
-                      <th style={{ width: '25%' }}>Question</th>
-                      <th style={{ width: '20%' }}>Response</th>
+                      <th style={{ width: '4%' }}>#</th>
+                      <th style={{ width: '22%' }}>Question</th>
+                      <th style={{ width: '18%' }}>Response</th>
                       <th style={{ width: '10%' }}>Score</th>
-                      <th style={{ width: '10%' }}>Consonants</th>
+                      <th style={{ width: '11%' }}>Consonants</th>
                       <th style={{ width: '10%' }}>Vowels</th>
-                      <th style={{ width: '20%' }}>Clinician Notes</th>
+                      <th style={{ width: '25%' }}>Clinician Notes</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -431,36 +463,36 @@ export default function PatientFullReport({ patientId, onClose }: PatientFullRep
                       <tr key={item.item_number}>
                         <td><strong>{item.item_number}</strong></td>
                         <td>
-                          <Typography level="body-sm" sx={{ wordBreak: 'break-word' }}>
+                          <Typography level="body-sm" sx={{ wordBreak: 'break-word', fontSize: '0.7rem', lineHeight: 1.3 }}>
                             {item.question}
                           </Typography>
                         </td>
                         <td>
-                          <Typography level="body-sm" sx={{ fontStyle: item.response_text ? 'normal' : 'italic', wordBreak: 'break-word' }}>
+                          <Typography level="body-sm" sx={{ fontStyle: item.response_text ? 'normal' : 'italic', wordBreak: 'break-word', fontSize: '0.7rem', lineHeight: 1.3 }}>
                             {item.response_text || 'No response'}
                           </Typography>
                         </td>
                         <td>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                            {item.is_correct === true && <CheckCircle sx={{ fontSize: 14, color: 'success.500' }} />}
-                            {item.is_correct === false && <Cancel sx={{ fontSize: 14, color: 'danger.500' }} />}
-                            <Typography level="body-sm">
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.3 }}>
+                            {item.is_correct === true && <CheckCircle sx={{ fontSize: 12, color: 'success.500' }} />}
+                            {item.is_correct === false && <Cancel sx={{ fontSize: 12, color: 'danger.500' }} />}
+                            <Typography level="body-sm" sx={{ fontSize: '0.7rem' }}>
                               {item.score !== null ? `${item.score}/${item.max_score}` : '—'}
                             </Typography>
                           </Box>
                         </td>
                         <td>
-                          <Typography level="body-sm" sx={{ textAlign: 'center' }}>
+                          <Typography level="body-sm" sx={{ textAlign: 'center', fontSize: '0.7rem' }}>
                             {item.consonants_correct !== null ? `${item.consonants_correct}/${item.consonants_count}` : '—'}
                           </Typography>
                         </td>
                         <td>
-                          <Typography level="body-sm" sx={{ textAlign: 'center' }}>
+                          <Typography level="body-sm" sx={{ textAlign: 'center', fontSize: '0.7rem' }}>
                             {item.vowels_correct !== null ? `${item.vowels_correct}/${item.vowels_count}` : '—'}
                           </Typography>
                         </td>
                         <td>
-                          <Typography level="body-sm" sx={{ fontStyle: item.clinician_notes ? 'normal' : 'italic', wordBreak: 'break-word' }}>
+                          <Typography level="body-sm" sx={{ fontStyle: item.clinician_notes ? 'normal' : 'italic', wordBreak: 'break-word', fontSize: '0.65rem', lineHeight: 1.4 }}>
                             {item.clinician_notes || '—'}
                           </Typography>
                         </td>

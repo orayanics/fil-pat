@@ -7,6 +7,17 @@ console.log('=== Pre-build: Generating Prisma Client ===');
 
 // Get the project root (parent of scripts directory)
 const projectRoot = path.join(__dirname, '..');
+const platform = process.platform;
+const prismaEngines = {
+  win32: 'query_engine-windows.dll.node',
+  darwin: 'libquery_engine-darwin.dylib.node',
+  linux: 'libquery_engine-linux.so.node',
+};
+const expectedEngine = prismaEngines[platform];
+
+if (!expectedEngine) {
+  console.warn(`No Prisma query engine mapping for platform ${platform}. Skipping validation.`);
+}
 
 // Clean existing Prisma client
 const prismaClientPath = path.join(projectRoot, 'node_modules', '.prisma');
@@ -15,8 +26,7 @@ if (fs.existsSync(prismaClientPath)) {
   fs.rmSync(prismaClientPath, { recursive: true, force: true });
 }
 
-// Generate Prisma client with Windows binary
-console.log('Generating Prisma client for Windows...');
+console.log(`Generating Prisma client for ${platform}...`);
 try {
   execSync('npx prisma generate', {
     stdio: 'inherit',
@@ -29,27 +39,28 @@ try {
   });
   console.log('Prisma client generated successfully');
   
-  // Verify query engine exists
-  const queryEnginePath = path.join(
-    projectRoot, 
-    'node_modules', 
-    '.prisma', 
-    'client',
-    'query_engine-windows.dll.node'
-  );
-  
-  if (fs.existsSync(queryEnginePath)) {
-    console.log('✓ Query engine binary verified:', queryEnginePath);
-    const stats = fs.statSync(queryEnginePath);
-    console.log(`  Size: ${(stats.size / 1024 / 1024).toFixed(2)} MB`);
-  } else {
-    console.error('✗ Query engine binary NOT found at:', queryEnginePath);
-    console.error('  Available files in .prisma/client:');
-    const clientDir = path.join(projectRoot, 'node_modules', '.prisma', 'client');
-    if (fs.existsSync(clientDir)) {
-      fs.readdirSync(clientDir).forEach(file => {
-        console.error('  -', file);
-      });
+  if (expectedEngine) {
+    const queryEnginePath = path.join(
+      projectRoot, 
+      'node_modules', 
+      '.prisma', 
+      'client',
+      expectedEngine
+    );
+    
+    if (fs.existsSync(queryEnginePath)) {
+      console.log('✓ Query engine binary verified:', queryEnginePath);
+      const stats = fs.statSync(queryEnginePath);
+      console.log(`  Size: ${(stats.size / 1024 / 1024).toFixed(2)} MB`);
+    } else {
+      console.error('✗ Query engine binary NOT found at:', queryEnginePath);
+      console.error('  Available files in .prisma/client:');
+      const clientDir = path.join(projectRoot, 'node_modules', '.prisma', 'client');
+      if (fs.existsSync(clientDir)) {
+        fs.readdirSync(clientDir).forEach(file => {
+          console.error('  -', file);
+        });
+      }
     }
   }
 } catch (error) {

@@ -16,6 +16,19 @@ export function usePdfForm(sessionId: string) {
   const {toPDF, targetRef} = usePDF({
     filename: `session_${sessionId}.pdf`,
     page: {margin: Margin.MEDIUM, format: "letter", orientation: "portrait"},
+    canvas: {
+      mimeType: 'image/png',
+      qualityRatio: 1,
+    },
+    overrides: {
+      canvas: {
+        windowWidth: 1200,
+        windowHeight: 1600,
+        backgroundColor: '#ffffff',
+        removeContainer: true,
+        logging: false,
+      }
+    }
   });
 
   const buildPdfFilename = useCallback((data: ExportedSessionData | null) => {

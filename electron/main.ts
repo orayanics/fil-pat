@@ -1,19 +1,26 @@
-import { app, BrowserWindow, dialog, session } from 'electron';
+import { app, BrowserWindow, dialog, session, ipcMain } from 'electron';
 import * as path from 'path';
 import { spawn, ChildProcess, exec } from 'child_process';
 import * as os from 'os';
-import { ipcMain } from 'electron';
 import * as fs from 'fs';
 
+const prismaQueryEngineByPlatform: Partial<Record<NodeJS.Platform, string>> = {
+  win32: 'query_engine-windows.dll.node',
+  darwin: 'libquery_engine-darwin.dylib.node',
+  linux: 'libquery_engine-linux.so.node',
+};
+
 // CRITICAL: Set Prisma paths BEFORE any imports that use Prisma
-if (app.isPackaged) {
+const prismaEngineFilename = prismaQueryEngineByPlatform[process.platform];
+
+if (app.isPackaged && prismaEngineFilename) {
   const queryEnginePath = path.join(
     process.resourcesPath,
     'app',
     'node_modules',
     '.prisma',
     'client',
-    'query_engine-windows.dll.node'
+    prismaEngineFilename
   );
   const schemaPath = path.join(
     process.resourcesPath,
@@ -23,13 +30,15 @@ if (app.isPackaged) {
     'client',
     'schema.prisma'
   );
-  
+
   process.env.PRISMA_QUERY_ENGINE_LIBRARY = queryEnginePath;
   process.env.PRISMA_SCHEMA_PATH = schemaPath;
   process.env.PRISMA_ENGINES_CHECKSUM_IGNORE_MISSING = '1';
-  
+
   console.log('Prisma engine path:', queryEnginePath);
   console.log('Prisma schema path:', schemaPath);
+} else if (app.isPackaged) {
+  console.warn(`Unsupported platform for Prisma query engine: ${process.platform}`);
 }
 
 // NOW import database functions after Prisma env vars are set
@@ -73,7 +82,8 @@ function resolveAssetPath(...segments: string[]): string {
   return path.join(process.resourcesPath, ...segments);
 }
 
-const appIconPath = resolveAssetPath('assets', 'icons', 'icon.ico');
+const iconFilename = process.platform === 'darwin' ? 'icon.icns' : 'icon.ico';
+const appIconPath = resolveAssetPath('assets', 'icons', iconFilename);
 
 app.name = PRODUCT_DISPLAY_NAME;
 

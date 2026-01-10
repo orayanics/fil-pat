@@ -51,7 +51,7 @@ export default function SessionPdf() {
   const responseLabel = isKidsTemplate ? "Child Response" : "Patient Response";
 
   return (
-    <Box sx={{ maxWidth: 1200, mx: 'auto', p: 3 }}>
+    <Box sx={{ maxWidth: 1200, mx: 'auto', p: 3, bgcolor: 'background.body' }}>
       <Snackbar
         open={downloadStatus === 'success' || downloadStatus === 'error'}
         color={downloadStatus === 'success' ? 'success' : 'danger'}
@@ -78,7 +78,17 @@ export default function SessionPdf() {
       </Box>
 
       {formData && (
-        <Box ref={targetRef} sx={{ bgcolor: 'white', p: 4, borderRadius: 'md', boxShadow: 'lg' }}>
+        <Box 
+          ref={targetRef} 
+          sx={{ 
+            bgcolor: '#ffffff',
+            p: 4, 
+            borderRadius: 'md', 
+            boxShadow: 'lg',
+            position: 'relative',
+            isolation: 'isolate',
+          }}
+        >
           {/* Header Section */}
           <Box sx={{ textAlign: 'center', mb: 4, pb: 3, borderBottom: '3px solid', borderColor: 'primary.500' }}>
             <Typography level="h2" sx={{ color: 'primary.700', fontWeight: 800, mb: 1 }}>
@@ -219,20 +229,23 @@ export default function SessionPdf() {
                     bgcolor: 'primary.100',
                     color: 'primary.900',
                     fontWeight: 700,
-                    py: 1.5,
-                    px: 1,
-                    fontSize: '0.8rem',
+                    py: 1,
+                    px: 0.75,
+                    fontSize: '0.7rem',
                     lineHeight: 1.2,
-                    verticalAlign: 'top'
+                    verticalAlign: 'top',
+                    whiteSpace: 'normal',
+                    wordBreak: 'break-word'
                   },
                   '& tbody td': {
-                    py: 1.5,
-                    px: 1,
-                    fontSize: '0.75rem',
+                    py: 1,
+                    px: 0.75,
+                    fontSize: '0.7rem',
                     lineHeight: 1.3,
                     verticalAlign: 'top',
-                    wordWrap: 'break-word',
-                    overflow: 'hidden'
+                    wordBreak: 'break-word',
+                    whiteSpace: 'normal',
+                    overflow: 'visible'
                   },
                   '& tbody tr:nth-of-type(odd)': {
                     bgcolor: 'background.level1'
@@ -241,16 +254,16 @@ export default function SessionPdf() {
               >
                 <thead>
                   <tr>
-                    <th style={{ width: '4%' }}>Item #</th>
-                    <th style={{ width: '10%' }}>Target Word</th>
-                    <th style={{ width: '7%' }}>Phoneme Group</th>
-                    <th style={{ width: '10%' }}>IPA Key</th>
-                    <th style={{ width: '13%' }}>{responseLabel}</th>
-                    <th style={{ width: '7%' }}>Consonants</th>
-                    <th style={{ width: '7%' }}>Vowels</th>
-                    <th style={{ width: '9%' }}>Phoneme Accuracy</th>
-                    <th style={{ width: '7%' }}>Score</th>
-                    <th style={{ width: '26%' }}>Clinical Notes</th>
+                    <th style={{ width: '3.5%' }}>Item #</th>
+                    <th style={{ width: '9%' }}>Target Word</th>
+                    <th style={{ width: '6.5%' }}>Phoneme Group</th>
+                    <th style={{ width: '9%' }}>IPA Key</th>
+                    <th style={{ width: '12%' }}>{responseLabel}</th>
+                    <th style={{ width: '7.5%' }}>Consonants</th>
+                    <th style={{ width: '7.5%' }}>Vowels</th>
+                    <th style={{ width: '10%' }}>Phoneme Accuracy</th>
+                    <th style={{ width: '5%' }}>Score</th>
+                    <th style={{ width: '30%' }}>Clinical Notes</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -268,59 +281,59 @@ export default function SessionPdf() {
                           <Typography level="body-sm" sx={{ fontWeight: 700 }}>{index + 1}</Typography>
                         </td>
                         <td>
-                          <Typography level="body-sm" sx={{ fontWeight: 600, fontSize: '0.75rem' }}>
+                          <Typography level="body-sm" sx={{ fontWeight: 600, fontSize: '0.7rem', lineHeight: 1.2 }}>
                             {value.target_word || '—'}
                           </Typography>
                         </td>
                         <td>
-                          <Chip size="sm" variant="soft" color="neutral" sx={{ fontSize: '0.7rem', minHeight: 'auto', py: 0.25 }}>
+                          <Chip size="sm" variant="soft" color="neutral" sx={{ fontSize: '0.65rem', minHeight: 'auto', py: 0.2, px: 0.5 }}>
                             {value.group || 'N/A'}
                           </Chip>
                         </td>
                         <td>
-                          <Typography level="body-sm" sx={{ fontFamily: 'monospace', fontWeight: 600, fontSize: '0.75rem', lineHeight: 1.2 }}>
+                          <Typography level="body-sm" sx={{ fontFamily: 'monospace', fontWeight: 600, fontSize: '0.7rem', lineHeight: 1.2 }}>
                             {value.ipa_key || '—'}
                           </Typography>
                         </td>
                         <td>
-                          <Typography level="body-sm" sx={{ fontWeight: hasResponse ? 600 : 400, fontStyle: hasResponse ? 'normal' : 'italic', fontSize: '0.75rem', lineHeight: 1.3 }}>
+                          <Typography level="body-sm" sx={{ fontWeight: hasResponse ? 600 : 400, fontStyle: hasResponse ? 'normal' : 'italic', fontSize: '0.7rem', lineHeight: 1.3 }}>
                             {hasResponse ? value.childResponse : 'No response'}
                           </Typography>
                         </td>
                         <td style={{ textAlign: 'center' }}>
-                          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.5 }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.3 }}>
                             {value.consonantsCorrect > 0 ? (
-                              <CheckCircle sx={{ fontSize: 14, color: 'success.500' }} />
+                              <CheckCircle sx={{ fontSize: 12, color: 'success.500' }} />
                             ) : value.consonantsCorrect === 0 && hasResponse ? (
-                              <Cancel sx={{ fontSize: 14, color: 'danger.500' }} />
+                              <Cancel sx={{ fontSize: 12, color: 'danger.500' }} />
                             ) : (
-                              <Warning sx={{ fontSize: 14, color: 'warning.500' }} />
+                              <Warning sx={{ fontSize: 12, color: 'warning.500' }} />
                             )}
-                            <Typography level="body-sm" sx={{ fontSize: '0.75rem', fontWeight: 600 }}>
+                            <Typography level="body-sm" sx={{ fontSize: '0.7rem', fontWeight: 600 }}>
                               {value.consonantsCorrect || 0}/{value.consonantsCount || 0}
                             </Typography>
                           </Box>
                         </td>
                         <td style={{ textAlign: 'center' }}>
-                          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.5 }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.3 }}>
                             {value.vowelsCorrect > 0 ? (
-                              <CheckCircle sx={{ fontSize: 14, color: 'success.500' }} />
+                              <CheckCircle sx={{ fontSize: 12, color: 'success.500' }} />
                             ) : value.vowelsCorrect === 0 && hasResponse ? (
-                              <Cancel sx={{ fontSize: 14, color: 'danger.500' }} />
+                              <Cancel sx={{ fontSize: 12, color: 'danger.500' }} />
                             ) : (
-                              <Warning sx={{ fontSize: 14, color: 'warning.500' }} />
+                              <Warning sx={{ fontSize: 12, color: 'warning.500' }} />
                             )}
-                            <Typography level="body-sm" sx={{ fontSize: '0.75rem', fontWeight: 600 }}>
+                            <Typography level="body-sm" sx={{ fontSize: '0.7rem', fontWeight: 600 }}>
                               {value.vowelsCorrect || 0}/{value.vowelsCount || 0}
                             </Typography>
                           </Box>
                         </td>
                         <td>
-                          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.5 }}>
+                          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.3 }}>
                             <Box 
                               sx={{ 
                                 width: '100%', 
-                                height: 6, 
+                                height: 5, 
                                 bgcolor: 'neutral.200', 
                                 borderRadius: 'sm',
                                 overflow: 'hidden'
@@ -334,18 +347,18 @@ export default function SessionPdf() {
                                 }}
                               />
                             </Box>
-                            <Typography level="body-sm" sx={{ fontWeight: 700, fontSize: '0.7rem' }}>
+                            <Typography level="body-sm" sx={{ fontWeight: 700, fontSize: '0.65rem', lineHeight: 1.2 }}>
                               {totalPhonemes > 0 ? `${correctPhonemes}/${totalPhonemes} (${accuracyPercentage.toFixed(0)}%)` : '—'}
                             </Typography>
                           </Box>
                         </td>
                         <td style={{ textAlign: 'center' }}>
-                          <Typography level="body-sm" sx={{ fontSize: '0.75rem', fontWeight: 700 }}>
+                          <Typography level="body-sm" sx={{ fontSize: '0.7rem', fontWeight: 700 }}>
                             {accuracyPercentage === 100 ? '1' : '0'}
                           </Typography>
                         </td>
                         <td>
-                          <Typography level="body-sm" sx={{ fontStyle: hasNotes ? 'normal' : 'italic', color: hasNotes ? 'text.primary' : 'text.tertiary', fontSize: '0.7rem', lineHeight: 1.3 }}>
+                          <Typography level="body-sm" sx={{ fontStyle: hasNotes ? 'normal' : 'italic', color: hasNotes ? 'text.primary' : 'text.tertiary', fontSize: '0.65rem', lineHeight: 1.4 }}>
                             {hasNotes ? value.clinicianNotes : 'No notes'}
                           </Typography>
                         </td>

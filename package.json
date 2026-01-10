@@ -23,12 +23,16 @@
     "build:electron": "tsc -p tsconfig.electron.json",
     "dev:electron": "npm run build:electron && electron dist-electron/main.js",
     "prebuild:electron": "node scripts/prebuild-electron.js",
-    "package:electron": "npm run prebuild:electron && npm run build && npm run build:electron && electron-builder --win --x64",
+    "package:electron": "npm run package:win",
+    "package:win": "npm run prebuild:electron && npm run build && npm run build:electron && electron-builder --win --x64",
+    "package:mac": "npm run prebuild:electron && npm run build && npm run build:electron && electron-builder --mac",
+    "package:all": "npm run prebuild:electron && npm run build && npm run build:electron && electron-builder --mac --win",
     "dist": "npm run prebuild:electron && npm run build && npm run build:electron && electron-builder",
     "dist:portable": "npm run prebuild:electron && npm run build && npm run build:electron && electron-builder --win portable",
     "dist:installer": "npm run prebuild:electron && npm run build && npm run build:electron && electron-builder --win nsis",
-    "clean:dist": "if exist release rmdir /s /q release && if exist dist-electron rmdir /s /q dist-electron && if exist dist rmdir /s /q dist",
-    "clean:fresh": "powershell -NoProfile -Command \"if (Test-Path node_modules) { Remove-Item node_modules -Recurse -Force }; if (Test-Path dist) { Remove-Item dist -Recurse -Force }; if (Test-Path dist-electron) { Remove-Item dist-electron -Recurse -Force }; if (Test-Path release) { Remove-Item release -Recurse -Force }\""
+    "generate:icons": "node scripts/generate-icon.cjs",
+    "clean:dist": "rimraf release dist-electron dist",
+    "clean:fresh": "rimraf node_modules dist dist-electron release"
   },
   "dependencies": {
     "@emotion/cache": "^11.14.0",
@@ -70,8 +74,10 @@
     "electron-builder": "^26.0.12",
     "eslint": "^9",
     "eslint-config-next": "15.3.5",
+    "png2icons": "^2.0.1",
     "png-to-ico": "^3.0.1",
     "prisma": "^5.22.0",
+    "rimraf": "^5.0.10",
     "sharp": "^0.34.5",
     "tailwindcss": "^4",
     "ts-node": "^10.9.2",
@@ -99,7 +105,6 @@
       "assets/**/*",
       "package.json",
       "node_modules/**/*",
-      "!node_modules/@img/sharp-darwin-*/**/*",
       "!node_modules/@img/sharp-linux-*/**/*"
     ],
     "extraResources": [
@@ -139,6 +144,32 @@
       "output": "release",
       "buildResources": "assets"
     },
+    "mac": {
+      "icon": "assets/icons/icon.icns",
+      "category": "public.app-category.education",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
+      ],
+      "artifactName": "${productName}-${version}-${arch}-${os}.${ext}",
+      "hardenedRuntime": true,
+      "entitlements": "scripts/entitlements.mac.plist",
+      "entitlementsInherit": "scripts/entitlements.mac.plist",
+      "identity": null,
+      "gatekeeperAssess": false
+    },
     "win": {
       "icon": "assets/icons/icon.ico",
       "target": [
@@ -171,6 +202,10 @@
       "createStartMenuShortcut": true,
       "shortcutName": "Filipino Phonological Assessment Tool",
       "include": "scripts/installer.nsh"
+    },
+    "dmg": {
+      "artifactName": "${productName}-${version}-${arch}.${ext}",
+      "icon": "assets/icons/icon.icns"
     },
     "portable": {
       "artifactName": "${productName}-${version}-Portable.${ext}"
