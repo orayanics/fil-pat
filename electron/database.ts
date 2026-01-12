@@ -6,17 +6,30 @@ import * as path from "path";
 // Configure Prisma for packaged app
 const isDev = !app.isPackaged;
 
+// Platform-specific query engine mapping
+const prismaEngines: Partial<Record<NodeJS.Platform, string>> = {
+  win32: 'query_engine-windows.dll.node',
+  darwin: 'libquery_engine-darwin.dylib.node',
+  linux: 'libquery_engine-linux.so.node',
+};
+
 // Set environment variable for Prisma to find the query engine
 if (!isDev) {
-  const queryEnginePath = path.join(
-    process.resourcesPath,
-    'app.asar.unpacked',
-    'node_modules',
-    '.prisma',
-    'client',
-    'query_engine-windows.dll.node'
-  );
-  process.env.PRISMA_QUERY_ENGINE_LIBRARY = queryEnginePath;
+  const engineFilename = prismaEngines[process.platform];
+  
+  if (engineFilename) {
+    const queryEnginePath = path.join(
+      process.resourcesPath,
+      'app.asar.unpacked',
+      'node_modules',
+      '.prisma',
+      'client',
+      engineFilename
+    );
+    process.env.PRISMA_QUERY_ENGINE_LIBRARY = queryEnginePath;
+  } else {
+    console.warn(`Unsupported platform for Prisma: ${process.platform}`);
+  }
 }
 
 const prisma = new PrismaClient();

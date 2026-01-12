@@ -1,6 +1,6 @@
 {
   "name": "fil-pat",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "Filipino Phonological Assessment Tool Application",
   "author": "UST College of Rehabilitation Sciences",
   "private": true,
@@ -142,10 +142,10 @@
     },
     "directories": {
       "output": "release",
-      "buildResources": "assets"
+      "buildResources": "assets/icons"
     },
     "mac": {
-      "icon": "assets/icons/icon.icns",
+      "icon": "icon.icns",
       "category": "public.app-category.education",
       "target": [
         {
@@ -171,7 +171,7 @@
       "gatekeeperAssess": false
     },
     "win": {
-      "icon": "assets/icons/icon.ico",
+      "icon": "icon.ico",
       "target": [
         {
           "target": "portable",
@@ -196,8 +196,8 @@
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "perMachine": true,
-      "installerIcon": "assets/icons/icon.ico",
-      "uninstallerIcon": "assets/icons/icon.ico",
+      "installerIcon": "icon.ico",
+      "uninstallerIcon": "icon.ico",
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "shortcutName": "Filipino Phonological Assessment Tool",
@@ -205,7 +205,7 @@
     },
     "dmg": {
       "artifactName": "${productName}-${version}-${arch}.${ext}",
-      "icon": "assets/icons/icon.icns"
+      "icon": "icon.icns"
     },
     "portable": {
       "artifactName": "${productName}-${version}-Portable.${ext}"
