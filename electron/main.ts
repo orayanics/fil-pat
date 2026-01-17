@@ -68,18 +68,31 @@ function resolveAssetPath(...segments: string[]): string {
     return path.join(__dirname, '..', ...segments);
   }
 
-  const unpackedPath = path.join(process.resourcesPath, 'app.asar.unpacked', ...segments);
+  // In production, try these paths in order
+  const resourcesPath = process.resourcesPath;
+  
+  // First try: resources/assets (extraResources)
+  const extraResourcePath = path.join(resourcesPath, ...segments);
+  if (fs.existsSync(extraResourcePath)) {
+    return extraResourcePath;
+  }
+
+  // Second try: app.asar.unpacked
+  const unpackedPath = path.join(resourcesPath, 'app.asar.unpacked', ...segments);
   if (fs.existsSync(unpackedPath)) {
     return unpackedPath;
   }
 
+  // Third try: within app.asar
   const appPath = app.getAppPath();
   const withinAsar = path.join(appPath, ...segments);
   if (fs.existsSync(withinAsar)) {
     return withinAsar;
   }
 
-  return path.join(process.resourcesPath, ...segments);
+  // Fallback
+  console.warn(`Asset not found: ${segments.join('/')}, using fallback path`);
+  return extraResourcePath;
 }
 
 const iconFilename = process.platform === 'darwin' ? 'icon.icns' : 'icon.ico';
@@ -230,6 +243,20 @@ function createWindow() {
 
   const localIp = getLocalIp();
 
+  // Add error handling for failed loads
+  win.webContents.on('did-fail-load', (event, errorCode, errorDescription) => {
+    console.error('Failed to load:', errorCode, errorDescription);
+    dialog.showErrorBox(
+      'Loading Error',
+      `Failed to load application: ${errorDescription}\n\nPlease check if the server started correctly.`
+    );
+  });
+
+  // Log console messages from the renderer
+  win.webContents.on('console-message', (event, level, message, line, sourceId) => {
+    console.log(`[Renderer] ${message}`);
+  });
+
   // Show connection info to user
   win.webContents.on('did-finish-load', () => {
     console.log(`
@@ -250,7 +277,76 @@ function createWindow() {
     win.loadURL(`http://localhost:${APP_PORT}`);
     win.webContents.openDevTools();
   } else {
-    win.loadURL(`http://localhost:${APP_PORT}`);
+    // In production, show loading message then try to connect
+    const loadingHtml = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <style>
+            body {
+              margin: 0;
+              padding: 0;
+              display: flex;
+              justify-content: center;
+              align-items: center;
+              height: 100vh;
+              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+              background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+              color: white;
+            }
+            .loader { text-align: center; }
+            .spinner {
+              border: 4px solid rgba(255,255,255,0.3);
+              border-top: 4px solid white;
+              border-radius: 50%;
+              width: 50px;
+              height: 50px;
+              animation: spin 1s linear infinite;
+              margin: 0 auto 20px;
+            }
+            @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+          </style>
+        </head>
+        <body>
+          <div class="loader">
+            <div class="spinner"></div>
+            <h2>FIL-PAT Starting...</h2>
+            <p>Please wait while the application initializes</p>
+          </div>
+        </body>
+      </html>
+    `;
+    
+    win.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(loadingHtml)}`);
+    
+    // Try to connect to server with retries
+    const tryLoadServer = (attempt = 1, maxAttempts = 10) => {
+      console.log(`Attempt ${attempt}/${maxAttempts}: Loading server...`);
+      
+      setTimeout(() => {
+        fetch(`http://localhost:${APP_PORT}`)
+          .then(() => {
+            console.log('Server is ready, loading app...');
+            win.loadURL(`http://localhost:${APP_PORT}`).catch((err) => {
+              console.error('Failed to load URL:', err);
+            });
+          })
+          .catch((err) => {
+            console.log(`Server not ready yet (attempt ${attempt}):`, err.message);
+            if (attempt < maxAttempts) {
+              tryLoadServer(attempt + 1, maxAttempts);
+            } else {
+              console.error('Server failed to start after maximum attempts');
+              dialog.showErrorBox(
+                'Server Error',
+                'The application server failed to start. Please check the logs and try again.'
+              );
+            }
+          });
+      }, attempt === 1 ? 2000 : 1500);
+    };
+    
+    tryLoadServer();
   }
 
   mainWindow = win;
