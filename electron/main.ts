@@ -3,6 +3,7 @@ import * as path from 'path';
 import { spawn, ChildProcess, exec } from 'child_process';
 import * as os from 'os';
 import * as fs from 'fs';
+import * as net from 'net';
 
 const prismaQueryEngineByPlatform: Partial<Record<NodeJS.Platform, string>> = {
   win32: 'query_engine-windows.dll.node',
@@ -58,10 +59,51 @@ function getLocalIp(): string {
 }
 
 const isDev = !app.isPackaged;
-const APP_PORT = 3000;
-const WS_PORT = 8080;
+let APP_PORT = 3000;
+let WS_PORT = 8080;
 const APP_USER_MODEL_ID = 'com.ust.filpat';
 const PRODUCT_DISPLAY_NAME = 'Filipino Phonological Assessment Tool';
+
+/**
+ * Check if a port is available
+ */
+function isPortAvailable(port: number): Promise<boolean> {
+  return new Promise((resolve) => {
+    const server = net.createServer();
+    
+    server.once('error', (err: NodeJS.ErrnoException) => {
+      if (err.code === 'EADDRINUSE') {
+        resolve(false);
+      } else {
+        resolve(false);
+      }
+    });
+    
+    server.once('listening', () => {
+      server.close();
+      resolve(true);
+    });
+    
+    server.listen(port);
+  });
+}
+
+/**
+ * Find an available port starting from the preferred port
+ */
+async function findAvailablePort(preferredPort: number, maxAttempts = 10): Promise<number> {
+  for (let i = 0; i < maxAttempts; i++) {
+    const port = preferredPort + i;
+    const available = await isPortAvailable(port);
+    if (available) {
+      if (i > 0) {
+        console.log(`Port ${preferredPort} was busy, using port ${port} instead`);
+      }
+      return port;
+    }
+  }
+  throw new Error(`Could not find available port in range ${preferredPort}-${preferredPort + maxAttempts - 1}`);
+}
 
 function resolveAssetPath(...segments: string[]): string {
   if (isDev) {
@@ -421,6 +463,10 @@ function startProductionServer(): Promise<void> {
         nodeModulePaths.push(process.env.NODE_PATH);
       }
 
+      // Get database path for Next.js server
+      const userData = app.getPath('userData');
+      const dbPath = path.join(userData, 'filpat.db');
+
       const env = {
         ...process.env,
         NODE_ENV: 'production',
@@ -429,6 +475,7 @@ function startProductionServer(): Promise<void> {
         WEBSOCKET_PORT: WS_PORT.toString(),
         WEBSOCKET_HOST: '0.0.0.0',
         NODE_PATH: nodeModulePaths.join(path.delimiter),
+        PRISMA_DATABASE_PATH: dbPath,
       };
 
       console.log('Server path:', serverPath);
@@ -554,6 +601,18 @@ app.whenReady().then(async () => {
     console.log('          FIL-PAT Starting Up (Electron)              ');
     console.log('═══════════════════════════════════════════════════════');
     console.log('');
+
+    // Step 0: Find available ports
+    console.log('🔍 Checking for available ports...');
+    try {
+      APP_PORT = await findAvailablePort(3000);
+      WS_PORT = await findAvailablePort(8080);
+      console.log(`✓ Using ports - HTTP: ${APP_PORT}, WebSocket: ${WS_PORT}`);
+      console.log('');
+    } catch (error) {
+      console.error('Failed to find available ports:', error);
+      throw error;
+    }
 
     // Step 1: Ensure database directory exists
     ensureDatabaseDirectory(isDev);
