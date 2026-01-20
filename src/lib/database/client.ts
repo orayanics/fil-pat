@@ -13,9 +13,10 @@ declare global {
 // Determine database path based on environment
 const getDatabasePath = () => {
   const isElectron = process.versions && process.versions.electron;
+  const electronProcess = process as NodeJS.Process & { type?: string };
   
   // Only use Electron app path in main Electron process, not in renderer or Next.js
-  if (process.env.NODE_ENV === 'production' && isElectron && process.type === 'browser') {
+  if (process.env.NODE_ENV === 'production' && isElectron && electronProcess.type === 'browser') {
     // In production Electron main process, store database in app data directory
     try {
       // eslint-disable-next-line @typescript-eslint/no-require-imports
